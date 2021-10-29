@@ -9,7 +9,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import './IFAllocationMaster.sol';
 
-contract IFAllocationSale is Ownable, ReentrancyGuard {
+contract IFAllocationSale is Ownable, ReentrancyGuard, ERC2771Context {
     using SafeERC20 for ERC20;
 
     // CONSTANTS
@@ -94,7 +94,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         uint256 saleTokenBalance
     );
     event EmergencyTokenRetrieve(address indexed sender, uint256 amount);
-
+    event TrustedForwarderChanged(address indexed trustedForwarder,address indexed actor);
     // CONSTRUCTOR
 
     constructor(
@@ -107,8 +107,9 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         uint80 _allocSnapshotBlock,
         uint256 _startBlock,
         uint256 _endBlock,
-        uint256 _maxTotalPayment
-    ) {
+        uint256 _maxTotalPayment,
+        address _trustedForwarder
+    ) ERC2771Context(_trustedForwarder){
         // funder cannot be 0
         require(_funder != address(0), '0x0 funder');
         // sale token cannot be 0
@@ -157,6 +158,24 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     }
 
     // FUNCTIONS
+
+    // overrides Context and EIP2771Context to make meta transaction compliant  
+    function _msgSender() internal override(Context, ERC2771Context)
+      view returns (address) {
+       return ERC2771Context._msgSender();
+    }
+
+    // overrides Context and EIP2771Context to make meta transaction compliant  
+    function _msgData() internal override(Context, ERC2771Context)
+      view returns (bytes calldata) {
+       return ERC2771Context._msgData();
+    }
+
+    // owner can change EIP2771 trusted forwarder
+    function setTrustedForwarder(address trustedForwarder) external onlyOwner {
+        _trustedForwarder = trustedForwarder;
+        emit TrustedForwarderChanged(trustedForwarder,msg.sender);
+    }
 
     // Function for funding sale with sale token (called by project team)
     function fund(uint256 amount) external onlyFunder {

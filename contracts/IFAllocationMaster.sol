@@ -6,12 +6,48 @@ import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
+import "@openzeppelin/contracts/utils/Context.sol";
+
+/**
+ * @dev Context variant with ERC2771 support.
+ */
+abstract contract ERC2771Context is Context {
+    address public _trustedForwarder;
+
+    constructor(address trustedForwarder) {
+        _trustedForwarder = trustedForwarder;
+    }
+
+    function isTrustedForwarder(address forwarder) public view virtual returns (bool) {
+        return forwarder == _trustedForwarder;
+    }
+
+    function _msgSender() internal view virtual override returns (address sender) {
+        if (isTrustedForwarder(msg.sender)) {
+            // The assembly code is more direct than the Solidity version using `abi.decode`.
+            assembly {
+                sender := shr(96, calldataload(sub(calldatasize(), 20)))
+            }
+        } else {
+            return super._msgSender();
+        }
+    }
+
+    function _msgData() internal view virtual override returns (bytes calldata) {
+        if (isTrustedForwarder(msg.sender)) {
+            return msg.data[:msg.data.length - 20];
+        } else {
+            return super._msgData();
+        }
+    }
+}
+
 
 // IFAllocationMaster is responsible for persisting all launchpad state between project token sales
 // in order for the sales to have clean, self-enclosed, one-time-use states.
 
 // IFAllocationMaster is the master of allocations. He can remember everything and he is a smart guy.
-contract IFAllocationMaster is Ownable, ReentrancyGuard {
+contract IFAllocationMaster is Ownable, ReentrancyGuard, ERC2771Context {
     using SafeERC20 for ERC20;
 
     // CONSTANTS
@@ -130,12 +166,31 @@ contract IFAllocationMaster is Ownable, ReentrancyGuard {
         address indexed sender,
         uint256 amount
     );
+    event TrustedForwarderChanged(address indexed trustedForwarder,address indexed actor);
 
     // CONSTRUCTOR
 
-    constructor() {}
+    constructor(address _trustedForwarder) ERC2771Context(_trustedForwarder){}
 
     // FUNCTIONS
+    
+    // overrides Context and EIP2771Context to make meta transaction compliant  
+    function _msgSender() internal override(Context, ERC2771Context)
+      view returns (address) {
+       return ERC2771Context._msgSender();
+    }
+
+    // overrides Context and EIP2771Context to make meta transaction compliant  
+    function _msgData() internal override(Context, ERC2771Context)
+      view returns (bytes calldata) {
+       return ERC2771Context._msgData();
+    }
+    
+    // owner can change EIP2771 trusted forwarder
+    function setTrustedForwarder(address trustedForwarder) external onlyOwner {
+        _trustedForwarder = trustedForwarder;
+        emit TrustedForwarderChanged(trustedForwarder,msg.sender);
+    }
 
     // number of tracks
     function trackCount() external view returns (uint24) {
