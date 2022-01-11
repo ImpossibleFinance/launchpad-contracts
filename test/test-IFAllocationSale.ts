@@ -583,7 +583,10 @@ export default describe('IF Allocation Sale', function () {
     // fails
     expect(await PaymentToken.balanceOf(casher.address)).to.equal('0')
 
-    // test withdraw and cash (should work here since 1 block has passed)
+    // simulate `delay` time passing
+    mineTimeDelta(delay)
+
+    // test withdraw and cash (should work here after delay passed)
     await IFAllocationSale.connect(buyer).withdraw()
     await IFAllocationSale.connect(casher).cash()
 
