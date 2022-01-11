@@ -162,14 +162,14 @@ export default describe('IF Allocation Sale', function () {
       (await StakeToken.balanceOf(IFAllocationMaster.address)).toString()
     ).to.equal((stakeAmount * 2).toString())
 
-     //fastforward from current block to after snapshot block
-     const blocksToMine =  snapshotBlock - await ethers.provider.getBlockNumber()
-     for (let i = 0; i < blocksToMine; i++) {
-       await mineNext()
-     } 
+    //fastforward from current block to after snapshot block
+    const blocksToMine =
+      snapshotBlock - (await ethers.provider.getBlockNumber())
+    for (let i = 0; i < blocksToMine; i++) {
+      await mineNext()
+    }
   })
 
-  
   it('can purchase, withdraw, and cash', async function () {
     mineNext()
 
@@ -190,7 +190,7 @@ export default describe('IF Allocation Sale', function () {
     mineNext()
 
     // gas used in purchase
-    expect((await getGasUsed()).toString()).to.equal('227838')
+    expect((await getGasUsed()).toString()).to.equal('227752')
 
     // fast forward from current time to after end time
     mineTimeDelta(endTime - (await getBlockTime()))
@@ -201,7 +201,7 @@ export default describe('IF Allocation Sale', function () {
     mineNext()
 
     // gas used in withdraw
-    expect((await getGasUsed()).toString()).to.equal('100078')
+    expect((await getGasUsed()).toString()).to.equal('99981')
 
     // expect balance to increase by fund amount
     expect(await SaleToken.balanceOf(buyer.address)).to.equal('33333')
