@@ -85,3 +85,35 @@ contract vIDIA is AccessControlEnumerable {
         tokenConfigurations[token].unvestingDelay = newDelay;
     }
 }
+
+  //// EIP2771 meta transactions
+
+    function _msgSender()
+        internal
+        view
+        override(IFTokenStandard, Context)
+        returns (address)
+    {
+        return ERC2771ContextUpdateable._msgSender();
+    }
+
+    function _msgData()
+        internal
+        view
+        override(IFTokenStandard, Context)
+        returns (bytes calldata)
+    {
+        return ERC2771ContextUpdateable._msgData();
+    }
+
+    //// EIP1363 payable token
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(AccessControlEnumerable, IFTokenStandard)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+}
