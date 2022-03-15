@@ -36,11 +36,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     bytes32 public constant WHITELIST_SETTER_ROLE =
         keccak256('WHITELIST_SETTER_ROLE');
 
-    // optional whitelist setter (settable by owner)
-    address public whitelistSetter;
-
-    bytes32 public whitelistRootHash;
-
+    EnumerableSet.AddressSet private whitelistAddresses;
 
     // user info mapping (user addr => token addr => user info)
     mapping(address => mapping(address => UserInfo)) public userInfo;
@@ -127,6 +123,63 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             'Must have delay setter role'
         );
         unvestingDelay = newDelay;
+    }
+
+    /** 
+     @notice Adds an address to the transfer whitelist
+     @dev requires whitelist setter role
+     @param account is the address to add to whitelist
+     @return boolean. True = account was added, False = account already exists in set
+     */
+    function addToWhitelist(address account) public returns (bool) {
+        require(hasRole(WHITELIST_SETTER_ROLE, _msgSender()), 'Must have whitelist setter role');
+        isWhitelistedAddr[account] = true;
+        return EnumerableSet.add(whitelistAddresses, account);
+    }
+
+    /** 
+     @notice Removes an address to the transfer whitelist
+     @dev requires whitelist setter role
+     @param account is the address to remove from whitelist
+     @return boolean. True = account was removed, False = account doesnt exist in set
+     */
+    function removeFromWhitelist(address account) public returns (bool) {
+        require(hasRole(WHITELIST_SETTER_ROLE, _msgSender()), 'Must have whitelist setter role');
+        isWhitelistedAddr[account] = false;
+        return EnumerableSet.remove(whitelistAddresses, account);
+    }
+
+    /** 
+     @notice Getter for all transfer whitelisted addresses
+     @return Array of all transfer whitelisted addresses
+     */
+    function getAllWhitelistedAddrs() public view returns (address[]) {
+        return EnumerableSet.values(whitelistAddresses);
+    }
+
+    /** 
+     @notice Standard ERC20 transfer but only to/fro whitelisted addresses
+     @dev purpose is to enable transfers to and fro launchpad contract only
+     @param to address to send tokens to
+     @param amount transfer amount
+     @return boolean representing if transfer was successful
+     */
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        require(EnumerableSet.contains(whitelistAddresses, to) || EnumerableSet.contains(whitelistAddresses, _msgSender()), 'Destination address is not whitelisted');
+        return ERC20.transfer(to, amount);
+    }
+
+    /** 
+     @notice Standard ERC20 transferFrom but only to/fro whitelisted addresses
+     @dev purpose is to enable transfers to and fro launchpad contract only
+     @param to address the tokens are sent from 
+     @param to address to send tokens to
+     @param amount transfer amount
+     @return boolean representing if transfer was successful
+     */
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
+        require(EnumerableSet.contains(whitelistAddresses, from) || EnumerableSet.contains(whitelistAddresses, to), 'Destination address is not whitelisted');
+        return ERC20.transferFrom(from, to, amount);
     }
 
     //// EIP2771 meta transactions
