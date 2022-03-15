@@ -165,7 +165,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @return boolean representing if transfer was successful
      */
     function transfer(address to, uint256 amount) public override returns (bool) {
-        require(EnumerableSet.contains(whitelistAddresses, to) || EnumerableSet.contains(whitelistAddresses, _msgSender()), 'Destination address is not whitelisted');
+        require(EnumerableSet.contains(whitelistAddresses, to) || EnumerableSet.contains(whitelistAddresses, _msgSender()), 'Origin and dest address not in whitelist');
         return ERC20.transfer(to, amount);
     }
 
@@ -178,7 +178,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @return boolean representing if transfer was successful
      */
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
-        require(EnumerableSet.contains(whitelistAddresses, from) || EnumerableSet.contains(whitelistAddresses, to), 'Destination address is not whitelisted');
+        require(EnumerableSet.contains(whitelistAddresses, from) || EnumerableSet.contains(whitelistAddresses, to), 'Origin and dest address not in whitelist');
         return ERC20.transferFrom(from, to, amount);
     }
 
