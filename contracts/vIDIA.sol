@@ -4,6 +4,8 @@ pragma solidity ^0.8.4;
 import 'hardhat/console.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/access/AccessControlEnumerable.sol';
+import '../library/IFTokenStandard.sol';
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     using SafeERC20 for ERC20;
@@ -173,6 +175,61 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @notice Standard ERC20 transferFrom but only to/fro whitelisted addresses
      @dev purpose is to enable transfers to and fro launchpad contract only
      @param to address the tokens are sent from 
+     @param to address to send tokens to
+     @param amount transfer amount
+     @return boolean representing if transfer was successful
+     */
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
+        require(EnumerableSet.contains(whitelistAddresses, from) || EnumerableSet.contains(whitelistAddresses, to), 'Origin and dest address not in whitelist');
+        return ERC20.transferFrom(from, to, amount);
+    }
+
+    /** 
+     @notice Adds an address to the transfer whitelist
+     @dev requires whitelist setter role
+     @param account is the address to add to whitelist
+     @return boolean. True = account was added, False = account already exists in set
+     */
+    function addToWhitelist(address account) public returns (bool) {
+        require(hasRole(WHITELIST_SETTER_ROLE, _msgSender()), 'Must have whitelist setter role');
+        return EnumerableSet.add(whitelistAddresses, account);
+    }
+
+    /** 
+     @notice Removes an address to the transfer whitelist
+     @dev requires whitelist setter role
+     @param account is the address to remove from whitelist
+     @return boolean. True = account was removed, False = account doesnt exist in set
+     */
+    function removeFromWhitelist(address account) public returns (bool) {
+        require(hasRole(WHITELIST_SETTER_ROLE, _msgSender()), 'Must have whitelist setter role');
+        return EnumerableSet.remove(whitelistAddresses, account);
+    }
+
+    /** 
+     @notice Getter for all transfer whitelisted addresses
+     @return Array of all transfer whitelisted addresses
+     */
+    function getAllWhitelistedAddrs() public view returns (address[] memory) {
+        return EnumerableSet.values(whitelistAddresses);
+    }
+
+    /** 
+     @notice Standard ERC20 transfer but only to/fro whitelisted addresses
+     @dev purpose is to enable transfers to and fro launchpad contract only
+     @param to address to send tokens to
+     @param amount transfer amount
+     @return boolean representing if transfer was successful
+     */
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        require(EnumerableSet.contains(whitelistAddresses, to) || EnumerableSet.contains(whitelistAddresses, _msgSender()), 'Origin and dest address not in whitelist');
+        return ERC20.transfer(to, amount);
+    }
+
+    /** 
+     @notice Standard ERC20 transferFrom but only to/fro whitelisted addresses
+     @dev purpose is to enable transfers to and fro launchpad contract only
+     @param from address the tokens are sent from 
      @param to address to send tokens to
      @param amount transfer amount
      @return boolean representing if transfer was successful
