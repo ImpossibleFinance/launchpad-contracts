@@ -67,7 +67,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         address _admin,
         address _tokenAddress
     ) AccessControlEnumerable() IFTokenStandard(_name, _symbol, _admin, _tokenAddress) {
-        _setupRole(PENALTY_SETTER_ROLE, _msgSender();
+        _setupRole(PENALTY_SETTER_ROLE, _msgSender());
         _setupRole(DELAY_SETTER_ROLE, _msgSender());
         _setupRole(WHITELIST_SETTER_ROLE, _msgSender());
         tokenAddress = _tokenAddress;
@@ -135,7 +135,6 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      */
     function addToWhitelist(address account) public returns (bool) {
         require(hasRole(WHITELIST_SETTER_ROLE, _msgSender()), 'Must have whitelist setter role');
-        isWhitelistedAddr[account] = true;
         return EnumerableSet.add(whitelistAddresses, account);
     }
 
@@ -147,7 +146,6 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      */
     function removeFromWhitelist(address account) public returns (bool) {
         require(hasRole(WHITELIST_SETTER_ROLE, _msgSender()), 'Must have whitelist setter role');
-        isWhitelistedAddr[account] = false;
         return EnumerableSet.remove(whitelistAddresses, account);
     }
 
