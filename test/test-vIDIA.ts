@@ -244,13 +244,12 @@ export default describe('vIDIA', function () {
         .to.emit(underlying, 'Transfer')
         .withArgs(vIDIA.address, owner.address, receiveAmt)
 
-      expect(await vIDIA.balanceOf(owner.address)).to.equal(userVidiaBalance.sub(withdrawAmt[i]))
+      expect(await vIDIA.balanceOf(owner.address)).to.equal(userVidiaBalance)
       expect(await underlying.balanceOf(owner.address)).to.equal(userUnderlying.add(receiveAmt))
       expect(await vIDIA.accumulatedFee()).to.equal(sumFees.add(fee))
       expect((await vIDIA.userInfo(owner.address)).unstakedAmount).to.equal(userUnstakingAmt.sub(withdrawAmt[i]))
       expect(await underlying.balanceOf(vIDIA.address)).to.equal(contractUnderlying.sub(receiveAmt))
 
-      userVidiaBalance = userVidiaBalance.sub(withdrawAmt[i])
       userUnderlying = userUnderlying.add(receiveAmt)
       userUnstakingAmt = userUnstakingAmt.sub(withdrawAmt[i])
       contractUnderlying = contractUnderlying.sub(receiveAmt)
@@ -258,8 +257,8 @@ export default describe('vIDIA', function () {
     }
 
     // test failure mode
-    mineTimeDelta(TWO_WEEKS)
-    expect(await vIDIA.claimPendingUnstake(0))
+    await mineTimeDelta(TWO_WEEKS)
+    await expect(vIDIA.claimPendingUnstake(0))
       .to.be.revertedWith('Can unstake without paying fee')
   })
 
@@ -294,13 +293,14 @@ export default describe('vIDIA', function () {
         .to.emit(vIDIA, 'CancelPendingUnstake')
         .withArgs(owner.address, fee, receiveAmt)
 
-      expect(await vIDIA.balanceOf(owner.address)).to.equal(userVidiaBalance) // no change
+      expect(await vIDIA.balanceOf(owner.address)).to.equal(userVidiaBalance.add(receiveAmt))
       expect(await underlying.balanceOf(owner.address)).to.equal(userUnderlying.add(reward)) // receive reward
       expect(await vIDIA.accumulatedFee()).to.equal(sumFees.add(fee))
       expect((await vIDIA.userInfo(owner.address)).unstakedAmount).to.equal(userUnstakingAmt.sub(withdrawAmt[i]))
       expect((await vIDIA.userInfo(owner.address)).stakedAmount).to.equal(userStakedAmt.add(receiveAmt))
       expect(await underlying.balanceOf(vIDIA.address)).to.equal(contractUnderlying)
   
+      userVidiaBalance = userVidiaBalance.add(receiveAmt)
       userUnderlying = userUnderlying.add(reward)
       userUnstakingAmt = userUnstakingAmt.sub(withdrawAmt[i])
       contractUnderlying = contractUnderlying.sub(reward)
@@ -309,8 +309,8 @@ export default describe('vIDIA', function () {
     }
 
     // test failure mode
-    mineTimeDelta(TWO_WEEKS)
-    expect(await vIDIA.claimPendingUnstake(0))
+    await mineTimeDelta(TWO_WEEKS)
+    await expect(vIDIA.claimPendingUnstake(0))
       .to.be.revertedWith('Can unstake without paying fee')
   })
 })
