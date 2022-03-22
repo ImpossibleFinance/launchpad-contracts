@@ -17,7 +17,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     uint256 public unstakingDelay = 86400 * 14; // 2 weeks in seconds
 
     // Fees for different actions. All fees denoted in basis points
-    uint256 public skipUnstakeDelayFee = 2000; // initialzed at 20%
+    uint256 public skipDelayFee = 2000; // initialzed at 20%
     uint256 public cancelUnstakeFee = 200; // initialized at 2%
 
     uint256 public accumulatedFee;
@@ -113,7 +113,6 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         userInfo[_msgSender()].unstakeAt = unstakeAt;
 
         userInfo[_msgSender()].unstakedAmount = amount;
-        burn(userInfo[_msgSender()].unstakedAmount);
         emit Unstake(_msgSender(), amount);
     }
 
@@ -135,7 +134,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     function claimStaked(uint256 amount) public {
         claimReward();
 
-        uint256 fee = (amount * skipUnstakeDelayFee) / ONE_HUNDRED;
+        uint256 fee = (amount * skipDelayFee) / ONE_HUNDRED;
         uint256 withdrawAmount = amount - fee;
 
         totalStakedAmount -= amount;
@@ -164,7 +163,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             'Can unstake without paying fee'
         );
 
-        uint256 fee = (amount * skipUnstakeDelayFee) / ONE_HUNDRED;
+        uint256 fee = (amount * skipDelayFee) / ONE_HUNDRED;
         uint256 withdrawAmount = amount - fee;
 
         if (totalStakedAmount != 0) {
@@ -191,7 +190,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     function cancelPendingUnstake(uint256 amount) public {
         require(
             userInfo[_msgSender()].unstakeAt > block.timestamp,
-            'Can unstake and restake paying fee'
+            'Can restake without paying fee'
         );
         claimReward();
 
@@ -218,14 +217,12 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     // claim reward and reset user's reward sum
     function claimReward() public {
         uint256 reward = calculateUserReward();
-        if (reward >= 0) {
-            // reset user's rewards sum
-            userInfo[_msgSender()].lastRewardSum = rewardSum;
-            // transfer reward to user
-            ERC20 claimedTokens = ERC20(tokenAddress);
-            claimedTokens.safeTransfer(_msgSender(), reward);
-            emit ClaimReward(_msgSender(), reward);
-        }
+        // reset user's rewards sum
+        userInfo[_msgSender()].lastRewardSum = rewardSum;
+        // transfer reward to user
+        ERC20 claimedTokens = ERC20(tokenAddress);
+        claimedTokens.safeTransfer(_msgSender(), reward);
+        emit ClaimReward(_msgSender(), reward);
     }
 
     /** 
@@ -233,13 +230,13 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @dev Requires fee setter role and fee must be below 10000 basis pts
      @param newFee the new fee
      */
-    function updateSkipUnstakeDelayFee(uint256 newFee) external {
+    function updateSkipDelayFee(uint256 newFee) external {
         require(
             hasRole(FEE_SETTER_ROLE, _msgSender()),
             'Must have fee setter role'
         );
         require(newFee <= 10000, 'Fee must be less than 100%');
-        skipUnstakeDelayFee = newFee;
+        skipDelayFee = newFee;
     }
 
     /** 
@@ -261,7 +258,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @dev Requires delay setter role and existing wait times will not change
      @param newDelay the new delay
      */
-    function updateUnvestingDelay(uint24 newDelay) external {
+    function updateUnstakingDelay(uint24 newDelay) external {
         require(
             hasRole(DELAY_SETTER_ROLE, _msgSender()),
             'Must have delay setter role'
