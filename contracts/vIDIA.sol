@@ -10,7 +10,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     using SafeERC20 for ERC20;
 
-    uint256 private constant FACTOR = 10**18;
+    uint256 private constant FACTOR = 10**30;
     uint256 private constant ONE_HUNDRED = 10000; // one hundred in basis points
 
     // delay for unstaking token
@@ -192,7 +192,6 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             userInfo[_msgSender()].unstakeAt > block.timestamp,
             'Can restake without paying fee'
         );
-        claimReward();
 
         uint256 fee = (amount * cancelUnstakeFee) / ONE_HUNDRED;
         uint256 stakeAmount = amount - fee;
@@ -202,6 +201,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             rewardSum += (fee * FACTOR) / totalStakedAmount;
         }
         accumulatedFee += fee;
+        claimReward();
 
         userInfo[_msgSender()].unstakedAmount -= amount;
         if (userInfo[_msgSender()].unstakedAmount == 0) {
@@ -211,7 +211,6 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         userInfo[_msgSender()].stakedAmount += stakeAmount;
         totalStakedAmount += stakeAmount;
         _mint(_msgSender(), stakeAmount);
-        userInfo[_msgSender()].lastRewardSum = rewardSum;
         emit CancelPendingUnstake(_msgSender(), fee, stakeAmount);
     }
 

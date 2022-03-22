@@ -5,15 +5,23 @@ import { expect } from 'chai'
 import { Contract } from '@ethersproject/contracts'
 import { mineNext, getBlockTime, mineTimeDelta } from './helpers'
 import { first } from 'lodash'
+import { BigNumber } from 'ethers'
 
 const MaxUint256 = ethers.constants.MaxUint256
 const WeiPerEth = ethers.constants.WeiPerEther
 const _1 = ethers.constants.One
-const _10000 = ethers.BigNumber.from(10000)
+const _10 = BigNumber.from(10)
+const _10000 = BigNumber.from(10000)
+const FACTOR = BigNumber.from(_10.pow(BigNumber.from(30)))
 const TWO_WEEKS = 14 * 86400
 
 const convToBN = (num: number) => {
-  return ethers.BigNumber.from(num).mul(WeiPerEth)
+  return BigNumber.from(num).mul(WeiPerEth)
+}
+
+const checkWithinTolerance = (test: BigNumber, target: BigNumber, tolerance = _10) => {
+  expect(test.add(tolerance).gte(target))
+  expect(test.sub(tolerance).lte(target))
 }
 
 export default describe('vIDIA', function () {
@@ -41,7 +49,7 @@ export default describe('vIDIA', function () {
     underlying = await TestTokenFactory.connect(owner).deploy(
       'Test Vest Token',
       'Vest',
-      MaxUint256
+      convToBN(200)
     )
     vIDIA = await vIDIAFactory.deploy(
       'vIDIA contract',
@@ -217,10 +225,11 @@ export default describe('vIDIA', function () {
     await vIDIA.unstake(convToBN(stakeAmt-1))
 
     // sums up to stakeAmt-1 for LOC coverage
-    const withdrawAmt = [convToBN(1), convToBN(8), convToBN(0), convToBN(102), convToBN(88)]
+    const withdrawAmt = [convToBN(1), convToBN(6), convToBN(0), convToBN(99), convToBN(93)] 
 
     let userVidiaBalance = await vIDIA.balanceOf(owner.address)
     let userUnderlying = await underlying.balanceOf(owner.address)
+    let userStakedAmt = (await vIDIA.userInfo(owner.address)).stakedAmount
     let userUnstakingAmt = (await vIDIA.userInfo(owner.address)).unstakedAmount
     let contractUnderlying = await underlying.balanceOf(vIDIA.address)
     let sumFees = await vIDIA.accumulatedFee()
@@ -231,15 +240,28 @@ export default describe('vIDIA', function () {
       const fee = feePercentBasisPts.mul(withdrawAmt[i]).div(_10000) // 10000 basis pts = 100%
       const receiveAmt = withdrawAmt[i].sub(fee)
 
+      const newRewardSum = 
+        (await vIDIA.rewardSum())
+          .add(fee.mul(FACTOR)
+            .div(await vIDIA.totalStakedAmount()))
+
+      const reward = 
+        userStakedAmt.mul(
+          newRewardSum.sub((await vIDIA.userInfo(owner.address)).lastRewardSum))
+            .div(FACTOR)
+
       expect(await vIDIA.claimPendingUnstake(withdrawAmt[i]))
         .to.emit(vIDIA, 'ClaimPendingUnstake')
         .withArgs(owner.address, fee, receiveAmt)
         .to.emit(underlying, 'Transfer')
         .withArgs(vIDIA.address, owner.address, receiveAmt)
 
+      checkWithinTolerance(reward, sumFees.add(fee)) // default tolerance = 10wei
+      checkWithinTolerance(await vIDIA.calculateUserReward(), sumFees.add(fee)) // default tolerance = 10wei
+      checkWithinTolerance(await vIDIA.accumulatedFee(), sumFees.add(fee)) // default tolerance = 10wei
+
       expect(await vIDIA.balanceOf(owner.address)).to.equal(userVidiaBalance)
       expect(await underlying.balanceOf(owner.address)).to.equal(userUnderlying.add(receiveAmt))
-      expect(await vIDIA.accumulatedFee()).to.equal(sumFees.add(fee))
       expect((await vIDIA.userInfo(owner.address)).unstakedAmount).to.equal(userUnstakingAmt.sub(withdrawAmt[i]))
       expect(await underlying.balanceOf(vIDIA.address)).to.equal(contractUnderlying.sub(receiveAmt))
 
@@ -277,7 +299,18 @@ export default describe('vIDIA', function () {
       const fee = feePercentBasisPts.mul(withdrawAmt[i]).div(_10000) // 10000 basis pts = 100%
       const receiveAmt = withdrawAmt[i].sub(fee)
 
-      const reward = await vIDIA.calculateUserReward()
+      const newRewardSum = 
+        (await vIDIA.rewardSum())
+          .add(fee.mul(FACTOR)
+            .div(await vIDIA.totalStakedAmount()))
+
+      const reward = 
+        userStakedAmt.mul(
+          newRewardSum.sub((await vIDIA.userInfo(owner.address)).lastRewardSum))
+            .div(FACTOR)
+
+      // reward paid out should always be within tolerance of +-10wei of fee
+      checkWithinTolerance(reward, fee) // default tolerance = 10wei
 
       expect(await vIDIA.cancelPendingUnstake(withdrawAmt[i]))
         .to.emit(vIDIA, 'ClaimReward')
@@ -287,25 +320,32 @@ export default describe('vIDIA', function () {
         .to.emit(vIDIA, 'CancelPendingUnstake')
         .withArgs(owner.address, fee, receiveAmt)
 
-      expect(await vIDIA.balanceOf(owner.address)).to.equal(userVidiaBalance.add(receiveAmt))
-      expect(await underlying.balanceOf(owner.address)).to.equal(userUnderlying.add(reward)) // receive reward
+      expect(await underlying.balanceOf(owner.address)) // full fee since owner owns 100% of totalstaked
+        .to.equal(userUnderlying.add(reward)) 
+      expect(await underlying.balanceOf(vIDIA.address)) // full fee sent out since its all owner
+        .to.equal(contractUnderlying.sub(reward))
+
+      expect((await vIDIA.userInfo(owner.address)).unstakedAmount) // reduce unstakedAmt by amt
+        .to.equal(userUnstakingAmt.sub(withdrawAmt[i]))
+      expect(await vIDIA.balanceOf(owner.address)) // receives receiveAmt which is amt - fee
+        .to.equal(userVidiaBalance.add(receiveAmt))
+      expect((await vIDIA.userInfo(owner.address)).stakedAmount) // inc stakedAmt by receiveAmt
+        .to.equal(userStakedAmt.add(receiveAmt))
+        
       expect(await vIDIA.accumulatedFee()).to.equal(sumFees.add(fee))
-      expect((await vIDIA.userInfo(owner.address)).unstakedAmount).to.equal(userUnstakingAmt.sub(withdrawAmt[i]))
-      expect((await vIDIA.userInfo(owner.address)).stakedAmount).to.equal(userStakedAmt.add(receiveAmt))
-      expect(await underlying.balanceOf(vIDIA.address)).to.equal(contractUnderlying)
   
       userVidiaBalance = userVidiaBalance.add(receiveAmt)
       userUnderlying = userUnderlying.add(reward)
       userUnstakingAmt = userUnstakingAmt.sub(withdrawAmt[i])
       contractUnderlying = contractUnderlying.sub(reward)
-      userStakedAmt = userStakedAmt.add(receiveAmt)
       sumFees = sumFees.add(fee)
+      userStakedAmt = userStakedAmt.add(receiveAmt)
     }
 
     // test failure mode
     await mineTimeDelta(TWO_WEEKS)
-    await expect(vIDIA.claimPendingUnstake(0))
-      .to.be.revertedWith('Can unstake without paying fee')
+    await expect(vIDIA.cancelPendingUnstake(0))
+      .to.be.revertedWith('Can restake without paying fee')
   })
 
   it('test claimunstaked', async () => {
