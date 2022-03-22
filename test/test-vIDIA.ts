@@ -28,7 +28,7 @@ export default describe('vIDIA', function () {
   beforeEach(async function () {
     // Get the ContractFactory and Signers here.
     // Token = await ethers.getContractFactory("Token");
-    ;[owner, vester] = await ethers.getSigners()
+    [owner, vester] = await ethers.getSigners()
 
     // To deploy our contract, we just have to call Token.deploy() and await
     // for it to be deployed(), which happens once its transaction has been
@@ -104,25 +104,11 @@ export default describe('vIDIA', function () {
       (await getBlockTime()) + (await vIDIA.unstakingDelay()).toNumber()
     expect(userData.unstakeAt).to.eq(unstakeTime)
     await expect(vIDIA.connect(vester).unstake(firstStakeAmt))
-      .to.be.revertedWith('User already has pending tokens unstaking')
+      .to.be.revertedWith('User has pending tokens unstaking')
 
   })
 
   it('test whitelist feature', async () => {
-    const TestTokenFactory = await ethers.getContractFactory('GenericToken')
-    const underlying = await TestTokenFactory.connect(owner).deploy(
-      'Test',
-      'TT',
-      MaxUint256
-    )
-    const vidiaFactory = await ethers.getContractFactory('vIDIA')
-    const vIDIA = await vidiaFactory.deploy(
-      'Vested IDIA',
-      'vIDIA',
-      owner.address,
-      underlying.address
-    )
-
     await underlying.approve(vIDIA.address, MaxUint256)
     await vIDIA.stake(WeiPerEth)
     await vIDIA.approve(vester.address, MaxUint256)
