@@ -28,7 +28,7 @@ export default describe('vIDIA', function () {
   beforeEach(async function () {
     // Get the ContractFactory and Signers here.
     // Token = await ethers.getContractFactory("Token");
-    [owner, vester] = await ethers.getSigners();
+    ;[owner, vester] = await ethers.getSigners()
 
     // To deploy our contract, we just have to call Token.deploy() and await
     // for it to be deployed(), which happens once its transaction has been
@@ -45,7 +45,7 @@ export default describe('vIDIA', function () {
     )
     vIDIA = await vIDIAFactory.deploy(
       'vIDIA contract',
-      'vIDIA',
+      'VIDIA',
       owner.address,
       underlying.address
     )
@@ -85,6 +85,7 @@ export default describe('vIDIA', function () {
 
   it('test stake/unstake', async function () {
     const transferAmt = 10000000
+
     await underlying.transfer(vester.address, transferAmt) 
     await underlying.connect(vester).approve(vIDIA.address, ethers.constants.MaxUint256)
     const firstStakeAmt = 100
@@ -97,9 +98,10 @@ export default describe('vIDIA', function () {
     totalStaked = (await vIDIA.totalStakedAmount()).toNumber()
     expect(totalStaked).to.eq(firstStakeAmt + secondStakeAmt)
     await vIDIA.connect(vester).unstake(secondStakeAmt)
-    const userData = (await vIDIA.userInfo(vester.address))
+    const userData = await vIDIA.userInfo(vester.address)
     expect(userData.unstakedAmount).to.eq(secondStakeAmt)
-    const unstakeTime = (await getBlockTime()) + (await vIDIA.unstakingDelay()).toNumber()
+    const unstakeTime =
+      (await getBlockTime()) + (await vIDIA.unstakingDelay()).toNumber()
     expect(userData.unstakeAt).to.eq(unstakeTime)
     await expect(vIDIA.connect(vester).unstake(firstStakeAmt))
       .to.be.revertedWith('User already has pending tokens unstaking')

@@ -96,21 +96,20 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         emit Stake(_msgSender(), amount);
     }
 
+    /** 
+     @notice Function for a user unstake tokens and put them in unstaking queue
+     @param amount the amount of tokens to unstake from staked tokens
+     */
     function unstake(uint256 amount) public {
         require(
-            userInfo[_msgSender()].unstakedAmount == 0,
-            'User already has pending tokens unstaking'
-        );
-        require(
-            userInfo[_msgSender()].unstakeAt == 0,
+            userInfo[_msgSender()].unstakedAmount == 0 || userInfo[_msgSender()].unstakeAt == 0,
             'User has pending tokens unstaking'
         );
         claimReward();
         totalStakedAmount -= amount;
         userInfo[_msgSender()].stakedAmount -= amount;
         //start unvesting period
-        uint256 unstakeAt = block.timestamp + unstakingDelay;
-        userInfo[_msgSender()].unstakeAt = unstakeAt;
+        userInfo[_msgSender()].unstakeAt = block.timestamp + unstakingDelay;
 
         userInfo[_msgSender()].unstakedAmount = amount;
         burn(userInfo[_msgSender()].unstakedAmount);
