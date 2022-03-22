@@ -51,6 +51,10 @@ export default describe('vIDIA', function () {
     )
   })
 
+  it('test static funcs', async function () {
+    expect(await vIDIA.supportsInterface('0xb0202a11')).to.eq(true)
+  })
+
   it('test setters', async function () {
     const value = [0, 100, 200, 300]
     const fns = [
@@ -210,9 +214,10 @@ export default describe('vIDIA', function () {
     await underlying.approve(vIDIA.address, MaxUint256)
     const stakeAmt = 200
     await vIDIA.stake(convToBN(stakeAmt))
-    await vIDIA.unstake(convToBN(stakeAmt))
+    await vIDIA.unstake(convToBN(stakeAmt-1))
 
-    const withdrawAmt = [convToBN(1), convToBN(8), convToBN(0), convToBN(102)]
+    // sums up to stakeAmt-1 for LOC coverage
+    const withdrawAmt = [convToBN(1), convToBN(8), convToBN(0), convToBN(102), convToBN(88)]
 
     let userVidiaBalance = await vIDIA.balanceOf(owner.address)
     let userUnderlying = await underlying.balanceOf(owner.address)
@@ -254,9 +259,10 @@ export default describe('vIDIA', function () {
     await underlying.approve(vIDIA.address, MaxUint256)
     const stakeAmt = 200
     await vIDIA.stake(convToBN(stakeAmt))
-    await vIDIA.unstake(convToBN(stakeAmt))
-
-    const withdrawAmt = [convToBN(1), convToBN(6), convToBN(0), convToBN(99)]
+    await vIDIA.unstake(convToBN(stakeAmt-1))
+  
+    // sums up to stakeAmt-1 for LOC coverage
+    const withdrawAmt = [convToBN(1), convToBN(6), convToBN(0), convToBN(99), convToBN(93)] 
 
     let userVidiaBalance = await vIDIA.balanceOf(owner.address)
     let userUnderlying = await underlying.balanceOf(owner.address)
@@ -300,5 +306,9 @@ export default describe('vIDIA', function () {
     await mineTimeDelta(TWO_WEEKS)
     await expect(vIDIA.claimPendingUnstake(0))
       .to.be.revertedWith('Can unstake without paying fee')
+  })
+
+  it('test claimunstaked', async () => {
+    await vIDIA.claimUnstaked()
   })
 })
