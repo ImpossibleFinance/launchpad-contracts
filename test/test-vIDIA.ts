@@ -67,6 +67,52 @@ export default describe('vIDIA', function () {
     expect(await vIDIA.supportsInterface('0xb0202a11')).to.eq(true)
   })
 
+  it('test halt', async () => {
+    await expect(vIDIA.connect(vester).halt())
+      .to.be.revertedWith('Must have admin role')
+    expect(await vIDIA.isHalt()).to.eq(false)
+
+    // test halt functions
+    const unhaltedErr = 'Contract is not halted yet'
+    await expect(vIDIA.emergencyWithdrawStaked()).to.be.revertedWith(unhaltedErr)
+    await expect(vIDIA.emergencyWithdrawUnstaking()).to.be.revertedWith(unhaltedErr)
+
+    await vIDIA.halt()
+    expect(await vIDIA.isHalt()).to.eq(true)
+
+    // test halted functions
+    const haltErr = 'Contract is halted'
+    await expect(vIDIA.stake(_0)).to.be.revertedWith(haltErr)
+    await expect(vIDIA.unstake(_0)).to.be.revertedWith(haltErr)
+    await expect(vIDIA.claimUnstaked()).to.be.revertedWith(haltErr)
+    await expect(vIDIA.claimStaked(_0)).to.be.revertedWith(haltErr)
+    await expect(vIDIA.claimPendingUnstake(_0)).to.be.revertedWith(haltErr)
+    await expect(vIDIA.cancelPendingUnstake(_0)).to.be.revertedWith(haltErr)
+
+    // unhalted functions
+    expect(await vIDIA.emergencyWithdrawStaked())
+      .to.emit(underlying, 'Transfer')
+      .withArgs(vIDIA.address, owner.address, _0)
+    expect(await vIDIA.emergencyWithdrawUnstaking())
+      .to.emit(underlying, 'Transfer')
+      .withArgs(vIDIA.address, owner.address, _0)
+  })
+
+  it('test emergency withdraw other tokens', async () => {
+    const transferAmt = convToBN(100)
+    const TestTokenFactory = await ethers.getContractFactory('GenericToken')
+    const randomToken = await TestTokenFactory.connect(owner).deploy(
+      'randomToken',
+      'RT',
+      transferAmt
+    )
+    await randomToken.transfer(vIDIA.address, transferAmt)
+    expect(await randomToken.balanceOf(vIDIA.address)).to.eq(transferAmt)
+    expect(await vIDIA.emergencyWithdrawOtherTokens(randomToken.address, owner.address))
+      .to.emit(randomToken, 'Transfer')
+      .withArgs(vIDIA.address, owner.address, transferAmt)
+  })
+
   it('test setters', async function () {
     const value = [0, 100, 200, 300]
     const fns = [

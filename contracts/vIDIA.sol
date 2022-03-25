@@ -74,6 +74,19 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
 
     event ClaimReward(address _from, uint256 amount);
 
+    // In case of emergency we pause functionaltiy and open up emergency withdrawals
+    bool public isHalt;
+
+    modifier notHalted() {
+        require(!isHalt, "Contract is halted");
+        _;
+    }
+
+    modifier onlyWhenHalted() {
+        require(isHalt, "Contract is not halted yet");
+        _;
+    }
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -87,7 +100,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         admin = _admin;
     }
 
-    function stake(uint256 amount) public {
+    function stake(uint256 amount) public notHalted {
         claimReward();
         totalStakedAmount += amount;
         userInfo[_msgSender()].stakedAmount += amount;
@@ -101,7 +114,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @notice Function for a user unstake tokens and put them in unstaking queue
      @param amount the amount of tokens to unstake from staked tokens
      */
-    function unstake(uint256 amount) public {
+    function unstake(uint256 amount) public notHalted {
         require(
             userInfo[_msgSender()].unstakedAmount == 0 || userInfo[_msgSender()].unstakeAt == 0,
             'User has pending tokens unstaking'
@@ -122,7 +135,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @notice *no* fees required
      @notice For tokens in the unstaking queue, use instantUnstakePending()
      */
-    function claimUnstaked() public {
+    function claimUnstaked() public notHalted {
         emit ClaimUnstaked(_msgSender(), 0);
     }
 
@@ -132,7 +145,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @notice For tokens in the unstaking queue, use claimPendingUnstake()
      @param amount the amount of tokens to instantly withdraw from staked tokens
      */
-    function claimStaked(uint256 amount) public {
+    function claimStaked(uint256 amount) public notHalted {
         claimReward();
 
         uint256 fee = (amount * skipDelayFee) / ONE_HUNDRED;
@@ -160,7 +173,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @dev Requires user to have tokens in the unstake queue which cannot be claimed now
      @param amount the amount of tokens to instantly withdraw from unstake queue
      */
-    function claimPendingUnstake(uint256 amount) public {
+    function claimPendingUnstake(uint256 amount) public notHalted {
         require(
             userInfo[_msgSender()].unstakeAt > block.timestamp,
             'Can unstake without paying fee'
@@ -192,7 +205,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @dev Requires user to have tokens in the unstake queue which cannot be claimed now
      @param amount the amount of tokens to cancel unstaking process for
      */
-    function cancelPendingUnstake(uint256 amount) public {
+    function cancelPendingUnstake(uint256 amount) public notHalted {
         require(
             userInfo[_msgSender()].unstakeAt > block.timestamp,
             'Can restake without paying fee'
@@ -360,6 +373,55 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             'Origin and dest address not in whitelist'
         );
         return ERC20.transferFrom(from, to, amount);
+    }
+
+    /** 
+     @notice function to halt contract and allow emergency withdrawals
+     @dev only can be called by contract admin
+     */
+    function halt() external {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),
+            'Must have admin role'
+        );
+        isHalt = true;
+    }
+
+    /** 
+     @notice function to allow users to withdraw underlying tokens not in unstaking queue
+     @dev only can be called when contract is halted
+     */
+    function emergencyWithdrawStaked() external onlyWhenHalted {
+        uint256 withdrawAmt = userInfo[_msgSender()].stakedAmount;
+        userInfo[_msgSender()].stakedAmount = 0;
+        ERC20(tokenAddress).safeTransfer(_msgSender(), withdrawAmt);
+    }
+
+    /** 
+     @notice function to allow users to withdraw underlying tokens in unstaking queue 
+     @dev only can be called when contract is halted
+     */
+    function emergencyWithdrawUnstaking() external onlyWhenHalted {
+        uint256 withdrawAmt = userInfo[_msgSender()].unstakedAmount;
+        userInfo[_msgSender()].unstakedAmount = 0;
+        ERC20(tokenAddress).safeTransfer(_msgSender(), withdrawAmt);
+    }
+
+    /** 
+     @notice function for admin to withdraw tokens other than underlying 
+     @dev used in emergency when users send wrong tokens into this contract
+     @dev only can be called by contract admin
+     */
+    function emergencyWithdrawOtherTokens(ERC20 token, address to) public {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, _msgSender()),
+            'Must have admin role'
+        );
+        require(
+            address(token) != tokenAddress || address(token) != address(this),
+            "can only withdraw other ERC20s"
+        );
+        token.safeTransfer(to, token.balanceOf(address(this)));
     }
 
     /** 
