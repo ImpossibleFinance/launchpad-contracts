@@ -124,12 +124,11 @@ export default describe('vIDIA', function () {
     ).to.be.revertedWith('User has pending tokens unstaking')
 
     // test claimUnstaked
-    mineTimeDelta((await vIDIA.unstakingDelay()).toNumber())
-    const preUnstake = (await VestToken.balanceOf(vester.address)).toNumber()
+    await mineTimeDelta((await vIDIA.unstakingDelay()).toNumber())
+    const preUnstake = await underlying.balanceOf(vester.address)
     await vIDIA.connect(vester).claimUnstaked()
-    expect((await VestToken.balanceOf(vester.address)).toNumber()).to.eq(
-      preUnstake + secondStakeAmt
-    )
+    expect((await underlying.balanceOf(vester.address)).toString())
+      .to.eq(preUnstake.add(BigNumber.from(secondStakeAmt)))
     userData = await vIDIA.userInfo(vester.address)
     expect(userData.unstakeAt).to.eq(0)
     expect(userData.unstakedAmount).to.eq(0)
@@ -311,7 +310,7 @@ export default describe('vIDIA', function () {
     }
 
     // test failure mode
-    await mineTimeDelta(TWO_WEEKS)
+    await mineTimeDelta((await vIDIA.unstakingDelay()).toNumber())
     await expect(vIDIA.claimPendingUnstake(0))
       .to.be.revertedWith('Can unstake without paying fee')
   })
@@ -383,7 +382,7 @@ export default describe('vIDIA', function () {
     }
 
     // test failure mode
-    await mineTimeDelta(TWO_WEEKS)
+    await mineTimeDelta((await vIDIA.unstakingDelay()).toNumber())
     await expect(vIDIA.cancelPendingUnstake(0))
       .to.be.revertedWith('Can restake without paying fee')
   })
