@@ -10,20 +10,21 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     using SafeERC20 for ERC20;
 
-    uint256 private constant FACTOR = 10**18;
+    uint256 private constant FACTOR = 10**30;
     uint256 private constant ONE_HUNDRED = 10000; // one hundred in basis points
 
     // delay for unstaking token
     uint256 public unstakingDelay = 86400 * 14; // 2 weeks in seconds
 
     // Fees for different actions. All fees denoted in basis points
-    uint256 public skipUnstakeDelayFee = 2000; // initialzed at 20%
+    uint256 public skipDelayFee = 2000; // initialzed at 20%
     uint256 public cancelUnstakeFee = 200; // initialized at 2%
 
     uint256 public accumulatedFee;
     uint256 public totalStakedAmount;
     uint256 public rewardSum; // (1/T1 + 1/T2 + 1/T3)
     address public tokenAddress;
+
     address admin;
 
     struct UserInfo {
@@ -148,16 +149,18 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     function claimStaked(uint256 amount) public {
         claimReward();
 
-        uint256 fee = (amount * skipUnstakeDelayFee) / ONE_HUNDRED;
+        uint256 fee = (amount * skipDelayFee) / ONE_HUNDRED;
         uint256 withdrawAmount = amount - fee;
+        uint256 divisor = totalStakedAmount - userInfo[_msgSender()].stakedAmount;
 
+        if (divisor != 0) {
+            // mul by FACTOR of 10**30 to reduce truncation
+            rewardSum += (fee * FACTOR) / divisor;
+            userInfo[_msgSender()].lastRewardSum = rewardSum;
+        }
+        
         totalStakedAmount -= amount;
         userInfo[_msgSender()].stakedAmount -= amount;
-
-        if (totalStakedAmount != 0) {
-            // mul by FACTOR of 10**18 to reduce truncation
-            rewardSum += (fee * FACTOR) / totalStakedAmount;
-        }
         accumulatedFee += fee;
 
         burn(amount);
@@ -176,13 +179,16 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             userInfo[_msgSender()].unstakeAt > block.timestamp,
             'Can unstake without paying fee'
         );
+        claimReward();
 
-        uint256 fee = (amount * skipUnstakeDelayFee) / ONE_HUNDRED;
+        uint256 fee = (amount * skipDelayFee) / ONE_HUNDRED;
         uint256 withdrawAmount = amount - fee;
+        uint256 divisor = totalStakedAmount - userInfo[_msgSender()].stakedAmount;
 
-        if (totalStakedAmount != 0) {
-            // mul by FACTOR of 10**18 to reduce truncation
-            rewardSum += (fee * FACTOR) / totalStakedAmount;
+        if (divisor != 0) {
+            // mul by FACTOR of 10**30 to reduce truncation
+            rewardSum += (fee * FACTOR) / divisor;
+            userInfo[_msgSender()].lastRewardSum = rewardSum;
         }
         accumulatedFee += fee;
 
@@ -190,7 +196,6 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         if (userInfo[_msgSender()].unstakedAmount == 0) {
             userInfo[_msgSender()].unstakeAt = 0;
         }
-        burn(amount);
         ERC20(tokenAddress).safeTransfer(_msgSender(), withdrawAmount);
         emit ClaimPendingUnstake(_msgSender(), fee, withdrawAmount);
     }
@@ -204,16 +209,18 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     function cancelPendingUnstake(uint256 amount) public {
         require(
             userInfo[_msgSender()].unstakeAt > block.timestamp,
-            'Can unstake and restake paying fee'
+            'Can restake without paying fee'
         );
         claimReward();
 
         uint256 fee = (amount * cancelUnstakeFee) / ONE_HUNDRED;
         uint256 stakeAmount = amount - fee;
+        uint256 divisor = totalStakedAmount - userInfo[_msgSender()].stakedAmount;
 
-        if (totalStakedAmount != 0) {
-            // mul by FACTOR of 10**18 to reduce truncation
-            rewardSum += (fee * FACTOR) / totalStakedAmount;
+        if (divisor != 0) {
+            // mul by FACTOR of 10**30 to reduce truncation
+            rewardSum += (fee * FACTOR) / divisor;
+            userInfo[_msgSender()].lastRewardSum = rewardSum;
         }
         accumulatedFee += fee;
 
@@ -224,21 +231,19 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
 
         userInfo[_msgSender()].stakedAmount += stakeAmount;
         totalStakedAmount += stakeAmount;
-        userInfo[_msgSender()].lastRewardSum = rewardSum;
+        _mint(_msgSender(), stakeAmount);
         emit CancelPendingUnstake(_msgSender(), fee, stakeAmount);
     }
 
     // claim reward and reset user's reward sum
     function claimReward() public {
         uint256 reward = calculateUserReward();
-        if (reward >= 0) {
-            // reset user's rewards sum
-            userInfo[_msgSender()].lastRewardSum = rewardSum;
-            // transfer reward to user
-            ERC20 claimedTokens = ERC20(tokenAddress);
-            claimedTokens.safeTransfer(_msgSender(), reward);
-            emit ClaimReward(_msgSender(), reward);
-        }
+        // reset user's rewards sum
+        userInfo[_msgSender()].lastRewardSum = rewardSum;
+        // transfer reward to user
+        ERC20 claimedTokens = ERC20(tokenAddress);
+        claimedTokens.safeTransfer(_msgSender(), reward);
+        emit ClaimReward(_msgSender(), reward);
     }
 
     /** 
@@ -246,13 +251,13 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @dev Requires fee setter role and fee must be below 10000 basis pts
      @param newFee the new fee
      */
-    function updateSkipUnstakeDelayFee(uint256 newFee) external {
+    function updateSkipDelayFee(uint256 newFee) external {
         require(
             hasRole(FEE_SETTER_ROLE, _msgSender()),
             'Must have fee setter role'
         );
         require(newFee <= 10000, 'Fee must be less than 100%');
-        skipUnstakeDelayFee = newFee;
+        skipDelayFee = newFee;
     }
 
     /** 
@@ -274,7 +279,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @dev Requires delay setter role and existing wait times will not change
      @param newDelay the new delay
      */
-    function updateUnvestingDelay(uint24 newDelay) external {
+    function updateUnstakingDelay(uint24 newDelay) external {
         require(
             hasRole(DELAY_SETTER_ROLE, _msgSender()),
             'Must have delay setter role'
@@ -284,8 +289,8 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
 
     /** 
      @notice Calculates user reward
-     @dev formula: amount * (global_reward_sum - user_reward_sum) / 10**18
-     @dev we perform div 10**18 as rewardsum is inflated by 10**18 to reduce truncation
+     @dev formula: amount * (global_reward_sum - user_reward_sum) / 10**30
+     @dev we perform div 10**30 as rewardsum is inflated by 10**30 to reduce truncation
      @return uint256 amount of underlying tokens the user has earned from fees
      */
     function calculateUserReward() public view returns (uint256) {
