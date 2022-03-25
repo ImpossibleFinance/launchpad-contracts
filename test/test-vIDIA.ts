@@ -348,7 +348,6 @@ export default describe('vIDIA', function () {
       userUnderlying = userUnderlying.add(receiveAmt)
       expect(await underlying.balanceOf(owner.address)).to.equal(userUnderlying)
 
-
       userUnstakingAmt = userUnstakingAmt.sub(withdrawAmt[i])
       expect((await vIDIA.userInfo(owner.address)).unstakedAmount).to.equal(userUnstakingAmt)
 
