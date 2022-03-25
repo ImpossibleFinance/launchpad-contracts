@@ -137,14 +137,16 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
 
         uint256 fee = (amount * skipDelayFee) / ONE_HUNDRED;
         uint256 withdrawAmount = amount - fee;
+        uint256 divisor = totalStakedAmount - userInfo[_msgSender()].stakedAmount;
 
+        if (divisor != 0) {
+            // mul by FACTOR of 10**30 to reduce truncation
+            rewardSum += (fee * FACTOR) / divisor;
+            userInfo[_msgSender()].lastRewardSum = rewardSum;
+        }
+        
         totalStakedAmount -= amount;
         userInfo[_msgSender()].stakedAmount -= amount;
-
-        if (totalStakedAmount != 0) {
-            // mul by FACTOR of 10**18 to reduce truncation
-            rewardSum += (fee * FACTOR) / totalStakedAmount;
-        }
         accumulatedFee += fee;
 
         burn(amount);
@@ -163,13 +165,16 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             userInfo[_msgSender()].unstakeAt > block.timestamp,
             'Can unstake without paying fee'
         );
+        claimReward();
 
         uint256 fee = (amount * skipDelayFee) / ONE_HUNDRED;
         uint256 withdrawAmount = amount - fee;
+        uint256 divisor = totalStakedAmount - userInfo[_msgSender()].stakedAmount;
 
-        if (totalStakedAmount != 0) {
-            // mul by FACTOR of 10**18 to reduce truncation
-            rewardSum += (fee * FACTOR) / totalStakedAmount;
+        if (divisor != 0) {
+            // mul by FACTOR of 10**30 to reduce truncation
+            rewardSum += (fee * FACTOR) / divisor;
+            userInfo[_msgSender()].lastRewardSum = rewardSum;
         }
         accumulatedFee += fee;
 
@@ -192,16 +197,18 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             userInfo[_msgSender()].unstakeAt > block.timestamp,
             'Can restake without paying fee'
         );
+        claimReward();
 
         uint256 fee = (amount * cancelUnstakeFee) / ONE_HUNDRED;
         uint256 stakeAmount = amount - fee;
+        uint256 divisor = totalStakedAmount - userInfo[_msgSender()].stakedAmount;
 
-        if (totalStakedAmount != 0) {
-            // mul by FACTOR of 10**18 to reduce truncation
-            rewardSum += (fee * FACTOR) / totalStakedAmount;
+        if (divisor != 0) {
+            // mul by FACTOR of 10**30 to reduce truncation
+            rewardSum += (fee * FACTOR) / divisor;
+            userInfo[_msgSender()].lastRewardSum = rewardSum;
         }
         accumulatedFee += fee;
-        claimReward();
 
         userInfo[_msgSender()].unstakedAmount -= amount;
         if (userInfo[_msgSender()].unstakedAmount == 0) {
@@ -268,8 +275,8 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
 
     /** 
      @notice Calculates user reward
-     @dev formula: amount * (global_reward_sum - user_reward_sum) / 10**18
-     @dev we perform div 10**18 as rewardsum is inflated by 10**18 to reduce truncation
+     @dev formula: amount * (global_reward_sum - user_reward_sum) / 10**30
+     @dev we perform div 10**30 as rewardsum is inflated by 10**30 to reduce truncation
      @return uint256 amount of underlying tokens the user has earned from fees
      */
     function calculateUserReward() public view returns (uint256) {
