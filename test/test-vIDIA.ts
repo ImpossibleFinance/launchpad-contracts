@@ -160,14 +160,24 @@ export default describe('vIDIA', function () {
     totalStaked = (await vIDIA.totalStakedAmount()).toNumber()
     expect(totalStaked).to.eq(firstStakeAmt + secondStakeAmt)
     await vIDIA.connect(vester).unstake(secondStakeAmt)
-    const userData = await vIDIA.userInfo(vester.address)
+    let userData = await vIDIA.userInfo(vester.address)
     expect(userData.unstakedAmount).to.eq(secondStakeAmt)
     const unstakeTime =
       (await getBlockTime()) + (await vIDIA.unstakingDelay()).toNumber()
     expect(userData.unstakeAt).to.eq(unstakeTime)
-    await expect(vIDIA.connect(vester).unstake(firstStakeAmt))
-      .to.be.revertedWith('User has pending tokens unstaking')
+    await expect(
+      vIDIA.connect(vester).unstake(firstStakeAmt)
+    ).to.be.revertedWith('User has pending tokens unstaking')
 
+    // test claimUnstaked
+    await mineTimeDelta((await vIDIA.unstakingDelay()).toNumber())
+    const preUnstake = await underlying.balanceOf(vester.address)
+    await vIDIA.connect(vester).claimUnstaked()
+    expect((await underlying.balanceOf(vester.address)).toString())
+      .to.eq(preUnstake.add(BigNumber.from(secondStakeAmt)))
+    userData = await vIDIA.userInfo(vester.address)
+    expect(userData.unstakeAt).to.eq(0)
+    expect(userData.unstakedAmount).to.eq(0)
   })
 
   it('test whitelist feature', async () => {
@@ -338,6 +348,7 @@ export default describe('vIDIA', function () {
       userUnderlying = userUnderlying.add(receiveAmt)
       expect(await underlying.balanceOf(owner.address)).to.equal(userUnderlying)
 
+
       userUnstakingAmt = userUnstakingAmt.sub(withdrawAmt[i])
       expect((await vIDIA.userInfo(owner.address)).unstakedAmount).to.equal(userUnstakingAmt)
 
@@ -346,11 +357,11 @@ export default describe('vIDIA', function () {
     }
 
     // test failure mode
-    await mineTimeDelta(TWO_WEEKS)
+    await mineTimeDelta((await vIDIA.unstakingDelay()).toNumber())
     await expect(vIDIA.claimPendingUnstake(0))
       .to.be.revertedWith('Can unstake without paying fee')
   })
-
+  
   it('test cancelpendingunstake with pending unstake', async () => {
     await underlying.approve(vIDIA.address, MaxUint256)
     const ownerStakeAmt = convToBN(200)
@@ -418,12 +429,8 @@ export default describe('vIDIA', function () {
     }
 
     // test failure mode
-    await mineTimeDelta(TWO_WEEKS)
+    await mineTimeDelta((await vIDIA.unstakingDelay()).toNumber())
     await expect(vIDIA.cancelPendingUnstake(0))
       .to.be.revertedWith('Can restake without paying fee')
-  })
-
-  it('test claimunstaked', async () => {
-    await vIDIA.claimUnstaked()
   })
 })

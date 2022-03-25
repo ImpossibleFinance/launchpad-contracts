@@ -116,7 +116,8 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      */
     function unstake(uint256 amount) public notHalted {
         require(
-            userInfo[_msgSender()].unstakedAmount == 0 || userInfo[_msgSender()].unstakeAt == 0,
+            userInfo[_msgSender()].unstakedAmount == 0 ||
+                userInfo[_msgSender()].unstakeAt == 0,
             'User has pending tokens unstaking'
         );
         claimReward();
@@ -136,7 +137,20 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @notice For tokens in the unstaking queue, use instantUnstakePending()
      */
     function claimUnstaked() public notHalted {
-        emit ClaimUnstaked(_msgSender(), 0);
+        //require curr time more than unstaking delay
+        require(
+            block.timestamp > userInfo[_msgSender()].unstakeAt,
+            'Tokens have not finished vesting'
+        );
+        uint256 withdrawAmount = userInfo[_msgSender()].unstakedAmount;
+        ERC20(tokenAddress).safeTransfer(
+            _msgSender(),
+            withdrawAmount
+        );
+        userInfo[_msgSender()].unstakedAmount = 0;
+        userInfo[_msgSender()].unstakeAt = 0;
+
+        emit ClaimUnstaked(_msgSender(), withdrawAmount);
     }
 
     /** 
