@@ -360,7 +360,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             'Must have whitelist setter role'
         );
         require(
-            ERC20(tokenAddress).balanceOf(account) == 0,
+            ERC20(address(this)).balanceOf(account) == 0,
             '0 token balance required to remove from whitelist'
         );
 
