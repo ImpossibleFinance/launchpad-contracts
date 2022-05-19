@@ -131,6 +131,17 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // end timestamp must be after start timestamp
         require(_startTime < _endTime, 'end timestamp before start');
 
+        require(
+            _allocSnapshotTimestamp > block.timestamp ||
+                (_allocSnapshotTimestamp < block.timestamp &&
+                    _allocationMaster.getTotalStakeWeight(
+                        _trackId,
+                        _allocSnapshotTimestamp
+                    ) >
+                    0),
+            'total weight is 0 on while using older timestamp'
+        );
+
         salePrice = _salePrice; // can be 0 (for giveaway)
         funder = _funder;
         paymentToken = _paymentToken; // can be 0 (for giveaway)
