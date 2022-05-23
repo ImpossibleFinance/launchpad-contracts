@@ -133,7 +133,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
 
         require(
             _allocSnapshotTimestamp > block.timestamp ||
-                (_allocSnapshotTimestamp < block.timestamp &&
+                (_allocSnapshotTimestamp <= block.timestamp &&
                     _allocationMaster.getTotalStakeWeight(
                         _trackId,
                         _allocSnapshotTimestamp
