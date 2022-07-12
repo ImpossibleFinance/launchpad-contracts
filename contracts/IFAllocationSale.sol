@@ -28,10 +28,10 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
 
     // seconds in 1 hours
     uint64 constant ONE_HOUR = 3600;
-    // seconds in 10 years
-    uint64 constant TEN_YEARS = 315569260;
     // seconds in 5 years
     uint64 constant FIVE_YEARS = 157784630;
+    // seconds in 10 years
+    uint64 constant TEN_YEARS = 315569260;
 
     // SALE STATE
 
