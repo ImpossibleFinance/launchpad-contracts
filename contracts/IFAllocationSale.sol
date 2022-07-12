@@ -26,10 +26,12 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     // number of decimals of sale price
     uint64 constant SALE_PRICE_DECIMALS = 10**18;
 
+    // seconds in 1 hours
+    uint64 constant ONE_HOUR = 3600;
     // seconds in 10 years
-    uint256 constant TEN_YEARS = 315569260;
+    uint64 constant TEN_YEARS = 315569260;
     // seconds in 5 years
-    uint256 constant FIVE_years = 157784630;
+    uint64 constant FIVE_YEARS = 157784630;
 
     // SALE STATE
 
@@ -155,7 +157,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // start timestamp must be in future
         require(block.timestamp < _startTime, 'start timestamp too early');
         // end timestamp must be after start timestamp
-        require(_startTime < _endTime - 86400, 'end timestamp before start should be least one day');
+        require(_startTime < _endTime - ONE_HOUR, 'end timestamp before start should be least 1 hour');
 
         require(
             _allocSnapshotTimestamp > block.timestamp ||
@@ -294,7 +296,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     function setVestingEndTime(uint256 _vestingEndTime) external onlyOwner {
         require(block.timestamp < startTime, "can't be set after a sale is started");
         require(_vestingEndTime > endTime + withdrawDelay, "vesting end time has to be after withdrawal start time");
-        require(endTime + withdrawDelay <= _vestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
+        require(endTime + withdrawDelay >= _vestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
         vestingEndTime = _vestingEndTime;
 
         // unset cliff vesting
@@ -447,7 +449,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // increase total payment received amount
         totalPaymentReceived += paymentAmount;
 
-        totalPurchased[_msgSender()] += (paymentReceived[_msgSender()] * SALE_PRICE_DECIMALS) / salePrice;
+        totalPurchased[_msgSender()] = (paymentReceived[_msgSender()] * SALE_PRICE_DECIMALS) / salePrice;
         claimable[_msgSender()] = totalPurchased[_msgSender()];
 
 
@@ -486,7 +488,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // send token and update states
         uint256 tokenOwed = sendSaleToken();
         // sale token owed must be greater than 0
-        require(tokenOwed != 0, 'already withdrawn');
+        require(tokenOwed != 0, 'no token to be withdrawn');
     }   
 
     function getCurrentClaimableToken() public view returns (uint256) {
@@ -499,7 +501,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
             return totalPurchased[_msgSender()] * (block.timestamp - Math.max(latestClaimTime[_msgSender()], endTimePlusDelay)) / (vestingEndTime - (endTimePlusDelay));
         }
         // cliff vesting
-        uint8 cliffPeriodLength = cliffPeriod.length;
+        uint256 cliffPeriodLength = cliffPeriod.length;
         if (cliffPeriodLength != 0 && cliffPeriod[cliffPeriodLength - 1].claimTime > block.timestamp) {
             uint8 claimablePct;
             for (uint8 i; i < cliffPeriodLength; i++) {
@@ -511,7 +513,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
             }
             // current claimable = total * claimiable percentage
             if (claimablePct == 0) {
-                return totalPurchased[_msgSender()];
+                return 0;
             }
             return totalPurchased[_msgSender()] * claimablePct / 100;
         }
