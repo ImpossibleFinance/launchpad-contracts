@@ -17,7 +17,7 @@ dotenv.config()
 
 module.exports = {
   solidity: {
-    version: '0.8.4',
+    version: '0.8.9',
     settings: {
       optimizer: { enabled: true },
     },
@@ -36,19 +36,24 @@ module.exports = {
       },
     },
     bsc_test: {
-      url: 'https://data-seed-prebsc-1-s1.binance.org:8545',
+      url: 'https://data-seed-prebsc-1-s3.binance.org:8545',
       chainId: 97,
       gasPrice: 11000000000,
       accounts: {
-        // first address: 0x99cb319980e55f4737c848e01BB74b8DE7863683
-        mnemonic:
-          'option skill video cause achieve joy section refuse infant goose any check',
+        mnemonic: process.env.MAINNET_MNEMONIC || '',
       },
     },
     bsc_main: {
       url: 'https://bsc-dataseed.binance.org/',
       chainId: 56,
       gasPrice: 5000000000,
+      accounts: {
+        mnemonic: process.env.MAINNET_MNEMONIC || '',
+      },
+    },
+    eth_goerli: {
+      url: 'https://rpc.goerli.mudit.blog/',
+      chainId: 5,
       accounts: {
         mnemonic: process.env.MAINNET_MNEMONIC || '',
       },

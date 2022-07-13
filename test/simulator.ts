@@ -1,4 +1,4 @@
-import { mineNext } from './helpers'
+import { mineNext, setAutomine } from './helpers'
 import { ethers } from 'hardhat'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
@@ -31,7 +31,7 @@ export const simAllocationMaster = async (
   simInput: SimInputRow[]
 ): Promise<SimOutputRow[]> => {
   const simOutput = []
-
+  await setAutomine(false)
   // simulation
   for (let i = 0; i < simInput.length; i++) {
     // disable track if specified
@@ -156,6 +156,6 @@ export const simAllocationMaster = async (
       gasUsed: gasUsed,
     })
   }
-
+  await setAutomine(true)
   return simOutput
 }

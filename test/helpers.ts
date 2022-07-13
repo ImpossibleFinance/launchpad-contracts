@@ -14,6 +14,10 @@ export const mineTimeDelta = async (seconds: number): Promise<void> => {
   await network.provider.send('evm_mine')
 }
 
+export const setAutomine = async (automine: boolean): Promise<void> => {
+  await network.provider.send('evm_setAutomine', [automine])
+}
+
 export const getGasUsed = async (): Promise<BigNumber> => {
   // current block number
   const currBlockNum = await ethers.provider.getBlockNumber()

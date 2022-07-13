@@ -9,16 +9,25 @@ https://docs.impossible.finance/launchpad/smart-contracts
 
 ```
 yarn install
+forge build
 ```
 
 ## Test
 
 ### Running all tests
+
 ```
 npx hardhat test
 ```
 
+### Run foundry test
+
+```
+forge test --fork-url $BSC_URL
+```
+
 ### Running specific tests
+
 ```
 npx hardhat test --grep "<YOUR TARGET TESTS KEYWORD>"
 ```
@@ -28,35 +37,44 @@ npx hardhat test --grep "<YOUR TARGET TESTS KEYWORD>"
 Make sure ethernal is installed: https://doc.tryethernal.com/getting-started/quickstart
 
 Spin up local node
+
 ```
 npx hardhat node --fork <NODE RPC URL>
 ```
 
 Turn on ethernal listener
+
 ```
 ethernal listen
 ```
 
 Import ethernal to the test script
+
 ```typescript
 import 'hardhat-ethernal'
 ```
 
 Run test case with ethernal credentials. Connect it to local node.
+
 ```
 ETHERNAL_EMAIL=<YOUR EMAIL> ETHERNAL_PASSWORD=<YOUR PASSWORD> npx hardhat run <FILE PATH> --network localhost
 ```
 
 Login and browse the transactions at https://app.tryethernal.com
 
-
 ## Deploy
 
 ### Deploy commands
 
+MESSAGE_BUS is address of celer's message bus, this is required for cross chain data transfer
+To get list of the address, follow this url https://im-docs.celer.network/developer/contract-addresses-and-rpc-info
+
 ```
 # allocation master
-npx hardhat run ./scripts/IFAllocationMaster-deploy.ts --network bsc_test
+MESSAGE_BUS=0xABC npx hardhat run ./scripts/IFAllocationMaster-deploy.ts --network bsc_test
+
+# allocation master adapter
+MESSAGE_BUS=0xABC SOURCE_ADDRESS=0xABC SOURCE_CHAIN={{chainId}} npx hardhat run ./scripts/IFAllocationMasterAdapter-deploy.ts --network bsc_test
 
 # allocation sale
 SELLER=0xABCD PAY_TOKEN=0xABCD SALE_TOKEN=0xABCD ALLOCATION_MASTER=0xABCD TRACK_ID=123 SNAP_BLOCK=123456 START_BLOCK=123456 END_BLOCK=123456 SALE_PRICE=100000000000000000000 MAX_TOTAL_PAYMENT=10000000000000000000000 npx hardhat run ./scripts/IFAllocationSale-deploy.ts --network bsc_test

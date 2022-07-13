@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { Contract } from '@ethersproject/contracts'
-import { mineNext, getBlockTime, mineTimeDelta } from './helpers'
+import { mineNext, getBlockTime, mineTimeDelta, setAutomine } from './helpers'
 import { first } from 'lodash'
 import { BigNumber } from 'ethers'
 
@@ -17,9 +17,6 @@ const _10000 = BigNumber.from(10000)
 const FACTOR = BigNumber.from(_10.pow(BigNumber.from(30)))
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 const ONE_ADDRESS = '0x0000000000000000000000000000000000000001'
-
-
-const TWO_WEEKS = 14 * 86400
 
 const convToBN = (num: number) => {
   return BigNumber.from(num).mul(WeiPerEth)
@@ -50,7 +47,7 @@ export default describe('vIDIA', async () => {
   beforeEach(async () => {
     // Get the ContractFactory and Signers here.
     // Token = await ethers.getContractFactory("Token");
-    [owner, vester, vester2] = await ethers.getSigners()
+    ;[owner, vester, vester2] = await ethers.getSigners()
 
     // To deploy our contract, we just have to call Token.deploy() and await
     // for it to be deployed(), which happens once its transaction has been
@@ -487,21 +484,25 @@ export default describe('vIDIA', async () => {
     const rewardFirst = ownerStakeAmt.div(2).mul(20).div(100)
     // reward is shared by both vester and vester2
     const rewardSecond = ownerStakeAmt.div(2).mul(20).div(100).div(2)
-    expect(await vIDIA.calculateUserReward(vester.address)).to.equal(rewardFirst.add(rewardSecond))
-    expect(await vIDIA.calculateUserReward(vester2.address)).to.equal(rewardSecond)
+    expect(await vIDIA.calculateUserReward(vester.address)).to.equal(
+      rewardFirst.add(rewardSecond)
+    )
+    expect(await vIDIA.calculateUserReward(vester2.address)).to.equal(
+      rewardSecond
+    )
   })
-  
+
   it('test padding zero admin and underlying address', async () => {
     console.log(owner.address)
     const VIDIAFactory = await ethers.getContractFactory('vIDIA')
-    expect(VIDIAFactory.deploy(
-      'VIDIA','VIDIA',ZERO_ADDRESS, ZERO_ADDRESS,
-    )).to.be.revertedWith('Admin address must not be zero')
-    expect(VIDIAFactory.deploy(
-      'VIDIA', 'VIDIA', owner.address, ZERO_ADDRESS,
-    )).to.be.revertedWith('Underlying address must not be zero')
-    expect((await VIDIAFactory.deploy(
-      'VIDIA', 'VIDIA', owner.address, ONE_ADDRESS,
-    ))).to.exist
+    expect(
+      VIDIAFactory.deploy('VIDIA', 'VIDIA', ZERO_ADDRESS, ZERO_ADDRESS)
+    ).to.be.revertedWith('Admin address must not be zero')
+    expect(
+      VIDIAFactory.deploy('VIDIA', 'VIDIA', owner.address, ZERO_ADDRESS)
+    ).to.be.revertedWith('Underlying address must not be zero')
+    expect(
+      await VIDIAFactory.deploy('VIDIA', 'VIDIA', owner.address, ONE_ADDRESS)
+    ).to.exist
   })
 })
