@@ -14,17 +14,53 @@ forge build
 
 ## Test
 
-Run hardhat tests
+### Running all tests
 
 ```
 npx hardhat test
 ```
 
-Run foundry test
+### Run foundry test
 
 ```
 forge test --fork-url $BSC_URL
 ```
+
+### Running specific tests
+
+```
+npx hardhat test --grep "<YOUR TARGET TESTS KEYWORD>"
+```
+
+### Inspect transactions on ethernal
+
+Make sure ethernal is installed: https://doc.tryethernal.com/getting-started/quickstart
+
+Spin up local node
+
+```
+npx hardhat node --fork <NODE RPC URL>
+```
+
+Turn on ethernal listener
+
+```
+ethernal listen
+```
+
+Import ethernal to the test script
+
+```typescript
+import 'hardhat-ethernal'
+```
+
+Run test case with ethernal credentials. Connect it to local node.
+
+```
+ETHERNAL_EMAIL=<YOUR EMAIL> ETHERNAL_PASSWORD=<YOUR PASSWORD> npx hardhat run <FILE PATH> --network localhost
+```
+
+Login and browse the transactions at https://app.tryethernal.com
 
 ## Deploy
 
@@ -42,6 +78,12 @@ MESSAGE_BUS=0xABC SOURCE_ADDRESS=0xABC SOURCE_CHAIN={{chainId}} npx hardhat run 
 
 # allocation sale
 SELLER=0xABCD PAY_TOKEN=0xABCD SALE_TOKEN=0xABCD ALLOCATION_MASTER=0xABCD TRACK_ID=123 SNAP_BLOCK=123456 START_BLOCK=123456 END_BLOCK=123456 SALE_PRICE=100000000000000000000 MAX_TOTAL_PAYMENT=10000000000000000000000 npx hardhat run ./scripts/IFAllocationSale-deploy.ts --network bsc_test
+
+# vIDIA
+NAME=VIDIA SYMBOL=VIDIA ADMIN=0xABCD UNDERLYING=0xABCD npx hardhat run ./scripts/VIDIA-deploy.ts --network bsc_test
+
+# Verify vIDIA
+npx hardhat verify --network bsc_test <DEPLOYED_CONTRACT_ADDRESS> "VIDIA" "VIDIA" "<ADMIN_ADDRESS>" "<UNDERLYING_ADDRESS>"
 ```
 
 ### Production

@@ -16,8 +16,7 @@ const _10 = BigNumber.from(10)
 const _10000 = BigNumber.from(10000)
 const FACTOR = BigNumber.from(_10.pow(BigNumber.from(30)))
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-
-const TWO_WEEKS = 14 * 86400
+const ONE_ADDRESS = '0x0000000000000000000000000000000000000001'
 
 const convToBN = (num: number) => {
   return BigNumber.from(num).mul(WeiPerEth)
@@ -71,6 +70,9 @@ export default describe('vIDIA', async () => {
     await underlying.transfer(vester.address, convToBN(1000))
     await underlying.approve(vIDIA.address, MaxUint256)
     await underlying.connect(vester).approve(vIDIA.address, MaxUint256)
+    await underlying.transfer(vester2.address, convToBN(1000))
+    await underlying.approve(vIDIA.address, MaxUint256)
+    await underlying.connect(vester2).approve(vIDIA.address, MaxUint256)
   })
 
   it('test static funcs', async () => {
@@ -465,5 +467,42 @@ export default describe('vIDIA', async () => {
     await expect(vIDIA.cancelPendingUnstake(0)).to.be.revertedWith(
       'Can restake without paying fee'
     )
+  })
+
+  it('test late staker claim reward', async () => {
+    const ownerStakeAmt = convToBN(200)
+    const stakeAmtA = convToBN(50)
+    const stakeAmtB = convToBN(50)
+    await vIDIA.stake(ownerStakeAmt)
+    await vIDIA.connect(vester).stake(stakeAmtA)
+    await vIDIA.claimStaked(ownerStakeAmt.div(2))
+
+    await vIDIA.connect(vester2).stake(stakeAmtB)
+    await vIDIA.claimStaked(ownerStakeAmt.div(2))
+
+    // all reward goes to vester
+    const rewardFirst = ownerStakeAmt.div(2).mul(20).div(100)
+    // reward is shared by both vester and vester2
+    const rewardSecond = ownerStakeAmt.div(2).mul(20).div(100).div(2)
+    expect(await vIDIA.calculateUserReward(vester.address)).to.equal(
+      rewardFirst.add(rewardSecond)
+    )
+    expect(await vIDIA.calculateUserReward(vester2.address)).to.equal(
+      rewardSecond
+    )
+  })
+
+  it('test padding zero admin and underlying address', async () => {
+    console.log(owner.address)
+    const VIDIAFactory = await ethers.getContractFactory('vIDIA')
+    expect(
+      VIDIAFactory.deploy('VIDIA', 'VIDIA', ZERO_ADDRESS, ZERO_ADDRESS)
+    ).to.be.revertedWith('Admin address must not be zero')
+    expect(
+      VIDIAFactory.deploy('VIDIA', 'VIDIA', owner.address, ZERO_ADDRESS)
+    ).to.be.revertedWith('Underlying address must not be zero')
+    expect(
+      await VIDIAFactory.deploy('VIDIA', 'VIDIA', owner.address, ONE_ADDRESS)
+    ).to.exist
   })
 })

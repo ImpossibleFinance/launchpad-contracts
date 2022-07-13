@@ -91,6 +91,8 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         address _admin,
         address _underlying
     ) AccessControlEnumerable() IFTokenStandard(_name, _symbol, _admin) {
+        require(_admin != address(0x0), "Admin address must not be zero");
+        require(_underlying != address(0x0), "Underlying address must not be zero");
         _setupRole(FEE_SETTER_ROLE, _admin);
         _setupRole(DELAY_SETTER_ROLE, _admin);
         _setupRole(WHITELIST_SETTER_ROLE, _admin);
@@ -259,9 +261,11 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     // claim reward and reset user's reward sum
     function claimReward(address sender) public {
         uint256 reward = calculateUserReward(sender);
-        if (reward > 0) {
-            // reset user's rewards sum
+        // reset user's rewards sum
+        if (userInfo[sender].lastRewardPerShare != rewardPerShare) {
             userInfo[sender].lastRewardPerShare = rewardPerShare;
+        }
+        if (reward > 0) {
             // transfer reward to user
             ERC20 claimedTokens = ERC20(underlying);
             claimedTokens.safeTransfer(sender, reward);
