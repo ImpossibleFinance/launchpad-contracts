@@ -88,7 +88,7 @@ module.exports = {
       },
     },
     kovan: {
-      url: 'https://kovan.poa.network/',
+      url: 'https://kovan.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161',
       chainId: 42,
       gasPrice: 5000000000,
       accounts: {
