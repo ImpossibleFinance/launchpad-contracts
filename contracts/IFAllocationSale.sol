@@ -156,6 +156,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         require(address(_saleToken) != address(0), '0x0 saleToken');
         // start timestamp must be in future
         require(block.timestamp < _startTime, 'start timestamp too early');
+        require(block.timestamp < _startTime + FIVE_YEARS, 'start time has to be within 5 years');
         // end timestamp must be after start timestamp
         require(_startTime < _endTime - ONE_HOUR, 'end timestamp before start should be least 1 hour');
         require(_startTime > _endTime - TEN_YEARS, 'end time has to be within 10 years');
