@@ -158,6 +158,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         require(block.timestamp < _startTime, 'start timestamp too early');
         // end timestamp must be after start timestamp
         require(_startTime < _endTime - ONE_HOUR, 'end timestamp before start should be least 1 hour');
+        require(_startTime > _endTime - TEN_YEARS, 'end time has to be within 10 years');
 
         require(
             _allocSnapshotTimestamp > block.timestamp ||
@@ -296,7 +297,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     function setVestingEndTime(uint256 _vestingEndTime) external onlyOwner {
         require(block.timestamp < startTime, "can't be set after a sale is started");
         require(_vestingEndTime > endTime + withdrawDelay, "vesting end time has to be after withdrawal start time");
-        require(endTime + withdrawDelay >= _vestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
+        require(endTime + withdrawDelay > _vestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
         vestingEndTime = _vestingEndTime;
 
         // unset cliff vesting
@@ -328,7 +329,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
             totalPct += pct[i];
             cliffPeriod.push(Cliff(claimTimes[i], pct[i]));
         }
-        require(endTime + withdrawDelay < maxDate - TEN_YEARS, "vesting end time has to be within 10 years");
+        require(endTime + withdrawDelay > maxDate - TEN_YEARS, "vesting end time has to be within 10 years");
         // pct is the release percentage, with a precision of 1%. Thus, the sum of all elements of pct must be equal to 100
         require(totalPct == 100, "total input percentage doesn't equal to 100");
 
