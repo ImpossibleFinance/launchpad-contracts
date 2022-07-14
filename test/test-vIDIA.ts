@@ -504,4 +504,20 @@ export default describe('vIDIA', async () => {
       'VIDIA', 'VIDIA', owner.address, ONE_ADDRESS,
     ))).to.exist
   })
+  it('test unstake transferred', async () => {
+    const stakeAmt = 100
+    await vIDIA.connect(vester).stake(stakeAmt)
+    expect((await vIDIA.totalStakedAmt()).toNumber()).to.be.equal(stakeAmt)
+    await vIDIA.connect(owner).addToWhitelist(vester2.address)
+    await vIDIA.connect(vester).transfer(vester2.address, stakeAmt)
+    // vester has transferred the staked vIDIA to another address. He can no longer unstake it.
+    await expect(vIDIA.connect(vester).unstake(stakeAmt)).to.be.revertedWith('ERC20: burn amount exceeds balance')
+    // vester2 got nothing to unstake. Will cause underflow
+    await expect(vIDIA.connect(vester2).unstake(stakeAmt)).to.be.reverted
+    // transfer back to vester and unstake
+    await vIDIA.connect(vester2).transfer(vester.address, stakeAmt)
+    expect((await vIDIA.userInfo(vester.address)).stakedAmt).to.be.equal(stakeAmt)
+    await vIDIA.connect(vester).unstake(stakeAmt)
+    expect((await vIDIA.userInfo(vester.address)).stakedAmt).to.be.equal(0)
+  })
 })
