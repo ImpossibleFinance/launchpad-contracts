@@ -28,6 +28,8 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
 
     // seconds in 1 hours
     uint64 constant ONE_HOUR = 3600;
+    // seconds in 1 year
+    uint64 constant ONE_YEAR = 31556926;
     // seconds in 5 years
     uint64 constant FIVE_YEARS = 157784630;
     // seconds in 10 years
@@ -156,10 +158,10 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         require(address(_saleToken) != address(0), '0x0 saleToken');
         // start timestamp must be in future
         require(block.timestamp < _startTime, 'start timestamp too early');
-        require(block.timestamp < _startTime + FIVE_YEARS, 'start time has to be within 5 years');
+        require(_startTime - ONE_YEAR < block.timestamp, 'start time has to be within 1 year');
         // end timestamp must be after start timestamp
         require(_startTime < _endTime - ONE_HOUR, 'end timestamp before start should be least 1 hour');
-        require(_startTime > _endTime - TEN_YEARS, 'end time has to be within 10 years');
+        require(_endTime - TEN_YEARS < _startTime, 'end time has to be within 10 years');
 
         require(
             _allocSnapshotTimestamp > block.timestamp ||
