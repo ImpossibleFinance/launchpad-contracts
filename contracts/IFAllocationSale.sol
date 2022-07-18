@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.9;
 
 // import "hardhat/console.sol";
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
@@ -8,7 +8,7 @@ import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
-import './IFAllocationMaster.sol';
+import './interfaces/IIFRetrievableStakeWeight.sol';
 
 contract IFAllocationSale is Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
@@ -85,7 +85,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     // sale token
     ERC20 public saleToken;
     // allocation master
-    IFAllocationMaster public allocationMaster;
+    IIFRetrievableStakeWeight public allocationMaster;
     // track id
     uint24 public trackId;
     // allocation snapshot block
@@ -134,7 +134,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         address _funder,
         ERC20 _paymentToken,
         ERC20 _saleToken,
-        IFAllocationMaster _allocationMaster,
+        IIFRetrievableStakeWeight _allocationMaster,
         uint24 _trackId,
         uint80 _allocSnapshotTimestamp,
         uint256 _startTime,

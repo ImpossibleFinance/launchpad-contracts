@@ -1,7 +1,13 @@
 import '@nomiclabs/hardhat-ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
-import { getBlockTime, mineNext, minePause, mineStart, mineTimeDelta } from './helpers'
+import {
+  getBlockTime,
+  getGasUsed,
+  mineNext,
+  mineTimeDelta,
+  setAutomine,
+} from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
 import {
@@ -43,6 +49,14 @@ export default describe('IF Allocation Sale', function () {
   // other vars
   // const fundAmount = '33333'
   const fundAmount = '1000000000'
+
+  this.beforeAll(async () => {
+    await setAutomine(false)
+  })
+
+  this.afterAll(async () => {
+    await setAutomine(true)
+  })
 
   // setup for each test
   beforeEach(async () => {
@@ -95,7 +109,9 @@ export default describe('IF Allocation Sale', function () {
     const IFAllocationMasterFactory = await ethers.getContractFactory(
       'IFAllocationMaster'
     )
-    IFAllocationMaster = await IFAllocationMasterFactory.deploy()
+    IFAllocationMaster = await IFAllocationMasterFactory.deploy(
+      ethers.constants.AddressZero
+    )
 
     // add track on allocation master
     mineNext()
@@ -192,6 +208,8 @@ export default describe('IF Allocation Sale', function () {
     await expect(IFAllocationSale.connect(owner).emergencyTokenRetrieve(PaymentToken.address)).to.be.reverted
 
     mineNext()
+    // gas used in purchase
+    expect((await getGasUsed()).toString()).to.equal('238144')
 
     // fast forward from current time to after end time
     mineTimeDelta(endTime - (await getBlockTime()))
@@ -200,6 +218,9 @@ export default describe('IF Allocation Sale', function () {
     mineNext()
     await IFAllocationSale.connect(buyer).withdraw()
     mineNext()
+
+    // gas used in withdraw
+    expect((await getGasUsed()).toString()).to.equal('100037')
 
     // expect balance to increase by fund amount
     expect(await SaleToken.balanceOf(buyer.address)).to.equal('33333')

@@ -7,14 +7,24 @@ import hre from 'hardhat'
 
 export async function main(): Promise<void> {
   const messageBus = process.env.MESSAGE_BUS || '' // celer's message bus
+  const srcAddress = process.env.SOURCE_ADDRESS || ''
+  const srcChainId = process.env.SOURCE_CHAIN || ''
 
   // We get the contract to deploy
-  const IFAllocationMasterFactory = await hre.ethers.getContractFactory(
-    'IFAllocationMaster'
+  const IFAllocationMasterAdapterFactory = await hre.ethers.getContractFactory(
+    'IFAllocationMasterAdapter'
   )
-  const IFAllocationMaster = await IFAllocationMasterFactory.deploy(messageBus)
+  const IFAllocationMasterAdapter =
+    await IFAllocationMasterAdapterFactory.deploy(
+      messageBus,
+      srcAddress,
+      srcChainId
+    )
 
-  console.log('IFAllocationMaster deployed to ', IFAllocationMaster.address)
+  console.log(
+    'IFAllocationMasterAdapter deployed to ',
+    IFAllocationMasterAdapter.address
+  )
 }
 
 // We recommend this pattern to be able to use async/await everywhere
