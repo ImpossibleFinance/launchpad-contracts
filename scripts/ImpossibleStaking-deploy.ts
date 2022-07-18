@@ -6,10 +6,10 @@
 import hre from 'hardhat'
 
 export async function main(): Promise<void> {
-  const rewardToken: string = process.env.REWARD_TOKEN || '' // address
-  const rewardPerTimestamp: string = process.env.REWARD_PER_TIMESTAMP || '' // address
-  const startTime: string = process.env.START_TIME || '' // address
-  const endTime: string = process.env.END_TIME || '' // address
+  const rewardToken: string = process.env.REWARD_TOKEN || '' // reward token address
+  const rewardPerTimestamp: string = process.env.REWARD_PER_TIMESTAMP || '' // reward per timestamp
+  const startTime: string = process.env.START_TIME || '' // start time of reward distribution
+  const endTime: string = process.env.END_TIME || '' // end time of reward distribution
 
   // We get the contract to deploy
   const ImpossibleStakingFactory = await hre.ethers.getContractFactory(
