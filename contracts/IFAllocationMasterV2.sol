@@ -23,6 +23,8 @@ contract IFAllocationMasterV2 is Ownable, ReentrancyGuard {
         uint104 staked;
         // amount of stake weight at checkpoint
         uint192 stakeWeight;
+        // with boosts
+        uint192 appliedStakeWeight; // if 0, there is no boost
     }
 
     // A checkpoint for marking stake info at a given block
@@ -33,6 +35,8 @@ contract IFAllocationMasterV2 is Ownable, ReentrancyGuard {
         uint104 totalStaked;
         // amount of stake weight at checkpoint
         uint192 totalStakeWeight;
+        // with boosts
+        uint192 appliedTotalStakeWeight;
     }
 
     // Info of each track. These parameters cannot be changed.
@@ -90,8 +94,18 @@ contract IFAllocationMasterV2 is Ownable, ReentrancyGuard {
     event DisableTrack(uint24 indexed trackId);
     event AddUserCheckpoint(uint24 indexed trackId, uint80 timestamp);
     event AddTrackCheckpoint(uint24 indexed trackId, uint80 timestamp);
-    event Stake(uint24 indexed trackId, address indexed user, uint104 amount);
-    event Unstake(uint24 indexed trackId, address indexed user, uint104 amount);
+    event Stake(
+        uint24 indexed trackId,
+        address indexed user,
+        uint104 amount, // what the user actually staked
+        uint104 boostedAmount // what we counted as "staked", given active boosts. if 0, there was no boost involved
+    );
+    event Unstake(
+        uint24 indexed trackId,
+        address indexed user,
+        uint104 amount, // what the user actually receives
+        uint104 boostedAmount // what was counted as "staked" when this action is performed
+    );
     event EmergencyWithdraw(
         uint24 indexed trackId,
         address indexed sender,
@@ -532,11 +546,17 @@ contract IFAllocationMasterV2 is Ownable, ReentrancyGuard {
         // transfer the specified amount of stake token from user to this contract
         track.stakeToken.safeTransferFrom(_msgSender(), address(this), amount);
 
+        // account for boost
+        bool hasBoost = true; // TODO ... get value for this user & track from BoosterContract
+        uint104 appliedAmount = hasBoost
+            ? (amount * (10000 + boostValue)) / 10000
+            : amount;
+
         // add user checkpoint
-        addUserCheckpoint(trackId, amount, true);
+        addUserCheckpoint(trackId, appliedAmount, true);
 
         // add track checkpoint
-        addTrackCheckpoint(trackId, amount, true);
+        addTrackCheckpoint(trackId, appliedAmount, true);
 
         // get latest track cp
         TrackCheckpoint memory trackCp = trackCheckpoints[trackId][
@@ -570,8 +590,14 @@ contract IFAllocationMasterV2 is Ownable, ReentrancyGuard {
             _msgSender()
         ][userCheckpointCount - 1];
 
+        // account for boost
+        bool hasBoost = true; // TODO ... get value for this user & track from BoosterContract
+        uint104 appliedAmount = hasBoost
+            ? (amount * (10000 + boostValue)) / 10000
+            : amount;
+
         // ensure amount <= user's current stake
-        require(amount <= checkpoint.staked, 'amount > staked');
+        require(appliedAmount <= checkpoint.staked, 'amount > staked');
 
         // add user checkpoint
         addUserCheckpoint(trackId, amount, false);
