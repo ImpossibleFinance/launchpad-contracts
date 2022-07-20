@@ -34,9 +34,9 @@ contract IFAllocationMaster is
     struct UserCheckpoint {
         // timestamp number of checkpoint
         uint80 timestamp;
-        // amount staked at checkpoint
+        // amount that counts as staked at checkpoint (includes boost)
         uint104 staked;
-        // amount of stake weight at checkpoint
+        // amount of stake weight at checkpoint (includes boost)
         uint192 stakeWeight;
     }
 
@@ -44,9 +44,9 @@ contract IFAllocationMaster is
     struct TrackCheckpoint {
         // timestamp number of checkpoint
         uint80 timestamp;
-        // amount staked at checkpoint
+        // amount that counts as staked at checkpoint (includes boosts)
         uint104 totalStaked;
-        // amount of stake weight at checkpoint
+        // amount of stake weight at checkpoint (includes boosts)
         uint192 totalStakeWeight;
     }
 
