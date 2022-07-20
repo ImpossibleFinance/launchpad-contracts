@@ -51,7 +51,9 @@ export default describe('IFAllocationMaster', function () {
     const IFAllocationMasterFactory = await ethers.getContractFactory(
       'IFAllocationMaster'
     )
-    IFAllocationMaster = await IFAllocationMasterFactory.deploy()
+    IFAllocationMaster = await IFAllocationMasterFactory.deploy(
+      ethers.constants.AddressZero
+    )
   })
 
   // TESTS
@@ -97,7 +99,8 @@ export default describe('IFAllocationMaster', function () {
 
     // update track as non-owner (should fail)
     mineNext()
-    await IFAllocationMaster.connect(nonOwner).bumpSaleCounter(trackNum)
+    await expect(IFAllocationMaster.connect(nonOwner).bumpSaleCounter(trackNum))
+      .to.be.reverted
     mineNext()
 
     // sale counter should update only by owner
@@ -161,11 +164,10 @@ export default describe('IFAllocationMaster', function () {
     const simOutput = await simAllocationMaster(
       IFAllocationMaster, // staking contract
       TestToken, // stake token
-      await IFAllocationMaster.trackCount(), // track number
+      (await IFAllocationMaster.trackCount()) - 1, // track number
       [simUser1, simUser2], // simulation users
       simIn
     )
-
     // // write output to CSV
     await asyncWriteFile(
       './test/simulationData',
@@ -211,7 +213,7 @@ export default describe('IFAllocationMaster', function () {
     const simOutput = await simAllocationMaster(
       IFAllocationMaster, // staking contract
       TestToken, // stake token
-      await IFAllocationMaster.trackCount(), // track number
+      (await IFAllocationMaster.trackCount()) - 1, // track number
       [simUser1, simUser2], // simulation users
       simIn
     )
@@ -261,7 +263,7 @@ export default describe('IFAllocationMaster', function () {
     const simOutput = await simAllocationMaster(
       IFAllocationMaster, // staking contract
       TestToken, // stake token
-      await IFAllocationMaster.trackCount(), // track number
+      (await IFAllocationMaster.trackCount()) - 1, // track number
       [simUser1, simUser2], // simulation users
       simIn
     )
@@ -311,7 +313,7 @@ export default describe('IFAllocationMaster', function () {
     const simOutput = await simAllocationMaster(
       IFAllocationMaster, // staking contract
       TestToken, // stake token
-      await IFAllocationMaster.trackCount(), // track number
+      (await IFAllocationMaster.trackCount()) - 1, // track number
       [simUser1, simUser2], // simulation users
       simIn
     )

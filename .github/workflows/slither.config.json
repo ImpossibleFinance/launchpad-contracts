@@ -1,0 +1,5 @@
+{
+    "exclude_low": true,
+    "exclude_medium": true,
+    "filter_paths": "/node_modules/*"
+}

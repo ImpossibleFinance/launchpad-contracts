@@ -2,7 +2,7 @@
 pragma solidity ^0.8.4;
 
 // import "hardhat/console.sol";
-import "../library/IICToken.sol";
+import '../library/IICToken.sol';
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
@@ -19,7 +19,11 @@ contract BatchMintVoucher is Ownable {
         string[] originalInvestors;
     }
 
-    constructor (address proxyAddr, address idiaAddr, address vestingPoolAddr) {
+    constructor(
+        address proxyAddr,
+        address idiaAddr,
+        address vestingPoolAddr
+    ) {
         iicToken = IICToken(proxyAddr);
         idia = ERC20(idiaAddr);
         idia.approve(vestingPoolAddr, type(uint256).max);
@@ -32,7 +36,7 @@ contract BatchMintVoucher is Ownable {
     ) external {
         // send the required tokens to the contract
         idia.transferFrom(msg.sender, address(this), totalValue);
-        for (uint i = 0; i < params.users.length; i++) {
+        for (uint256 i = 0; i < params.users.length; i++) {
             // mint a voucher
             (, uint256 tokenId) = iicToken.mint(
                 params.terms[i],

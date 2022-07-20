@@ -1,18 +1,29 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.9;
 
 // import 'hardhat/console.sol';
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
+import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
+import 'sgn-v2-contracts/contracts/message/libraries/MessageSenderLib.sol';
+
+import './interfaces/IIFRetrievableStakeWeight.sol';
+import './interfaces/IIFBridgableStakeWeight.sol';
 
 // IFAllocationMaster is responsible for persisting all launchpad state between project token sales
 // in order for the sales to have clean, self-enclosed, one-time-use states.
 
 // IFAllocationMaster is the master of allocations. He can remember everything and he is a smart guy.
-contract IFAllocationMaster is Ownable, ReentrancyGuard {
+contract IFAllocationMaster is
+    Ownable,
+    ReentrancyGuard,
+    IIFRetrievableStakeWeight,
+    IIFBridgableStakeWeight
+{
     using SafeERC20 for ERC20;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     // CONSTANTS
 
@@ -20,6 +31,9 @@ contract IFAllocationMaster is Ownable, ReentrancyGuard {
     uint64 constant ROLLOVER_FACTOR_DECIMALS = 10**18;
 
     // STRUCTS
+
+    // Celer Multichain Integration
+    address public immutable messageBus;
 
     // A checkpoint for marking stake info at a given block
     struct UserCheckpoint {
@@ -100,6 +114,9 @@ contract IFAllocationMaster is Ownable, ReentrancyGuard {
     // the number of checkpoints of a track -- (track) => checkpoint count
     mapping(uint24 => uint32) public trackCheckpointCounts;
 
+    // the set of participated addresses of a track -- (track) => participated addresses
+    mapping(uint24 => EnumerableSet.AddressSet) private whitelistAddresses;
+
     // track checkpoint mapping -- (track, checkpoint number) => TrackCheckpoint
     mapping(uint24 => mapping(uint32 => TrackCheckpoint))
         public trackCheckpoints;
@@ -131,10 +148,25 @@ contract IFAllocationMaster is Ownable, ReentrancyGuard {
         address indexed sender,
         uint256 amount
     );
+    event SyncUserWeight(
+        address receiver,
+        uint24 srcTrackId,
+        uint80 timestamp,
+        uint64 dstChainId,
+        uint24 dstTrackId
+    );
+    event SyncTotalWeight(
+        address receiver,
+        uint24 srcTrackId,
+        uint80 timestamp,
+        uint64 dstChainId,
+        uint24 dstTrackId
+    );
 
     // CONSTRUCTOR
-
-    constructor() {}
+    constructor(address _messageBus) {
+        messageBus = _messageBus;
+    }
 
     // FUNCTIONS
 
@@ -461,7 +493,7 @@ contract IFAllocationMaster is Ownable, ReentrancyGuard {
     // gets total stake weight within a track at a particular timestamp number
     // logic extended from Compound COMP token `getPriorVotes` function
     function getTotalStakeWeight(uint24 trackId, uint80 timestamp)
-        external
+        public
         view
         returns (uint192)
     {
@@ -820,5 +852,97 @@ contract IFAllocationMaster is Ownable, ReentrancyGuard {
 
         // emit
         emit EmergencyWithdraw(trackId, _msgSender(), checkpoint.staked);
+    }
+
+    // Methods for bridging track weight information
+
+    // Push
+    function syncUserWeight(
+        address receiver,
+        address[] calldata users,
+        uint24 trackId,
+        uint80 timestamp,
+        uint64 dstChainId
+    ) external payable {
+        // should be active track
+        require(!trackDisabled[trackId], 'track !disabled');
+
+        // get user stake weight on this contract
+        uint192[] memory userStakeWeights = new uint192[](users.length);
+
+        for (uint256 i = 0; i < users.length; i++) {
+            userStakeWeights[i] = getUserStakeWeight(
+                trackId,
+                users[i],
+                timestamp
+            );
+        }
+
+        // construct message data to be sent to dest contract
+        bytes memory message = abi.encode(
+            MessageRequest({
+                bridgeType: BridgeType.UserWeight,
+                users: users,
+                timestamp: timestamp,
+                weights: userStakeWeights,
+                trackId: trackId
+            })
+        );
+
+        // trigger the message bridge
+        MessageSenderLib.sendMessage(
+            receiver,
+            dstChainId,
+            message,
+            messageBus,
+            msg.value
+        );
+
+        emit SyncUserWeight(
+            receiver,
+            trackId,
+            timestamp,
+            dstChainId,
+            trackId
+        );
+    }
+
+    function syncTotalWeight(
+        address receiver,
+        uint24 trackId,
+        uint80 timestamp,
+        uint64 dstChainId
+    ) external payable {
+        // should be active track
+        require(!trackDisabled[trackId], 'track disabled');
+
+        address[] memory users = new address[](1);
+        users[0] = _msgSender();
+
+        // get total stake weight on this contract
+        uint192[] memory weights = new uint192[](1);
+        weights[0] = getTotalStakeWeight(trackId, timestamp);
+
+        // construct message data to be sent to dest contract
+        bytes memory message = abi.encode(
+            MessageRequest({
+                bridgeType: BridgeType.TotalWeight,
+                users: users,
+                timestamp: timestamp,
+                weights: weights,
+                trackId: trackId
+            })
+        );
+
+        // trigger the message bridge
+        MessageSenderLib.sendMessage(
+            receiver,
+            dstChainId,
+            message,
+            messageBus,
+            msg.value
+        );
+
+        emit SyncTotalWeight(receiver, trackId, timestamp, dstChainId, trackId);
     }
 }
