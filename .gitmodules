@@ -1,0 +1,6 @@
+[submodule "lib/forge-std"]
+	path = lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "lib/sgn-v2-contracts"]
+	path = lib/sgn-v2-contracts
+	url = https://github.com/celer-network/sgn-v2-contracts

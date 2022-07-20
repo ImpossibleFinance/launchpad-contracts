@@ -1,7 +1,7 @@
 import '@nomiclabs/hardhat-ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
-import { getBlockTime, mineNext, mineTimeDelta } from './helpers'
+import { getBlockTime, mineNext, mineTimeDelta, setAutomine } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from 'ethers'
 
@@ -21,6 +21,14 @@ export default describe('IF Allocation Sale Deployment', function () {
   let IFAllocationMaster: Contract
 
   const maxTotalDeposit = '25000000000000000000000000' // max deposit
+
+  this.beforeAll(async () => {
+    await setAutomine(false)
+  })
+
+  this.afterAll(async () => {
+    await setAutomine(true)
+  })
 
   beforeEach(async () => {
     // get test accounts
@@ -51,7 +59,9 @@ export default describe('IF Allocation Sale Deployment', function () {
     const IFAllocationMasterFactory = await ethers.getContractFactory(
       'IFAllocationMaster'
     )
-    IFAllocationMaster = await IFAllocationMasterFactory.deploy()
+    IFAllocationMaster = await IFAllocationMasterFactory.deploy(
+      ethers.constants.AddressZero
+    )
     mineNext()
     await IFAllocationMaster.addTrack(
       'IDIA track', // name

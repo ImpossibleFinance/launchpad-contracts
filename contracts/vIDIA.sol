@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.9;
 
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/access/AccessControlEnumerable.sol';
@@ -91,8 +91,11 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         address _admin,
         address _underlying
     ) AccessControlEnumerable() IFTokenStandard(_name, _symbol, _admin) {
-        require(_admin != address(0x0), "Admin address must not be zero");
-        require(_underlying != address(0x0), "Underlying address must not be zero");
+        require(_admin != address(0x0), 'Admin address must not be zero');
+        require(
+            _underlying != address(0x0),
+            'Underlying address must not be zero'
+        );
         _setupRole(FEE_SETTER_ROLE, _admin);
         _setupRole(DELAY_SETTER_ROLE, _admin);
         _setupRole(WHITELIST_SETTER_ROLE, _admin);
@@ -100,7 +103,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
 
         // Add 0x0 to whitelist so _beforeTokenTransfer doesn't reject mint/burn txs
         // transfers to/from 0x0 fail by default
-        EnumerableSet.add(whitelistAddresses, address(0x0)); 
+        EnumerableSet.add(whitelistAddresses, address(0x0));
     }
 
     function stake(uint256 amount) external notHalted {
@@ -269,7 +272,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
             // transfer reward to user
             ERC20 claimedTokens = ERC20(underlying);
             claimedTokens.safeTransfer(sender, reward);
-            emit ClaimReward(sender, reward);  
+            emit ClaimReward(sender, reward);
         }
     }
 
@@ -380,7 +383,11 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
      @param from the address tokens are taken from
      @param to the address to send tokens to
      */
-    function _beforeTokenTransfer(address from, address to, uint256) internal view override {
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256
+    ) internal view override {
         require(
             EnumerableSet.contains(whitelistAddresses, from) ||
                 EnumerableSet.contains(whitelistAddresses, to),
