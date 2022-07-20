@@ -25,11 +25,6 @@ contract IFAllocationMaster is
     using SafeERC20 for ERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // CONSTANTS
-
-    // number of decimals of rollover factors
-    uint64 constant ROLLOVER_FACTOR_DECIMALS = 10**18;
-
     // STRUCTS
 
     // Celer Multichain Integration
@@ -43,8 +38,6 @@ contract IFAllocationMaster is
         uint104 staked;
         // amount of stake weight at checkpoint
         uint192 stakeWeight;
-        // number of finished sales at time of checkpoint
-        uint24 numFinishedSales;
     }
 
     // A checkpoint for marking stake info at a given block
@@ -55,8 +48,6 @@ contract IFAllocationMaster is
         uint104 totalStaked;
         // amount of stake weight at checkpoint
         uint192 totalStakeWeight;
-        // number of finished sales at time of checkpoint
-        uint24 numFinishedSales;
     }
 
     // Info of each track. These parameters cannot be changed.
@@ -67,31 +58,9 @@ contract IFAllocationMaster is
         ERC20 stakeToken;
         // weight accrual rate for this track (stake weight increase per timestamp per stake token)
         uint24 weightAccrualRate;
-        // amount rolled over when finished sale counter increases (with decimals == ROLLOVER_FACTOR_DECIMALS)
-        // e.g., if rolling over 20% when sale finishes, then this is 0.2 * ROLLOVER_FACTOR_DECIMALS, or
-        // 200_000_000_000_000_000
-        uint64 passiveRolloverRate;
-        // amount rolled over when finished sale counter increases, and user actively elected to roll over
-        uint64 activeRolloverRate;
         // maximum total stake for a user in this track
         uint104 maxTotalStake;
     }
-
-    // INFO FOR FACTORING IN ROLLOVERS
-
-    // the number of checkpoints of a track -- (track, finished sale count) => timestamp number
-    mapping(uint24 => mapping(uint24 => uint80))
-        public trackFinishedSaleTimestamps;
-
-    // stake weight each user actively rolls over for a given track and a finished sale count
-    // (track, user, finished sale count) => amount of stake weight
-    mapping(uint24 => mapping(address => mapping(uint24 => uint192)))
-        public trackActiveRollOvers;
-
-    // total stake weight actively rolled over for a given track and a finished sale count
-    // (track, finished sale count) => total amount of stake weight
-    mapping(uint24 => mapping(uint24 => uint192))
-        public trackTotalActiveRollOvers;
 
     // TRACK INFO
 
@@ -114,9 +83,6 @@ contract IFAllocationMaster is
     // the number of checkpoints of a track -- (track) => checkpoint count
     mapping(uint24 => uint32) public trackCheckpointCounts;
 
-    // the set of participated addresses of a track -- (track) => participated addresses
-    mapping(uint24 => EnumerableSet.AddressSet) private whitelistAddresses;
-
     // track checkpoint mapping -- (track, checkpoint number) => TrackCheckpoint
     mapping(uint24 => mapping(uint32 => TrackCheckpoint))
         public trackCheckpoints;
@@ -137,12 +103,20 @@ contract IFAllocationMaster is
 
     event AddTrack(string indexed name, address indexed token);
     event DisableTrack(uint24 indexed trackId);
-    event ActiveRollOver(uint24 indexed trackId, address indexed user);
-    event BumpSaleCounter(uint24 indexed trackId, uint32 newCount);
     event AddUserCheckpoint(uint24 indexed trackId, uint80 timestamp);
     event AddTrackCheckpoint(uint24 indexed trackId, uint80 timestamp);
-    event Stake(uint24 indexed trackId, address indexed user, uint104 amount);
-    event Unstake(uint24 indexed trackId, address indexed user, uint104 amount);
+    event Stake(
+        uint24 indexed trackId,
+        address indexed user,
+        uint104 amount, // what the user actually staked
+        uint16 boost // basis points (1234 ~ 12.34%) ; if 0, there was no boost involved
+    );
+    event Unstake(
+        uint24 indexed trackId,
+        address indexed user,
+        uint104 amount, // what the user actually receives
+        uint16 boost // basis points (1234 ~ 12.34%) ; if 0, there was no boost involved
+    );
     event EmergencyWithdraw(
         uint24 indexed trackId,
         address indexed sender,
@@ -180,8 +154,6 @@ contract IFAllocationMaster is
         string calldata name,
         ERC20 stakeToken,
         uint24 _weightAccrualRate,
-        uint64 _passiveRolloverRate,
-        uint64 _activeRolloverRate,
         uint104 _maxTotalStake
     ) external onlyOwner {
         require(_weightAccrualRate != 0, 'accrual rate is 0');
@@ -192,8 +164,6 @@ contract IFAllocationMaster is
                 name: name, // name of track
                 stakeToken: stakeToken, // token to stake (e.g., IDIA)
                 weightAccrualRate: _weightAccrualRate, // rate of stake weight accrual
-                passiveRolloverRate: _passiveRolloverRate, // passive rollover
-                activeRolloverRate: _activeRolloverRate, // active rollover
                 maxTotalStake: _maxTotalStake // max total stake
             })
         );
@@ -202,30 +172,11 @@ contract IFAllocationMaster is
         addTrackCheckpoint(
             uint24(tracks.length - 1), // latest track
             0, // initialize with 0 stake
-            false, // add or sub does not matter
-            false // do not bump finished sale counter
+            false // add or sub does not matter
         );
 
         // emit
         emit AddTrack(name, address(stakeToken));
-    }
-
-    // bumps a track's finished sale counter
-    function bumpSaleCounter(uint24 trackId) external onlyOwner {
-        // get number of finished sales of this track
-        uint24 nFinishedSales = trackCheckpoints[trackId][
-            trackCheckpointCounts[trackId] - 1
-        ].numFinishedSales;
-
-        // update map that tracks timestamp numbers of finished sales
-        trackFinishedSaleTimestamps[trackId][nFinishedSales] = uint80(
-            block.timestamp
-        );
-
-        // add a new checkpoint with counter incremented by 1
-        addTrackCheckpoint(trackId, 0, false, true);
-
-        // `BumpSaleCounter` event emitted in function call above
     }
 
     // disables a track
@@ -235,35 +186,6 @@ contract IFAllocationMaster is
 
         // emit
         emit DisableTrack(trackId);
-    }
-
-    // perform active rollover
-    function activeRollOver(uint24 trackId) external {
-        // add new user checkpoint
-        addUserCheckpoint(trackId, 0, false);
-
-        // get new user checkpoint
-        UserCheckpoint memory userCp = userCheckpoints[trackId][_msgSender()][
-            userCheckpointCounts[trackId][_msgSender()] - 1
-        ];
-
-        // current sale count
-        uint24 saleCount = userCp.numFinishedSales;
-
-        // subtract old user rollover amount from total
-        trackTotalActiveRollOvers[trackId][saleCount] -= trackActiveRollOvers[
-            trackId
-        ][_msgSender()][saleCount];
-
-        // update user rollover amount
-        trackActiveRollOvers[trackId][_msgSender()][saleCount] = userCp
-            .stakeWeight;
-
-        // add new user rollover amount to total
-        trackTotalActiveRollOvers[trackId][saleCount] += userCp.stakeWeight;
-
-        // emit
-        emit ActiveRollOver(trackId, _msgSender());
     }
 
     // get closest PRECEDING user checkpoint
@@ -288,13 +210,7 @@ contract IFAllocationMaster is
 
             // If specified timestamp number is earlier than user's first checkpoint,
             // return null checkpoint
-            return
-                UserCheckpoint({
-                    timestamp: 0,
-                    staked: 0,
-                    stakeWeight: 0,
-                    numFinishedSales: 0
-                });
+            return UserCheckpoint({timestamp: 0, staked: 0, stakeWeight: 0});
         } else {
             // binary search on checkpoints
             uint32 lower = 0;
@@ -349,94 +265,21 @@ contract IFAllocationMaster is
         }
 
         // get closest preceding track checkpoint
-
         TrackCheckpoint memory closestTrackCp = getClosestTrackCheckpoint(
             trackId,
             timestamp
         );
 
-        // get number of finished sales between user's last checkpoint timestamp and provided timestamp
-        uint24 numFinishedSalesDelta = closestTrackCp.numFinishedSales -
-            closestUserCheckpoint.numFinishedSales;
-
         // get track info
         TrackInfo memory track = tracks[trackId];
 
-        // calculate stake weight given above delta
-        uint192 stakeWeight;
-        if (numFinishedSalesDelta == 0) {
-            // calculate normally without rollover decay
+        uint80 ellapsedTime = timestamp - closestUserCheckpoint.timestamp;
 
-            uint80 elapsedTimestamps = timestamp -
-                closestUserCheckpoint.timestamp;
+        uint192 gainedWeight = (uint192(ellapsedTime) *
+            track.weightAccrualRate *
+            closestUserCheckpoint.staked) / 10**18;
 
-            stakeWeight =
-                closestUserCheckpoint.stakeWeight +
-                (uint192(elapsedTimestamps) *
-                    track.weightAccrualRate *
-                    closestUserCheckpoint.staked) /
-                10**18;
-
-            return stakeWeight;
-        } else {
-            // calculate with rollover decay
-
-            // starting stakeweight
-            stakeWeight = closestUserCheckpoint.stakeWeight;
-            // current timestamp for iteration
-            uint80 currTimestamp = closestUserCheckpoint.timestamp;
-
-            // for each finished sale in between, get stake weight of that period
-            // and perform weighted sum
-            for (uint24 i = 0; i < numFinishedSalesDelta; i++) {
-                // get number of blocks passed at the current sale number
-                uint80 elapsedTimestamps = trackFinishedSaleTimestamps[trackId][
-                    closestUserCheckpoint.numFinishedSales + i
-                ] - currTimestamp;
-
-                // update stake weight
-                stakeWeight =
-                    stakeWeight +
-                    (uint192(elapsedTimestamps) *
-                        track.weightAccrualRate *
-                        closestUserCheckpoint.staked) /
-                    10**18;
-
-                // get amount of stake weight actively rolled over for this sale number
-                uint192 activeRolloverWeight = trackActiveRollOvers[trackId][
-                    user
-                ][closestUserCheckpoint.numFinishedSales + i];
-
-                // factor in passive and active rollover decay
-                stakeWeight =
-                    // decay active weight
-                    (activeRolloverWeight * track.activeRolloverRate) /
-                    ROLLOVER_FACTOR_DECIMALS +
-                    // decay passive weight
-                    ((stakeWeight - activeRolloverWeight) *
-                        track.passiveRolloverRate) /
-                    ROLLOVER_FACTOR_DECIMALS;
-
-                // update currTimestamp for next round
-                currTimestamp = trackFinishedSaleTimestamps[trackId][
-                    closestUserCheckpoint.numFinishedSales + i
-                ];
-            }
-
-            // add any remaining accrued stake weight at current finished sale count
-            uint80 remainingElapsed = timestamp -
-                trackFinishedSaleTimestamps[trackId][
-                    closestTrackCp.numFinishedSales - 1
-                ];
-            stakeWeight +=
-                (uint192(remainingElapsed) *
-                    track.weightAccrualRate *
-                    closestUserCheckpoint.staked) /
-                10**18;
-        }
-
-        // return
-        return stakeWeight;
+        return closestUserCheckpoint.stakeWeight + gainedWeight;
     }
 
     // get closest PRECEDING track checkpoint
@@ -464,8 +307,7 @@ contract IFAllocationMaster is
                 TrackCheckpoint({
                     timestamp: 0,
                     totalStaked: 0,
-                    totalStakeWeight: 0,
-                    numFinishedSales: 0
+                    totalStakeWeight: 0
                 });
         } else {
             // binary search on checkpoints
@@ -514,13 +356,13 @@ contract IFAllocationMaster is
         }
 
         // calculate blocks elapsed since checkpoint
-        uint80 additionalTimestamps = (timestamp - closestCheckpoint.timestamp);
+        uint80 ellapsedTime = (timestamp - closestCheckpoint.timestamp);
 
         // get track info
         TrackInfo storage trackInfo = tracks[trackId];
 
         // calculate marginal accrued stake weight
-        uint192 marginalAccruedStakeWeight = (uint192(additionalTimestamps) *
+        uint192 marginalAccruedStakeWeight = (uint192(ellapsedTime) *
             trackInfo.weightAccrualRate *
             closestCheckpoint.totalStaked) / 10**18;
 
@@ -528,6 +370,8 @@ contract IFAllocationMaster is
         return closestCheckpoint.totalStakeWeight + marginalAccruedStakeWeight;
     }
 
+    /// @param amount The boosted staked amount
+    /// @param boost The boost applied : basis points (1234 ~ 12.34%) ; if 0, there is no boost involved
     function addUserCheckpoint(
         uint24 trackId,
         uint104 amount,
@@ -562,8 +406,7 @@ contract IFAllocationMaster is
             userCheckpoints[trackId][_msgSender()][0] = UserCheckpoint({
                 timestamp: uint80(block.timestamp),
                 staked: amount,
-                stakeWeight: 0,
-                numFinishedSales: trackCp.numFinishedSales
+                stakeWeight: 0
             });
 
             // increment user's checkpoint count
@@ -594,7 +437,6 @@ contract IFAllocationMaster is
                 prev.staked = addElseSub
                     ? prev.staked + amount
                     : prev.staked - amount;
-                prev.numFinishedSales = trackCp.numFinishedSales;
             } else {
                 userCheckpoints[trackId][_msgSender()][
                     nCheckpointsUser
@@ -607,8 +449,7 @@ contract IFAllocationMaster is
                         trackId,
                         _msgSender(),
                         uint80(block.timestamp)
-                    ),
-                    numFinishedSales: trackCp.numFinishedSales
+                    )
                 });
 
                 // increment user's checkpoint count
@@ -622,11 +463,11 @@ contract IFAllocationMaster is
         emit AddUserCheckpoint(trackId, uint80(block.timestamp));
     }
 
+    /// @param amount delta on staked amount
     function addTrackCheckpoint(
         uint24 trackId, // track number
-        uint104 amount, // delta on staked amount
-        bool addElseSub, // true = adding; false = subtracting
-        bool _bumpSaleCounter // whether to increase sale counter by 1
+        uint104 amount,
+        bool addElseSub // true = adding; false = subtracting
     ) internal {
         // get track info
         TrackInfo storage track = tracks[trackId];
@@ -640,8 +481,7 @@ contract IFAllocationMaster is
             trackCheckpoints[trackId][0] = TrackCheckpoint({
                 timestamp: uint80(block.timestamp),
                 totalStaked: amount,
-                totalStakeWeight: 0,
-                numFinishedSales: _bumpSaleCounter ? 1 : 0
+                totalStakeWeight: 0
             });
 
             // increase new track's checkpoint count by 1
@@ -680,26 +520,6 @@ contract IFAllocationMaster is
             uint192 newStakeWeight = prev.totalStakeWeight +
                 marginalAccruedStakeWeight;
 
-            // factor in passive and active rollover decay
-            if (_bumpSaleCounter) {
-                // get total active rollover amount
-                uint192 activeRolloverWeight = trackTotalActiveRollOvers[
-                    trackId
-                ][prev.numFinishedSales];
-
-                newStakeWeight =
-                    // decay active weight
-                    (activeRolloverWeight * track.activeRolloverRate) /
-                    ROLLOVER_FACTOR_DECIMALS +
-                    // decay passive weight
-                    ((newStakeWeight - activeRolloverWeight) *
-                        track.passiveRolloverRate) /
-                    ROLLOVER_FACTOR_DECIMALS;
-
-                // emit
-                emit BumpSaleCounter(trackId, prev.numFinishedSales + 1);
-            }
-
             // add a new checkpoint for this track
             // if no timestamp elapsed, just update prev checkpoint (so checkpoints can be uniquely identified by timestamp number)
             if (additionalTimestamp == 0) {
@@ -713,9 +533,6 @@ contract IFAllocationMaster is
                             : newStakeWeight
                     )
                     : newStakeWeight;
-                prev.numFinishedSales = _bumpSaleCounter
-                    ? prev.numFinishedSales + 1
-                    : prev.numFinishedSales;
             } else {
                 trackCheckpoints[trackId][nCheckpoints] = TrackCheckpoint({
                     timestamp: uint80(block.timestamp),
@@ -728,10 +545,7 @@ contract IFAllocationMaster is
                                 ? prev.totalStakeWeight
                                 : newStakeWeight
                         )
-                        : newStakeWeight,
-                    numFinishedSales: _bumpSaleCounter
-                        ? prev.numFinishedSales + 1
-                        : prev.numFinishedSales
+                        : newStakeWeight
                 });
 
                 // increase new track's checkpoint count by 1
@@ -760,11 +574,14 @@ contract IFAllocationMaster is
         // transfer the specified amount of stake token from user to this contract
         track.stakeToken.safeTransferFrom(_msgSender(), address(this), amount);
 
+        // account for boost
+        (uint104 appliedAmount, uint16 boost) = _getBoosted(amount);
+
         // add user checkpoint
-        addUserCheckpoint(trackId, amount, true);
+        addUserCheckpoint(trackId, appliedAmount, true);
 
         // add track checkpoint
-        addTrackCheckpoint(trackId, amount, true, false);
+        addTrackCheckpoint(trackId, appliedAmount, true);
 
         // get latest track cp
         TrackCheckpoint memory trackCp = trackCheckpoints[trackId][
@@ -777,7 +594,7 @@ contract IFAllocationMaster is
         }
 
         // emit
-        emit Stake(trackId, _msgSender(), amount);
+        emit Stake(trackId, _msgSender(), amount, boost);
     }
 
     // unstake
@@ -798,20 +615,23 @@ contract IFAllocationMaster is
             _msgSender()
         ][userCheckpointCount - 1];
 
+        // account for boost
+        (uint104 appliedAmount, uint16 boost) = _getBoosted(amount);
+
         // ensure amount <= user's current stake
-        require(amount <= checkpoint.staked, 'amount > staked');
+        require(appliedAmount <= checkpoint.staked, 'amount > staked');
 
         // add user checkpoint
-        addUserCheckpoint(trackId, amount, false);
+        addUserCheckpoint(trackId, appliedAmount, false);
 
         // add track checkpoint
-        addTrackCheckpoint(trackId, amount, false, false);
+        addTrackCheckpoint(trackId, appliedAmount, false);
 
         // transfer the specified amount of stake token from this contract to user
         track.stakeToken.safeTransfer(_msgSender(), amount);
 
         // emit
-        emit Unstake(trackId, _msgSender(), amount);
+        emit Unstake(trackId, _msgSender(), amount, boost);
     }
 
     // emergency withdraw
@@ -845,13 +665,20 @@ contract IFAllocationMaster is
         // add user checkpoint
         addUserCheckpoint(trackId, checkpoint.staked, false);
         // add track checkpoint
-        addTrackCheckpoint(trackId, checkpoint.staked, false, false);
+        addTrackCheckpoint(trackId, checkpoint.staked, false);
 
         // transfer the specified amount of stake token from this contract to user
         track.stakeToken.safeTransfer(_msgSender(), checkpoint.staked);
 
         // emit
         emit EmergencyWithdraw(trackId, _msgSender(), checkpoint.staked);
+    }
+
+    function _getBoosted(uint104 amount)
+        returns (uint104 boostedAmount, uint16 boost)
+    {
+        boost = 0; // TODO ... get value for this user & track from BoosterContract
+        boostedAmount = (amount * (10000 + boost)) / 10000;
     }
 
     // Methods for bridging track weight information
@@ -898,13 +725,7 @@ contract IFAllocationMaster is
             msg.value
         );
 
-        emit SyncUserWeight(
-            receiver,
-            trackId,
-            timestamp,
-            dstChainId,
-            trackId
-        );
+        emit SyncUserWeight(receiver, trackId, timestamp, dstChainId, trackId);
     }
 
     function syncTotalWeight(
