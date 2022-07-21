@@ -114,9 +114,6 @@ contract IFAllocationMaster is
     // the number of checkpoints of a track -- (track) => checkpoint count
     mapping(uint24 => uint32) public trackCheckpointCounts;
 
-    // the set of participated addresses of a track -- (track) => participated addresses
-    mapping(uint24 => EnumerableSet.AddressSet) private whitelistAddresses;
-
     // track checkpoint mapping -- (track, checkpoint number) => TrackCheckpoint
     mapping(uint24 => mapping(uint32 => TrackCheckpoint))
         public trackCheckpoints;
@@ -898,13 +895,7 @@ contract IFAllocationMaster is
             msg.value
         );
 
-        emit SyncUserWeight(
-            receiver,
-            trackId,
-            timestamp,
-            dstChainId,
-            trackId
-        );
+        emit SyncUserWeight(receiver, trackId, timestamp, dstChainId, trackId);
     }
 
     function syncTotalWeight(

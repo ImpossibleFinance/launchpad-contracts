@@ -5,6 +5,8 @@ import {
   getBlockTime,
   getGasUsed,
   mineNext,
+  minePause,
+  mineStart,
   mineTimeDelta,
   setAutomine,
 } from './helpers'
@@ -16,7 +18,20 @@ import {
   getAddressIndex,
 } from '../library/merkleWhitelist'
 import { BigNumber } from 'ethers'
-import { ALREADY_CASHED, NO_TOKEN_TO_BE_WITHDRAWN, CANNOT_WITHDRAW_YET, EXCEED_MAX_PAYMENT, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_WHITELIST_SETTER_OR_OWNER, NOT_A_GIVEAWAY, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, PROOF_INVALID, SALE_IS_STARTED } from './reverts/msg-IFAllocationSale'
+import {
+  ALREADY_CASHED,
+  NO_TOKEN_TO_BE_WITHDRAWN,
+  CANNOT_WITHDRAW_YET,
+  EXCEED_MAX_PAYMENT,
+  NOT_CASHER_OR_OWNER,
+  NOT_OWNER,
+  NOT_WHITELIST_SETTER_OR_OWNER,
+  NOT_A_GIVEAWAY,
+  NOT_FUNDER,
+  USE_WITHDRAWGIVEAWAY,
+  PROOF_INVALID,
+  SALE_IS_STARTED,
+} from './reverts/msg-IFAllocationSale'
 
 export default describe('IF Allocation Sale', function () {
   // unset timeout from the test
@@ -205,7 +220,11 @@ export default describe('IF Allocation Sale', function () {
     await IFAllocationSale.connect(buyer).purchase(paymentAmount)
 
     // Failover mechanism: Call emergencyTokenRetrieve while token is sale or payment token
-    await expect(IFAllocationSale.connect(owner).emergencyTokenRetrieve(PaymentToken.address)).to.be.reverted
+    await expect(
+      IFAllocationSale.connect(owner).emergencyTokenRetrieve(
+        PaymentToken.address
+      )
+    ).to.be.reverted
 
     mineNext()
     // gas used in purchase
@@ -227,7 +246,9 @@ export default describe('IF Allocation Sale', function () {
 
     // test repeated withdraw (should fail)
     mineNext()
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(NO_TOKEN_TO_BE_WITHDRAWN)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(
+      NO_TOKEN_TO_BE_WITHDRAWN
+    )
     mineNext()
 
     // expect balance to remain the same
@@ -236,9 +257,15 @@ export default describe('IF Allocation Sale', function () {
     // test cash
     await IFAllocationSale.connect(casher).cash()
     // access control: only casher can cash
-    await expect(IFAllocationSale.connect(buyer).cash()).to.be.revertedWith(NOT_CASHER_OR_OWNER)
-    await expect(IFAllocationSale.connect(seller).cash()).to.be.revertedWith(NOT_CASHER_OR_OWNER)
-    await expect(IFAllocationSale.connect(owner).cash()).to.be.revertedWith(ALREADY_CASHED)
+    await expect(IFAllocationSale.connect(buyer).cash()).to.be.revertedWith(
+      NOT_CASHER_OR_OWNER
+    )
+    await expect(IFAllocationSale.connect(seller).cash()).to.be.revertedWith(
+      NOT_CASHER_OR_OWNER
+    )
+    await expect(IFAllocationSale.connect(owner).cash()).to.be.revertedWith(
+      ALREADY_CASHED
+    )
     mineNext()
 
     // expect balance to increase by cash amount
@@ -251,9 +278,21 @@ export default describe('IF Allocation Sale', function () {
     expect(await IFAllocationSale.withdrawerCount()).to.equal(1)
 
     // Failover mechanism: Call emergencyTokenRetrieve while token is sale or payment token
-    await expect(IFAllocationSale.connect(casher).emergencyTokenRetrieve(PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
-    await expect(IFAllocationSale.connect(seller).emergencyTokenRetrieve(PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
-    await expect(IFAllocationSale.connect(buyer).emergencyTokenRetrieve(PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
+    await expect(
+      IFAllocationSale.connect(casher).emergencyTokenRetrieve(
+        PaymentToken.address
+      )
+    ).to.be.revertedWith(NOT_OWNER)
+    await expect(
+      IFAllocationSale.connect(seller).emergencyTokenRetrieve(
+        PaymentToken.address
+      )
+    ).to.be.revertedWith(NOT_OWNER)
+    await expect(
+      IFAllocationSale.connect(buyer).emergencyTokenRetrieve(
+        PaymentToken.address
+      )
+    ).to.be.revertedWith(NOT_OWNER)
     IFAllocationSale.connect(owner).emergencyTokenRetrieve(PaymentToken.address)
   })
 
@@ -273,8 +312,12 @@ export default describe('IF Allocation Sale', function () {
     // access control: only owner or whitelistSetter can set white list
     await IFAllocationSale.setWhitelistSetter(seller.address)
     await IFAllocationSale.connect(seller).setWhitelist(merkleRoot)
-    await expect(IFAllocationSale.connect(buyer).setWhitelist(merkleRoot)).to.be.revertedWith(NOT_WHITELIST_SETTER_OR_OWNER)
-    await expect(IFAllocationSale.connect(casher).setWhitelist(merkleRoot)).to.be.revertedWith(NOT_WHITELIST_SETTER_OR_OWNER)
+    await expect(
+      IFAllocationSale.connect(buyer).setWhitelist(merkleRoot)
+    ).to.be.revertedWith(NOT_WHITELIST_SETTER_OR_OWNER)
+    await expect(
+      IFAllocationSale.connect(casher).setWhitelist(merkleRoot)
+    ).to.be.revertedWith(NOT_WHITELIST_SETTER_OR_OWNER)
     mineNext()
 
     // test checking all whitelist accounts
@@ -352,7 +395,9 @@ export default describe('IF Allocation Sale', function () {
       IFAllocationSale.address,
       paymentAmount
     )
-    await expect(IFAllocationSale.connect(buyer).purchase(paymentAmount)).to.be.revertedWith(EXCEED_MAX_PAYMENT)
+    await expect(
+      IFAllocationSale.connect(buyer).purchase(paymentAmount)
+    ).to.be.revertedWith(EXCEED_MAX_PAYMENT)
 
     mineNext()
 
@@ -361,7 +406,9 @@ export default describe('IF Allocation Sale', function () {
 
     // test withdraw
     mineNext()
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(NO_TOKEN_TO_BE_WITHDRAWN)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(
+      NO_TOKEN_TO_BE_WITHDRAWN
+    )
     mineNext()
 
     // expect balance to be 0
@@ -404,12 +451,16 @@ export default describe('IF Allocation Sale', function () {
     // test withdraw
     mineNext()
     // access control: Withdraw giveaway when sale price is not 0
-    await expect(IFAllocationSale.connect(buyer).withdrawGiveaway([])).to.be.revertedWith(NOT_A_GIVEAWAY)
+    await expect(
+      IFAllocationSale.connect(buyer).withdrawGiveaway([])
+    ).to.be.revertedWith(NOT_A_GIVEAWAY)
     await IFAllocationSale.connect(buyer).withdraw()
     mineNext()
     await IFAllocationSale.connect(buyer2).withdraw()
     // access control: Withdraw giveaway when sale price is not 0
-    await expect(IFAllocationSale.connect(buyer).withdrawGiveaway([])).to.be.revertedWith(NOT_A_GIVEAWAY)
+    await expect(
+      IFAllocationSale.connect(buyer).withdrawGiveaway([])
+    ).to.be.revertedWith(NOT_A_GIVEAWAY)
     mineNext()
 
     // expect balance to be 5000 for both buyers
@@ -455,8 +506,12 @@ export default describe('IF Allocation Sale', function () {
     ) // approve
     await IFAllocationSale.connect(seller).fund(fundAmount) // fund
     // access control: Address other than funder calls fund
-    await expect(IFAllocationSale.connect(casher).fund(fundAmount)).to.be.revertedWith(NOT_FUNDER) // fund
-    await expect(IFAllocationSale.connect(buyer).fund(fundAmount)).to.be.revertedWith(NOT_FUNDER) // fund
+    await expect(
+      IFAllocationSale.connect(casher).fund(fundAmount)
+    ).to.be.revertedWith(NOT_FUNDER) // fund
+    await expect(
+      IFAllocationSale.connect(buyer).fund(fundAmount)
+    ).to.be.revertedWith(NOT_FUNDER) // fund
 
     // set sale token allocation override (flat amount every participant receives)
     await IFAllocationSale.setSaleTokenAllocationOverride(5000)
@@ -473,9 +528,13 @@ export default describe('IF Allocation Sale', function () {
     // test normal withdraw (should not go through, must go through withdrawGiveaway)
     // access control: Withdraw when sale price is 0
     mineNext()
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(USE_WITHDRAWGIVEAWAY)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(
+      USE_WITHDRAWGIVEAWAY
+    )
     mineNext()
-    await expect(IFAllocationSale.connect(buyer2).withdraw()).to.be.revertedWith(USE_WITHDRAWGIVEAWAY)
+    await expect(
+      IFAllocationSale.connect(buyer2).withdraw()
+    ).to.be.revertedWith(USE_WITHDRAWGIVEAWAY)
     mineNext()
 
     // expect balance to be 0 for both participants
@@ -559,9 +618,13 @@ export default describe('IF Allocation Sale', function () {
 
     // test withdrawGiveaway without proof (should not go through)
     mineNext()
-    await expect(IFAllocationSale.connect(buyer).withdrawGiveaway([])).to.be.revertedWith(PROOF_INVALID)
+    await expect(
+      IFAllocationSale.connect(buyer).withdrawGiveaway([])
+    ).to.be.revertedWith(PROOF_INVALID)
     mineNext()
-    await expect(IFAllocationSale.connect(buyer2).withdrawGiveaway([])).to.be.revertedWith(PROOF_INVALID)
+    await expect(
+      IFAllocationSale.connect(buyer2).withdrawGiveaway([])
+    ).to.be.revertedWith(PROOF_INVALID)
     mineNext()
 
     // expect balance to be 0 for both participants
@@ -632,9 +695,13 @@ export default describe('IF Allocation Sale', function () {
 
     // test normal withdraw (should not go through, must go through withdrawGiveaway)
     mineNext()
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(USE_WITHDRAWGIVEAWAY)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(
+      USE_WITHDRAWGIVEAWAY
+    )
     mineNext()
-    await expect(IFAllocationSale.connect(buyer2).withdraw()).to.be.revertedWith(USE_WITHDRAWGIVEAWAY)
+    await expect(
+      IFAllocationSale.connect(buyer2).withdraw()
+    ).to.be.revertedWith(USE_WITHDRAWGIVEAWAY)
     mineNext()
 
     // expect balance to be 0 for both participants
@@ -694,7 +761,9 @@ export default describe('IF Allocation Sale', function () {
     mineTimeDelta(endTime - (await getBlockTime()))
 
     // test withdraw and cash (should fail because need 1 more block)
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(
+      CANNOT_WITHDRAW_YET
+    )
     // access control: Call cash before endTime + withdrawDelay
     await expect(IFAllocationSale.connect(casher).cash())
 
@@ -712,7 +781,9 @@ export default describe('IF Allocation Sale', function () {
     await IFAllocationSale.connect(buyer).withdraw()
     await IFAllocationSale.connect(casher).cash()
     // access control: Call cash after endTime + withdrawDelay twice
-    await expect(IFAllocationSale.connect(casher).cash()).to.be.revertedWith(ALREADY_CASHED)
+    await expect(IFAllocationSale.connect(casher).cash()).to.be.revertedWith(
+      ALREADY_CASHED
+    )
 
     mineNext()
 
@@ -755,7 +826,9 @@ export default describe('IF Allocation Sale', function () {
     mineNext()
 
     // cash again (expect to revert)
-    await expect(IFAllocationSale.connect(casher).cash()).to.be.revertedWith(ALREADY_CASHED)
+    await expect(IFAllocationSale.connect(casher).cash()).to.be.revertedWith(
+      ALREADY_CASHED
+    )
     mineNext()
 
     // withdraw
@@ -825,23 +898,29 @@ export default describe('IF Allocation Sale', function () {
     mineNext()
     await PaymentToken.connect(buyer).approve(
       IFAllocationSale.address,
-      ethers.constants.MaxUint256,
+      ethers.constants.MaxUint256
     )
     await PaymentToken.connect(buyer2).approve(
       IFAllocationSale.address,
-      paymentAmount * 2,
+      paymentAmount * 2
     )
     await IFAllocationSale.connect(buyer).purchase(paymentAmount / 2)
     await IFAllocationSale.connect(buyer).purchase(paymentAmount / 2)
     await IFAllocationSale.connect(buyer2).purchase(paymentAmount * 2)
-    const maxPayment: BigNumber = await IFAllocationSale.getMaxPayment(buyer.address)
+    const maxPayment: BigNumber = await IFAllocationSale.getMaxPayment(
+      buyer.address
+    )
     // linear vesting: User has a purchase cap of x. He tried to buy x +1.
-    await expect(IFAllocationSale.connect(buyer).purchase(maxPayment.add(1))).to.be.revertedWith(EXCEED_MAX_PAYMENT)
+    await expect(
+      IFAllocationSale.connect(buyer).purchase(maxPayment.add(1))
+    ).to.be.revertedWith(EXCEED_MAX_PAYMENT)
 
     mineNext()
 
     // linear vesting: User makes a purchase and claim before vesting starts
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(
+      CANNOT_WITHDRAW_YET
+    )
     expect(await SaleToken.balanceOf(buyer.address)).to.equal('0')
 
     // fast forward from current time to after end time
@@ -858,7 +937,7 @@ export default describe('IF Allocation Sale', function () {
     await IFAllocationSale.connect(buyer).withdraw()
     expect(await SaleToken.balanceOf(buyer.address)).to.equal('11113')
 
-    mineTimeDelta((vestingEndTime - endTime) / 3 * 2)
+    mineTimeDelta(((vestingEndTime - endTime) / 3) * 2)
     await IFAllocationSale.connect(buyer).withdraw()
     expect(await SaleToken.balanceOf(buyer.address)).to.equal('33333')
 
@@ -906,8 +985,12 @@ export default describe('IF Allocation Sale', function () {
     mineTimeDelta(endTime - (await getBlockTime()))
 
     // set withdrawal delay
-    await expect(IFAllocationSale.connect(owner).setWithdrawDelay(withdrawDelay)).to.be.revertedWith(SALE_IS_STARTED)
-    await expect(IFAllocationSale.connect(buyer).withdrawGiveaway([])).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(
+      IFAllocationSale.connect(owner).setWithdrawDelay(withdrawDelay)
+    ).to.be.revertedWith(SALE_IS_STARTED)
+    await expect(
+      IFAllocationSale.connect(buyer).withdrawGiveaway([])
+    ).to.be.revertedWith(CANNOT_WITHDRAW_YET)
 
     mineTimeDelta(endTime + withdrawDelay - (await getBlockTime()))
     await IFAllocationSale.connect(buyer).withdrawGiveaway([])
@@ -928,7 +1011,7 @@ export default describe('IF Allocation Sale', function () {
       endTime + withdrawDelay + 1,
       endTime + withdrawDelay + cliffInterval * 1,
       endTime + withdrawDelay + cliffInterval * 2,
-      endTime + withdrawDelay + cliffInterval * 3
+      endTime + withdrawDelay + cliffInterval * 3,
     ]
     const cliffPct = [10, 20, 30, 40]
     await IFAllocationSale.connect(owner).setWithdrawDelay(withdrawDelay)
@@ -944,7 +1027,9 @@ export default describe('IF Allocation Sale', function () {
     )
     await IFAllocationSale.connect(buyer).purchase(paymentAmount)
     // cliff vesting: User makes a purchase and claim before cliff vesting starts
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(
+      CANNOT_WITHDRAW_YET
+    )
 
     mineTimeDelta(endTime + withdrawDelay - (await getBlockTime()) + 1)
 
@@ -954,14 +1039,17 @@ export default describe('IF Allocation Sale', function () {
 
     // just before the second cliff time
     mineNext()
-    mineTimeDelta((endTime + withdrawDelay + cliffInterval * 1) - (await getBlockTime()) - 2)
+    mineTimeDelta(
+      endTime + withdrawDelay + cliffInterval * 1 - (await getBlockTime()) - 2
+    )
     // cliff vesting: User makes a purchase. Time pasts cliff 1. He makes claims.
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(NO_TOKEN_TO_BE_WITHDRAWN)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(
+      NO_TOKEN_TO_BE_WITHDRAWN
+    )
 
     mineNext()
     await IFAllocationSale.connect(buyer).withdraw()
     expect(await SaleToken.balanceOf(buyer.address)).to.equal('9999')
-
 
     mineTimeDelta(cliffPeriod[3] - (await getBlockTime()))
     await IFAllocationSale.connect(buyer).withdraw()
@@ -973,22 +1061,40 @@ export default describe('IF Allocation Sale', function () {
     const cliffInterval = Math.floor(vestingEndTime / 3)
 
     for (const user of notOwner) {
-      await expect(IFAllocationSale.connect(user).setMinTotalPayment(0)).to.be.revertedWith(NOT_OWNER)
-      await expect(IFAllocationSale.connect(user).setSaleTokenAllocationOverride(0)).to.be.revertedWith(NOT_OWNER)
-      await expect(IFAllocationSale.connect(user).setCasher(owner.address)).to.be.revertedWith(NOT_OWNER)
-      await expect(IFAllocationSale.connect(user).setWhitelistSetter(owner.address)).to.be.revertedWith(NOT_OWNER)
-      await expect(IFAllocationSale.connect(user).setWithdrawDelay(3600)).to.be.revertedWith(NOT_OWNER)
-      await expect(IFAllocationSale.connect(user).setVestingEndTime(vestingEndTime)).to.be.revertedWith(NOT_OWNER)
-      await expect(IFAllocationSale.connect(user).setCliffPeriod(
-        [
-          endTime + withdrawDelay + 1,
-          endTime + withdrawDelay + cliffInterval * 1,
-          endTime + withdrawDelay + cliffInterval * 2,
-          endTime + withdrawDelay + cliffInterval * 3
-        ],
-        [10, 20, 30, 40]
-      )).to.be.revertedWith(NOT_OWNER)
-      await expect(IFAllocationSale.connect(user).emergencyTokenRetrieve(PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
+      await expect(
+        IFAllocationSale.connect(user).setMinTotalPayment(0)
+      ).to.be.revertedWith(NOT_OWNER)
+      await expect(
+        IFAllocationSale.connect(user).setSaleTokenAllocationOverride(0)
+      ).to.be.revertedWith(NOT_OWNER)
+      await expect(
+        IFAllocationSale.connect(user).setCasher(owner.address)
+      ).to.be.revertedWith(NOT_OWNER)
+      await expect(
+        IFAllocationSale.connect(user).setWhitelistSetter(owner.address)
+      ).to.be.revertedWith(NOT_OWNER)
+      await expect(
+        IFAllocationSale.connect(user).setWithdrawDelay(3600)
+      ).to.be.revertedWith(NOT_OWNER)
+      await expect(
+        IFAllocationSale.connect(user).setVestingEndTime(vestingEndTime)
+      ).to.be.revertedWith(NOT_OWNER)
+      await expect(
+        IFAllocationSale.connect(user).setCliffPeriod(
+          [
+            endTime + withdrawDelay + 1,
+            endTime + withdrawDelay + cliffInterval * 1,
+            endTime + withdrawDelay + cliffInterval * 2,
+            endTime + withdrawDelay + cliffInterval * 3,
+          ],
+          [10, 20, 30, 40]
+        )
+      ).to.be.revertedWith(NOT_OWNER)
+      await expect(
+        IFAllocationSale.connect(user).emergencyTokenRetrieve(
+          PaymentToken.address
+        )
+      ).to.be.revertedWith(NOT_OWNER)
     }
   })
 })
