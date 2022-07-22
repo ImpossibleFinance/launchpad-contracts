@@ -264,12 +264,6 @@ contract IFAllocationMaster is
             return 0;
         }
 
-        // get closest preceding track checkpoint
-        TrackCheckpoint memory closestTrackCp = getClosestTrackCheckpoint(
-            trackId,
-            timestamp
-        );
-
         // get track info
         TrackInfo memory track = tracks[trackId];
 
@@ -371,7 +365,6 @@ contract IFAllocationMaster is
     }
 
     /// @param amount The boosted staked amount
-    /// @param boost The boost applied : basis points (1234 ~ 12.34%) ; if 0, there is no boost involved
     function addUserCheckpoint(
         uint24 trackId,
         uint104 amount,
@@ -382,14 +375,6 @@ contract IFAllocationMaster is
 
         // get user checkpoint count
         uint32 nCheckpointsUser = userCheckpointCounts[trackId][_msgSender()];
-
-        // get track checkpoint count
-        uint32 nCheckpointsTrack = trackCheckpointCounts[trackId];
-
-        // get latest track checkpoint
-        TrackCheckpoint memory trackCp = trackCheckpoints[trackId][
-            nCheckpointsTrack - 1
-        ];
 
         // if this is first checkpoint
         if (nCheckpointsUser == 0) {
@@ -675,6 +660,7 @@ contract IFAllocationMaster is
     }
 
     function _getBoosted(uint104 amount)
+        internal
         returns (uint104 boostedAmount, uint16 boost)
     {
         boost = 0; // TODO ... get value for this user & track from BoosterContract
