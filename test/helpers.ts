@@ -20,6 +20,7 @@ export const minePause = async () => {
 
 export const mineStart = async () => {
   await network.provider.send('evm_setAutomine', [true])
+}
 
 export const setAutomine = async (automine: boolean): Promise<void> => {
   await network.provider.send('evm_setAutomine', [automine])

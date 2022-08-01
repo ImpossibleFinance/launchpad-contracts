@@ -1,5 +1,8 @@
 node_modules
 
+#Foundry files
+out
+
 #Hardhat files
 cache
 artifacts
