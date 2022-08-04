@@ -890,7 +890,6 @@ contract IFAllocationMaster is
         // calculate messageBus fee
         MessageBusSender messageBusSender = MessageBusSender(messageBus);
         uint256 fee = messageBusSender.calcFee(message);
-        require(msg.value >= fee, "Not enought fee");
 
         // trigger the message bridge
         MessageSenderLib.sendMessage(
@@ -944,7 +943,6 @@ contract IFAllocationMaster is
         // calculate messageBus fee
         MessageBusSender messageBusSender = MessageBusSender(messageBus);
         uint256 fee = messageBusSender.calcFee(message);
-        require(msg.value >= fee, "Not enought fee");
 
         // trigger the message bridge
         MessageSenderLib.sendMessage(
