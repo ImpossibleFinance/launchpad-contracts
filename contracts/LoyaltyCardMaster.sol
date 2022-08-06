@@ -220,7 +220,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         and originalOwnerToTokenId() returns the IF user which the card effectively belongs to
      */
     function isStaked(uint256 tokenId) external view returns (bool) {
-        return isDestination(ownerOf(tokenId));
+        return whitelistedDestination[ownerOf(tokenId)];
     }
 
     /**
