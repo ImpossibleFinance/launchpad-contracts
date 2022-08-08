@@ -902,7 +902,9 @@ contract IFAllocationMaster is
         );
 
         // Refund mesasgeBus fee
-        payable(_msgSender()).transfer(msg.value - fee);
+        if ((msg.value - fee) != 0) {
+            payable(_msgSender()).transfer(msg.value - fee);
+        }
 
 
         emit SyncUserWeight(
@@ -956,7 +958,9 @@ contract IFAllocationMaster is
         );
 
         // Refund mesasgeBus fee
-        payable(_msgSender()).transfer(msg.value - fee);
+        if ((msg.value - fee) != 0) {
+            payable(_msgSender()).transfer(msg.value - fee);
+        }
 
         emit SyncTotalWeight(receiver, trackId, timestamp, dstChainId, trackId);
     }
