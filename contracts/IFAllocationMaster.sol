@@ -888,8 +888,7 @@ contract IFAllocationMaster is
         );
 
         // calculate messageBus fee
-        MessageBusSender messageBusSender = MessageBusSender(messageBus);
-        uint256 fee = messageBusSender.calcFee(message);
+        uint256 fee = _calcFee(message);
         require(msg.value >= fee, "Not enough fee");
 
         // trigger the message bridge
@@ -944,8 +943,7 @@ contract IFAllocationMaster is
         );
 
         // calculate messageBus fee
-        MessageBusSender messageBusSender = MessageBusSender(messageBus);
-        uint256 fee = messageBusSender.calcFee(message);
+        uint256 fee = _calcFee(message);
         require(msg.value >= fee, "Not enough fee");
 
         // trigger the message bridge
@@ -964,4 +962,10 @@ contract IFAllocationMaster is
 
         emit SyncTotalWeight(receiver, trackId, timestamp, dstChainId, trackId);
     }
+
+    function _calcFee(bytes memory message) internal view returns (uint256) {
+        MessageBusSender messageBusSender = MessageBusSender(messageBus);
+        return messageBusSender.calcFee(message);
+    }
+
 }
