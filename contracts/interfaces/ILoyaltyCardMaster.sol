@@ -14,6 +14,7 @@ interface ILoyaltyCardMaster {
     function setBurner(address _burner) external;
 
     function burn(uint256 tokenId) external;
+
     function originalOwnerToTokenId(address owner)
         external
         view
