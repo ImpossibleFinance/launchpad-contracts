@@ -28,7 +28,9 @@ contract LoyaltyCardMaster is ERC721, Ownable {
 
     /// @dev ! --- We don't use tokenId 0 --- !
 
-    /// @dev owner account => single owned tokenId. If 0, no token is owned
+    /// Map IF user account to their loyalty card NFT tokenId
+    /// @dev owner account => single owned tokenId. 
+    /// @dev If value == 0, this user owns no loyalty card
     mapping(address => uint256) originalOwnerToTokenId;
 
     event SetMinter(address minter);
@@ -215,7 +217,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         onlyOperator 
         onlyCardOwner(account) 
     {
-        _addPointsCard(originalOwnerToTokenId[account]);
+        _addPointsCard(originalOwnerToTokenId[account], points);
     }
 
     /**
@@ -228,7 +230,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         onlyOperator
         onlyCardOwner(account)
     {
-        _redeemPointsCard(originalOwnerToTokenId[account]);
+        _redeemPointsCard(originalOwnerToTokenId[account], points);
     }
 
     // --------------------- POINTS ----------------------- // 
@@ -303,7 +305,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         and originalOwnerToTokenId() returns the IF user which the card effectively belongs to
      */
     function isStaked(uint256 tokenId) external view returns (bool) {
-        return isDestination(ownerOf(tokenId));
+        return whitelistedDestination[ownerOf(tokenId)];
     }
 
     /**

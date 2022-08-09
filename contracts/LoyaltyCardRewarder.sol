@@ -30,6 +30,6 @@ contract LoyaltyCardRewarder is Ownable {
       @dev Can be part of a regular task (daily updates from KNN3) or an isolated call (user has completed a L&E quiz)
      */
     function rewardAccount(address account, LoyaltyRewardsLookup.Credential cred) external onlyOwner {
-        loyaltyCardMaster.addPointsAccount(account, LoyaltyRewardsLookup.pointsForCredential(cred));
+        loyaltyCardMaster.addPointsAccount(account, rewardsLookup.pointsForCredential(cred));
     }
 }
