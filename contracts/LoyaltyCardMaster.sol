@@ -42,11 +42,16 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         if (!_exists(tokenId)) revert TokenDoesntExist();
         _;
     }
+    modifier onlyCardOwner(address account) {
+        if (originalOwnerToTokenId[account] == 0) revert NoCardForUser();
+        _;
+    }
 
     error NotAllowedToMint();
     error NotAllowedToBurn();
     error TokenDoesntExist();
     error AlreadyOwnsCard();
+    error NoCardForUser();
 
     // --- POINTS
 
@@ -135,31 +140,22 @@ contract LoyaltyCardMaster is ERC721, Ownable {
     }
 
     // ======================= POINTS ====================== //
+    //                   (tokenID-centric)                   //
 
     /**
       @notice Retrieve total number of points this card has accumulated historically
       @param tokenId The tokenId of the card
      */
-    function totalPoints(uint256 tokenId)
-        external
-        view
-        onlyExistingToken(tokenId)
-        returns (uint256)
-    {
-        return tokenIdToTotalPoints[tokenId];
+    function totalPointsCard(uint256 tokenId) external view returns (uint256) {
+        return _totalPointsCard(tokenId);
     }
 
     /**
       @notice Retrieve current number of points this card has
       @param tokenId The tokenId of the card
      */
-    function currentPoints(uint256 tokenId)
-        external
-        view
-        onlyExistingToken(tokenId)
-        returns (uint256)
-    {
-        return tokenIdToCurrentPoints[tokenId];
+    function currentPointsCard(uint256 tokenId) external view returns (uint256) {
+        return _currentPointsCard(tokenId);
     }
 
     /**
@@ -167,10 +163,8 @@ contract LoyaltyCardMaster is ERC721, Ownable {
       @param tokenId The loyalty card to add points to
       @param points Number of points to add
      */
-    function addPoints(uint256 tokenId, uint256 points) external onlyOperator {
-        tokenIdToTotalPoints[tokenId] += points;
-        tokenIdToCurrentPoints[tokenId] += points;
-        emit AddedPoints(tokenId, points, msg.sender);
+    function addPointsCard(uint256 tokenId, uint256 points) external {
+        _addPointsCard(tokenId, points);
     }
 
     /**
@@ -178,8 +172,97 @@ contract LoyaltyCardMaster is ERC721, Ownable {
       @param tokenId The loyalty card to redeem points from
       @param points Number of points to redeem
      */
-    function redeemPoints(uint256 tokenId, uint256 points)
+    function redeemPointsCard(uint256 tokenId, uint256 points) external {
+        _redeemPointsCard(tokenId, points);
+    }
+
+    // ======================= POINTS ====================== //
+    //                   (account-centric)                   //
+
+    /**
+      @notice Retrieve total number of points a user has accumulated historically on their current loyalty card
+      @param account The IF user account
+     */
+    function totalPointsAccount(address account)
         external
+        view
+        onlyCardOwner(account)
+        returns (uint256)
+    {
+        return _totalPointsCard(originalOwnerToTokenId[account]);
+    }
+
+    /**
+      @notice Retrieve current number of points a user has on their loyalty card
+      @param account The IF user account
+     */
+    function currentPointsAccount(uint256 tokenId)
+        external
+        view
+        onlyCardOwner(account)
+        returns (uint256)
+    {
+        return _currentPointsAccount(originalOwnerToTokenId[account]);
+    }
+
+     /**
+      @notice Add loyalty points to a given IF user account
+      @param account The IF user account
+      @param points Number of points to add
+     */
+    function addPointsAccount(address account, uint256 points)
+        external 
+        onlyOperator 
+        onlyCardOwner(account) 
+    {
+        _addPointsAccount(originalOwnerToTokenId[account]);
+    }
+
+    /**
+      @notice Redeem loyalty points from an IF user account
+      @param account The IF user account
+      @param points Number of points to redeem
+     */
+    function redeemPointsAccount(address account, uint256 points)
+        external
+        onlyOperator
+        onlyCardOwner(account)
+    {
+        _redeemPointsAccount(originalOwnerToTokenId[account]);
+    }
+
+    // --------------------- POINTS ----------------------- // 
+    //                     (internal)                       //
+
+    function _totalPointsCard(uint256 tokenId)
+        internal
+        view
+        onlyExistingToken(tokenId)
+        returns (uint256)
+    {
+        return tokenIdToTotalPoints[tokenId];
+    }
+
+    function _currentPointsCard(uint256 tokenId)
+        internal
+        view
+        onlyExistingToken(tokenId)
+        returns (uint256)
+    {
+        return tokenIdToCurrentPoints[tokenId];
+    }
+
+    function _addPointsCard(uint256 tokenId, uint256 points)
+        internal 
+        onlyOperator 
+    {
+        tokenIdToTotalPoints[tokenId] += points;
+        tokenIdToCurrentPoints[tokenId] += points;
+        emit AddedPoints(tokenId, points, msg.sender);
+    }
+
+    function _redeemPointsCard(uint256 tokenId, uint256 points)
+        internal
         onlyOperator
     {
         if (points > tokenIdToCurrentPoints[tokenId])

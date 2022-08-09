@@ -23,13 +23,14 @@ contract LoyaltyCardRewarder is Ownable {
     }
 
     /**
-      @notice Add to a specific loyalty card NFT the appropriate amount of reward points for a specific credential
-      @param tokenId The loyalty card NFT tokenId
+      @notice Reward a IF user account with the appropriate amount of reward points for a specific credential.
+      @notice It's required that the user currently has a Loyalty Card NFT.
+      @param account The IF user account that should be rewarderd
       @param cred The credential that is to be rewarded
       @dev Typically this would be called by the IF backend.
       @dev Can be part of a regular task (daily updates from KNN3) or an isolated call (user has completed a L&E quiz)
      */
-    function rewardAccount(uint256 tokenId, LoyaltyRewardsLookup.Credential cred) external onlyOwner {
-        loyaltyCardMaster.addPoints(tokenId, LoyaltyRewardsLookup.pointsForCredential(cred));
+    function rewardAccount(address account, LoyaltyRewardsLookup.Credential cred) external onlyOwner {
+        loyaltyCardMaster.addPointsAccount(account, LoyaltyRewardsLookup.pointsForCredential(cred));
     }
 }
