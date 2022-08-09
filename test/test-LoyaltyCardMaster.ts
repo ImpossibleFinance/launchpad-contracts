@@ -112,6 +112,107 @@ export default describe('Loyalty Card Master contract', function () {
     expect(await loyaltyCardMaster.burnCounter()).to.equal(1)
   })
 
+  it('Should prevent a user from having multiple loyalty cards', async function () {
+    await loyaltyCardMaster.setMinter(owner.address)
+    loyaltyCardMaster.mint(user.address)
+    const tokenId1 = 1
+    expect(await loyaltyCardMaster.balanceOf(user.address)).to.equal(1)
+    expect(loyaltyCardMaster.mint(user.address)).to.be.revertedWith(
+      'AlreadyOwnsCard'
+    )
+    await loyaltyCardMaster.setBurner(owner.address)
+    await loyaltyCardMaster.connect(user).approve(owner.address, tokenId1)
+    expect(await loyaltyCardMaster.burn(tokenId1))
+
+    // Once an existing loyalty card is burned, minting is possible again
+    loyaltyCardMaster.mint(user.address)
+    const tokenId2 = 2
+    expect(
+      await loyaltyCardMaster.originalOwnerToTokenId(user.address)
+    ).to.equal(tokenId2)
+    expect(await loyaltyCardMaster.mintCounter()).to.equal(2)
+    expect(await loyaltyCardMaster.burnCounter()).to.equal(1)
+  })
+
+  // ============= OWNED TOKEN LOOKUP
+
+  it('Should provide the tokenId of the loyalty card of a given user', async function () {
+    await loyaltyCardMaster.setMinter(owner.address)
+    loyaltyCardMaster.mint(user.address)
+    loyaltyCardMaster.mint(user2.address)
+    const tokenId1 = 1
+    const tokenId2 = 2
+    expect(
+      await loyaltyCardMaster.originalOwnerToTokenId(user.address)
+    ).to.equal(tokenId1)
+    expect(
+      await loyaltyCardMaster.originalOwnerToTokenId(user2.address)
+    ).to.equal(tokenId2)
+  })
+
+  it('Should return tokenId 0 for users who do not own a loyalty card', async function () {
+    expect(await loyaltyCardMaster.balanceOf(user.address)).to.equal(0)
+    expect(
+      await loyaltyCardMaster.originalOwnerToTokenId(user.address)
+    ).to.equal(0)
+  })
+
+  it('Should track the original owner of a card even when staked', async function () {
+    // "staked" means transferred to a whitelisted destination
+    // (typically an IF contract that accepts loyalty cards to be staked)
+    await loyaltyCardMaster.setMinter(owner.address)
+    await loyaltyCardMaster.mint(user.address)
+
+    const mintedTokenId = await loyaltyCardMaster.originalOwnerToTokenId(
+      user.address
+    )
+
+    await loyaltyCardMaster.addOperator(operator1.address)
+    await loyaltyCardMaster.addDestination(destination1.address)
+    await loyaltyCardMaster
+      .connect(user)
+      .transferFrom(user.address, destination1.address, mintedTokenId)
+
+    const newTokenOwner = await loyaltyCardMaster.ownerOf(mintedTokenId)
+    expect(newTokenOwner).to.equal(destination1.address)
+    expect(
+      await loyaltyCardMaster.originalOwnerToTokenId(user.address)
+    ).to.equal(mintedTokenId)
+  })
+
+  it('Should not treat staking contracts as loyalty card owners', async function () {
+    // "staked" means transferred to a whitelisted destination
+    // (typically an IF contract that accepts loyalty cards to be staked)
+    await loyaltyCardMaster.setMinter(owner.address)
+    await loyaltyCardMaster.mint(user.address)
+    const mintedTokenId = await loyaltyCardMaster.originalOwnerToTokenId(
+      user.address
+    )
+    await loyaltyCardMaster.addOperator(operator1.address)
+    await loyaltyCardMaster.addDestination(destination1.address)
+
+    // staking destination not an "original owner"
+    expect(
+      await loyaltyCardMaster.originalOwnerToTokenId(destination1.address)
+    ).to.equal(0)
+
+    // STAKE
+    await loyaltyCardMaster
+      .connect(user)
+      .transferFrom(user.address, destination1.address, mintedTokenId)
+    const newTokenOwner = await loyaltyCardMaster.ownerOf(mintedTokenId)
+    // nft owned by staking contract
+    expect(newTokenOwner).to.equal(destination1.address)
+    // original owner still the IF user
+    expect(
+      await loyaltyCardMaster.originalOwnerToTokenId(user.address)
+    ).to.equal(mintedTokenId)
+    // staking destination still not an "original owner"
+    expect(
+      await loyaltyCardMaster.originalOwnerToTokenId(destination1.address)
+    ).to.equal(0)
+  })
+
   // ============= OPERATORS
 
   it('Can add and remove operators', async function () {
@@ -194,9 +295,27 @@ export default describe('Loyalty Card Master contract', function () {
     ).to.be.revertedWith('InsufficientPoints')
   })
 
+  it('Should be able to account, add & redeem points based on user account', async function () {
+    await loyaltyCardMaster.setMinter(owner.address)
+    await loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.addOperator(operator1.address)
+    await loyaltyCardMaster
+      .connect(operator1)
+      .addPointsAccount(user.address, 10)
+    expect(await loyaltyCardMaster.currentPointsAccount(user.address)).to.equal(
+      10
+    )
+    await loyaltyCardMaster
+      .connect(operator1)
+      .redeemPointsAccount(user.address, 10)
+    expect(await loyaltyCardMaster.currentPointsAccount(user.address)).to.equal(
+      0
+    )
+  })
+
   // ============= TRANSFERS
 
-  it('Can add and remove destinations', async function () {
+  it('Can add, remove & confirm destinations', async function () {
     expect(
       await loyaltyCardMaster.isDestination(destination1.address)
     ).to.equal(false)
@@ -244,5 +363,30 @@ export default describe('Loyalty Card Master contract', function () {
     mintedTokenOwner = await loyaltyCardMaster.ownerOf(mintedTokenId)
 
     expect(mintedTokenOwner).to.equal(destination1.address)
+  })
+
+  it('Should recognize transferred tokens as staked', async function () {
+    // "staked" means transferred to a whitelisted destination
+    await loyaltyCardMaster.setMinter(owner.address)
+    await loyaltyCardMaster.mint(user.address)
+    const mintedTokenId = await loyaltyCardMaster.originalOwnerToTokenId(
+      user.address
+    )
+    await loyaltyCardMaster.addOperator(operator1.address)
+    await loyaltyCardMaster.addDestination(destination1.address)
+
+    // does not count as STAKED
+    expect(await loyaltyCardMaster.isStaked(mintedTokenId)).to.equal(false)
+
+    // STAKE
+    await loyaltyCardMaster
+      .connect(user)
+      .transferFrom(user.address, destination1.address, mintedTokenId)
+    const newTokenOwner = await loyaltyCardMaster.ownerOf(mintedTokenId)
+    // nft owned by staking contract
+    expect(newTokenOwner).to.equal(destination1.address)
+
+    // now it counts as STAKED
+    expect(await loyaltyCardMaster.isStaked(mintedTokenId)).to.equal(true)
   })
 })
