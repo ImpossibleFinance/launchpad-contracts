@@ -16,7 +16,10 @@ interface ILoyaltyCardMaster {
     function burn(uint256 tokenId) external;
 
     /// @notice Returns the IF user which the card was initially minted to, and effectively belongs to
-    function originalOwnerToTokenId(address owner) external view returns(uint256);
+    function originalOwnerToTokenId(address owner)
+        external
+        view
+        returns (uint256);
 
     /**
       @notice Returns whether given loyalty card NFT is currently staked

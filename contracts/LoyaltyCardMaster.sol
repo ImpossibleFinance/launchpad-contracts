@@ -196,7 +196,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
       @notice Retrieve current number of points a user has on their loyalty card
       @param account The IF user account
      */
-    function currentPointsAccount(uint256 tokenId)
+    function currentPointsAccount(address account)
         external
         view
         onlyCardOwner(account)
