@@ -257,6 +257,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
     function _addPointsCard(uint256 tokenId, uint256 points)
         internal 
         onlyOperator 
+        onlyExistingToken(tokenId)
     {
         tokenIdToTotalPoints[tokenId] += points;
         tokenIdToCurrentPoints[tokenId] += points;
@@ -266,6 +267,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
     function _redeemPointsCard(uint256 tokenId, uint256 points)
         internal
         onlyOperator
+        onlyExistingToken(tokenId)
     {
         if (points > tokenIdToCurrentPoints[tokenId])
             revert InsufficientPoints();
