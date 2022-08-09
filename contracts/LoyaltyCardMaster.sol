@@ -202,7 +202,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         onlyCardOwner(account)
         returns (uint256)
     {
-        return _currentPointsAccount(originalOwnerToTokenId[account]);
+        return _currentPointsCard(originalOwnerToTokenId[account]);
     }
 
      /**
@@ -215,7 +215,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         onlyOperator 
         onlyCardOwner(account) 
     {
-        _addPointsAccount(originalOwnerToTokenId[account]);
+        _addPointsCard(originalOwnerToTokenId[account]);
     }
 
     /**
@@ -228,7 +228,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         onlyOperator
         onlyCardOwner(account)
     {
-        _redeemPointsAccount(originalOwnerToTokenId[account]);
+        _redeemPointsCard(originalOwnerToTokenId[account]);
     }
 
     // --------------------- POINTS ----------------------- // 
