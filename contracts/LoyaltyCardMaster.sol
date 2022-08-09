@@ -31,7 +31,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
     /// Map IF user account to their loyalty card NFT tokenId
     /// @dev owner account => single owned tokenId. 
     /// @dev If value == 0, this user owns no loyalty card
-    mapping(address => uint256) originalOwnerToTokenId;
+    mapping(address => uint256) public originalOwnerToTokenId;
 
     event SetMinter(address minter);
     event SetBurner(address burner);
