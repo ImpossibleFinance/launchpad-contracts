@@ -372,7 +372,6 @@ export default describe('Loyalty Card Master contract', function () {
     const mintedTokenId = await loyaltyCardMaster.originalOwnerToTokenId(
       user.address
     )
-    await loyaltyCardMaster.addOperator(operator1.address)
     await loyaltyCardMaster.addDestination(destination1.address)
 
     // does not count as STAKED
