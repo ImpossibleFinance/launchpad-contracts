@@ -214,7 +214,6 @@ contract LoyaltyCardMaster is ERC721, Ownable {
      */
     function addPointsAccount(address account, uint256 points)
         external 
-        onlyOperator 
         onlyCardOwner(account) 
     {
         _addPointsCard(originalOwnerToTokenId[account], points);
@@ -227,7 +226,6 @@ contract LoyaltyCardMaster is ERC721, Ownable {
      */
     function redeemPointsAccount(address account, uint256 points)
         external
-        onlyOperator
         onlyCardOwner(account)
     {
         _redeemPointsCard(originalOwnerToTokenId[account], points);
