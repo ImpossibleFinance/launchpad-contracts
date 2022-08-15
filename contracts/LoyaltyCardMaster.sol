@@ -54,6 +54,8 @@ contract LoyaltyCardMaster is ERC721, Ownable {
     error TokenDoesntExist();
     error AlreadyOwnsCard();
     error NoCardForUser();
+    error DestinationOwnsTokens();
+    error CannotBurnStakedCard();
 
     // --- POINTS
 
@@ -127,6 +129,8 @@ contract LoyaltyCardMaster is ERC721, Ownable {
             Additionally, we say that the approved party must be our burner.
      */
     function burn(uint256 tokenId) external onlyExistingToken(tokenId) {
+        /// @dev only allow burning while card is owned by original owner (not staked)
+        if (whitelistedDestination[ownerOf(tokenId)]) revert CannotBurnStakedCard();
         address spender = _msgSender();
         address owner = ERC721.ownerOf(tokenId);
         bool isOwner = spender == owner;
@@ -214,7 +218,6 @@ contract LoyaltyCardMaster is ERC721, Ownable {
      */
     function addPointsAccount(address account, uint256 points)
         external 
-        onlyCardOwner(account) 
     {
         _addPointsCard(originalOwnerToTokenId[account], points);
     }
@@ -226,7 +229,6 @@ contract LoyaltyCardMaster is ERC721, Ownable {
      */
     function redeemPointsAccount(address account, uint256 points)
         external
-        onlyCardOwner(account)
     {
         _redeemPointsCard(originalOwnerToTokenId[account], points);
     }
@@ -320,6 +322,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
       @notice Removes a destination from the whitelisted destinations
      */
     function removeDestination(address destinationToRemove) external onlyOwner {
+        if (balanceOf(destinationToRemove) > 0) revert DestinationOwnsTokens();
         whitelistedDestination[destinationToRemove] = false;
         emit RemovedDestination(destinationToRemove);
     }
