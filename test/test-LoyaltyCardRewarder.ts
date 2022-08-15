@@ -15,7 +15,8 @@ export default describe('Loyalty Card Rewarder contract', function () {
   let attacker: SignerWithAddress
   let user: SignerWithAddress
   let user2: SignerWithAddress
-  const KYC_CREDENTIAL = 0
+  const KYC_CREDENTIAL_CODE = 0
+  const KYC_CREDENTIAL_NAME = 'KYC'
 
   beforeEach(async function () {
     owner = (await ethers.getSigners())[0]
@@ -32,6 +33,11 @@ export default describe('Loyalty Card Rewarder contract', function () {
       'LoyaltyRewardsLookup'
     )
     loyaltyRewardsLookup = await LoyaltyRewardsLookup.deploy()
+    await loyaltyRewardsLookup.setCredential(
+      KYC_CREDENTIAL_CODE,
+      10,
+      KYC_CREDENTIAL_NAME
+    )
 
     LoyaltyCardRewarder = await ethers.getContractFactory('LoyaltyCardRewarder')
     loyaltyCardRewarder = await LoyaltyCardRewarder.deploy(
@@ -49,15 +55,20 @@ export default describe('Loyalty Card Rewarder contract', function () {
     expect(
       loyaltyCardRewarder
         .connect(attacker)
-        .rewardAccount(user.address, KYC_CREDENTIAL)
+        .rewardAccount(user.address, KYC_CREDENTIAL_CODE, KYC_CREDENTIAL_NAME)
     ).to.be.revertedWith('Ownable: caller is not the owner')
   })
 
   it('Gives rewards based on account and the info provided by lookup contract', async function () {
-    const points = await loyaltyRewardsLookup.pointsForCredential(
-      KYC_CREDENTIAL
+    const points = await loyaltyRewardsLookup.getPoints(
+      KYC_CREDENTIAL_CODE,
+      KYC_CREDENTIAL_NAME
     )
-    await loyaltyCardRewarder.rewardAccount(user.address, KYC_CREDENTIAL)
+    await loyaltyCardRewarder.rewardAccount(
+      user.address,
+      KYC_CREDENTIAL_CODE,
+      KYC_CREDENTIAL_NAME
+    )
     expect(
       await loyaltyCardMaster.currentPointsAccount(user.address)
     ).to.be.equal(points)
@@ -66,7 +77,11 @@ export default describe('Loyalty Card Rewarder contract', function () {
   it('Cannot reward a user that has no card', async function () {
     expect(await loyaltyCardMaster.balanceOf(user2.address)).to.be.equal(0)
     expect(
-      loyaltyCardRewarder.rewardAccount(user2.address, KYC_CREDENTIAL)
+      loyaltyCardRewarder.rewardAccount(
+        user2.address,
+        KYC_CREDENTIAL_CODE,
+        KYC_CREDENTIAL_NAME
+      )
     ).to.be.revertedWith('TokenDoesntExist')
   })
 })
