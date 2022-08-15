@@ -8,6 +8,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import 'sgn-v2-contracts/contracts/message/libraries/MessageSenderLib.sol';
+import { MessageBusSender} from 'sgn-v2-contracts/contracts/message/messagebus/MessageBusSender.sol';
 
 import './interfaces/IIFRetrievableStakeWeight.sol';
 import './interfaces/IIFBridgableStakeWeight.sol';
@@ -860,7 +861,7 @@ contract IFAllocationMaster is
         uint24 trackId,
         uint80 timestamp,
         uint64 dstChainId
-    ) external payable {
+    ) external payable nonReentrant {
         // should be active track
         require(!trackDisabled[trackId], 'track !disabled');
 
@@ -886,14 +887,25 @@ contract IFAllocationMaster is
             })
         );
 
+        // calculate messageBus fee
+        MessageBusSender messageBusSender = MessageBusSender(messageBus);
+        uint256 fee = messageBusSender.calcFee(message);
+        require(msg.value >= fee, "Not enough fee");
+
         // trigger the message bridge
         MessageSenderLib.sendMessage(
             receiver,
             dstChainId,
             message,
             messageBus,
-            msg.value
+            fee
         );
+
+        // Refund mesasgeBus fee
+        if ((msg.value - fee) != 0) {
+            payable(_msgSender()).transfer(msg.value - fee);
+        }
+
 
         emit SyncUserWeight(
             receiver,
@@ -909,7 +921,7 @@ contract IFAllocationMaster is
         uint24 trackId,
         uint80 timestamp,
         uint64 dstChainId
-    ) external payable {
+    ) external payable nonReentrant {
         // should be active track
         require(!trackDisabled[trackId], 'track disabled');
 
@@ -931,14 +943,24 @@ contract IFAllocationMaster is
             })
         );
 
+        // calculate messageBus fee
+        MessageBusSender messageBusSender = MessageBusSender(messageBus);
+        uint256 fee = messageBusSender.calcFee(message);
+        require(msg.value >= fee, "Not enough fee");
+
         // trigger the message bridge
         MessageSenderLib.sendMessage(
             receiver,
             dstChainId,
             message,
             messageBus,
-            msg.value
+            fee
         );
+
+        // Refund mesasgeBus fee
+        if ((msg.value - fee) != 0) {
+            payable(_msgSender()).transfer(msg.value - fee);
+        }
 
         emit SyncTotalWeight(receiver, trackId, timestamp, dstChainId, trackId);
     }
