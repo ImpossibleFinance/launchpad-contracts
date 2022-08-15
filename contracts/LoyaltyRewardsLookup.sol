@@ -13,44 +13,79 @@ contract LoyaltyRewardsLookup is Ownable {
 
     // ================ FLEXIBLE DESIGN ============== // 
 
-    /// @dev credential code => name of the credential
-    /// For transparency we track the meaning of credential codes here in the contract
-    mapping(uint256 => string) public credentialToName;
+    /// @dev For on-chain transparency we track not only the points, both also the name associated with a credential
+    struct Credential {
+        string name;
+        uint256 points;
+    }
 
-    /// @dev credential code => how many points the user gets
-    mapping(uint256 => uint256) public credentialToPoints;
+    /// @dev credential code => credential data (name and points)
+    mapping(uint256 => Credential) public credentialByCode;
 
-    event SetCredentialName(uint256 code, string name);
+    event SetCredential(uint256 code, string name, uint256 points);
+    event UpdateCredentialName(uint256 code, string name);
+    event UpdateCredentialPoints(uint256 code, uint256 points);
 
     error CredentialMismatch();
 
-    /// @notice Set the name of a specific credential, as it identified by its credential code
-    /// @param credCode The numeric credential code
-    /// @param credName The credential name
-    function setCredentialName(uint256 credCode, string memory credName) external onlyOwner {
-        credentialToName[credCode] = credName;
-        emit SetCredentialName(credCode, credName);
-    }
-    
-    /// @notice Set how many reward points the fulfillment of a specific credential should bring the user
-    /// @param credCode Credential code
-    /// @param points How many reward points are associated   
-    function setPoints(uint256 credCode, uint256 points) external onlyOwner {
-        credentialToPoints[credCode] = points;
+    modifier intendedCredential(uint256 credCode, string calldata credName) {
+        if (keccak256(abi.encodePacked(credentialByCode[credCode].name)) != 
+            keccak256(abi.encodePacked((credName)))) revert CredentialMismatch();
+        _;
     }
 
-    /// @notice Set how many reward points the fulfillment of a specific credential should bring the user
-    /// while also ensuring the credential code is pertaining to the intended credential
+    /// @notice Set the name of a credential (based on its numeric code) and how many 
+    /// reward points the fulfillment should bring the user
     /// @param credCode Credential code
     /// @param points How many reward points are associated   
     /// @param credName The name of the credential
-    function safeSetPoints(uint256 credCode, uint256 points, string memory credName) external onlyOwner {
-        if (keccak256(abi.encodePacked(credentialToName[credCode])) != 
-            keccak256(abi.encodePacked((credName)))) revert CredentialMismatch();
-        credentialToPoints[credCode] = points;
+    function setCredential(uint256 credCode, uint256 points, string calldata credName)
+        external
+        onlyOwner
+    {
+        credentialByCode[credCode].name = credName;
+        credentialByCode[credCode].points = points;
+        emit SetCredential(credCode, credName, points);
     }
 
+    /// @notice Update the name of a specific credential, as it identified by its credential code
+    /// @param credCode The numeric credential code
+    /// @param credName The credential name
+    function updateCredentialName(uint256 credCode, string memory credName) external onlyOwner {
+        credentialByCode[credCode].name = credName;
+        emit UpdateCredentialName(credCode, credName);
+    }
 
+    /// @notice Update how many reward points the fulfillment of a specific credential should bring the user
+    /// while also ensuring it's the intended credential based on its name
+    /// @param credCode Credential code
+    /// @param points How many reward points are associated   
+    /// @param credName The name of the credential
+    function updatePoints(uint256 credCode, uint256 points, string calldata credName) 
+        external 
+        onlyOwner 
+        intendedCredential(credCode, credName) 
+    {
+        credentialByCode[credCode].points = points;
+    }
+
+    /// @notice Retrieve a credential's name based on its code
+    function getName(uint256 credCode)
+        external view
+        returns (string memory) 
+    {
+        return credentialByCode[credCode].name;
+    }
+
+    /// @notice Retrieve a credential's reward points based on its code
+    /// while also ensuring it's the intended credential based on its name
+    function getPoints(uint256 credCode, string calldata credName)
+        external view 
+        intendedCredential(credCode, credName)
+        returns (uint256) 
+    {
+        return credentialByCode[credCode].points;
+    }
 
     // ================ INITIAL DESIGN ============== // 
 
