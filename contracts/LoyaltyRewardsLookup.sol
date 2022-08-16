@@ -61,7 +61,7 @@ contract LoyaltyRewardsLookup is Ownable {
     /// @param credCode Credential code
     /// @param points How many reward points are associated   
     /// @param credName The name of the credential
-    function updatePoints(uint256 credCode, uint256 points, string calldata credName) 
+    function updateCredentialPoints(uint256 credCode, uint256 points, string calldata credName) 
         external 
         onlyOwner 
         intendedCredential(credCode, credName) 

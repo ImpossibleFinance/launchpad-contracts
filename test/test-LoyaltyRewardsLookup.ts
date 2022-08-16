@@ -18,6 +18,7 @@ export default describe('Loyalty Card Rewarder contract', function () {
   const KYC_CREDENTIAL_CODE = 0
   const KYC_CREDENTIAL_NAME = 'KYC'
   const KYC_CREDENTIAL_POINTS = 10
+  const OTHER_CREDENTIAL_NAME = 'ABC'
 
   beforeEach(async function () {
     owner = (await ethers.getSigners())[0]
@@ -52,37 +53,62 @@ export default describe('Loyalty Card Rewarder contract', function () {
     loyaltyCardMaster.mint(user.address)
   })
 
-  it('Only gives rewards if called by owner', async function () {
+  it('Provides points for credential', async function () {
     expect(
-      loyaltyCardRewarder
-        .connect(attacker)
-        .rewardAccount(user.address, KYC_CREDENTIAL_CODE, KYC_CREDENTIAL_NAME)
-    ).to.be.revertedWith('Ownable: caller is not the owner')
-  })
-
-  it('Gives rewards based on account and the info provided by lookup contract', async function () {
-    const points = await loyaltyRewardsLookup.getPoints(
-      KYC_CREDENTIAL_CODE,
-      KYC_CREDENTIAL_NAME
-    )
-    await loyaltyCardRewarder.rewardAccount(
-      user.address,
-      KYC_CREDENTIAL_CODE,
-      KYC_CREDENTIAL_NAME
-    )
-    expect(
-      await loyaltyCardMaster.currentPointsAccount(user.address)
-    ).to.be.equal(points)
-  })
-
-  it('Cannot reward a user that has no card', async function () {
-    expect(await loyaltyCardMaster.balanceOf(user2.address)).to.be.equal(0)
-    expect(
-      loyaltyCardRewarder.rewardAccount(
-        user2.address,
+      await loyaltyRewardsLookup.getPoints(
         KYC_CREDENTIAL_CODE,
         KYC_CREDENTIAL_NAME
       )
-    ).to.be.revertedWith('TokenDoesntExist')
+    ).to.be.equal(KYC_CREDENTIAL_POINTS)
+  })
+
+  it('Refuses to provide credential points if given wrong credential name', async function () {
+    expect(
+      loyaltyRewardsLookup.getPoints(KYC_CREDENTIAL_CODE, OTHER_CREDENTIAL_NAME)
+    ).to.be.revertedWith('CredentialMismatch')
+  })
+
+  it('Allows updating a credential name', async function () {
+    const newName = 'New Name'
+    await loyaltyRewardsLookup.updateCredentialName(
+      KYC_CREDENTIAL_CODE,
+      newName
+    )
+    expect(
+      loyaltyRewardsLookup.getPoints(KYC_CREDENTIAL_CODE, KYC_CREDENTIAL_NAME)
+    ).to.be.revertedWith('CredentialMismatch')
+    expect(await loyaltyRewardsLookup.getName(KYC_CREDENTIAL_CODE)).to.be.equal(
+      newName
+    )
+    expect(
+      await loyaltyRewardsLookup.getPoints(KYC_CREDENTIAL_CODE, newName)
+    ).to.but.equal(KYC_CREDENTIAL_POINTS)
+  })
+
+  it('Allows updating credential points', async function () {
+    const newPoints = 123
+    expect(newPoints).to.not.be.equal(KYC_CREDENTIAL_POINTS)
+    await loyaltyRewardsLookup.updateCredentialPoints(
+      KYC_CREDENTIAL_CODE,
+      newPoints,
+      KYC_CREDENTIAL_NAME
+    )
+    expect(
+      await loyaltyRewardsLookup.getPoints(
+        KYC_CREDENTIAL_CODE,
+        KYC_CREDENTIAL_NAME
+      )
+    ).to.be.equal(newPoints)
+  })
+
+  it('Refuses to update credential points if given wrong credential name', async function () {
+    const newPoints = 123
+    expect(
+      loyaltyRewardsLookup.updateCredentialPoints(
+        KYC_CREDENTIAL_CODE,
+        newPoints,
+        OTHER_CREDENTIAL_NAME
+      )
+    ).to.be.revertedWith('CredentialMismatch')
   })
 })
