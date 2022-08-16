@@ -85,13 +85,13 @@ contract LoyaltyCardMaster is ERC721, Ownable {
 
     // --- TRANSFERS
 
-    mapping(address => bool) whitelistedDestination;
+    mapping(address => bool) whitelistedStakingDestination;
 
     event AddedDestination(address destination);
     event RemovedDestination(address destination);
 
-    error AlreadyWhitelistedDestination();
-    error NotWhitelistedDestination();
+    error AlreadyWhitelistedStakingDestination();
+    error NotWhitelistedStakingDestination();
     error NotAllowedAsDestination();
 
     constructor(string memory name_, string memory symbol_)
@@ -130,7 +130,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
      */
     function burn(uint256 tokenId) external onlyExistingToken(tokenId) {
         /// @dev only allow burning while card is owned by original owner (not staked)
-        if (whitelistedDestination[ownerOf(tokenId)]) revert CannotBurnStakedCard();
+        if (whitelistedStakingDestination[ownerOf(tokenId)]) revert CannotBurnStakedCard();
         address spender = _msgSender();
         address owner = ERC721.ownerOf(tokenId);
         bool isOwner = spender == owner;
@@ -287,7 +287,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
     ) internal override {
         // this only goes through if token is being sent to a WL destination
         // or a WL destination (related to Impossible Finance) transfers it (back)
-        if (!whitelistedDestination[to] && !whitelistedDestination[from])
+        if (!whitelistedStakingDestination[to] && !whitelistedStakingDestination[from])
             revert NotAllowedAsDestination();
         super._transfer(from, to, tokenId);
     }
@@ -297,7 +297,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
       @param dest Address to check
      */
     function isDestination(address dest) external view returns (bool) {
-        return whitelistedDestination[dest];
+        return whitelistedStakingDestination[dest];
     }
 
     /**
@@ -307,14 +307,14 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         and originalOwnerToTokenId() returns the IF user which the card effectively belongs to
      */
     function isStaked(uint256 tokenId) external view returns (bool) {
-        return whitelistedDestination[ownerOf(tokenId)];
+        return whitelistedStakingDestination[ownerOf(tokenId)];
     }
 
     /**
       @notice Adds a destination to the whitelisted destinations
     */
     function addDestination(address destinationToAdd) external onlyOwner {
-        whitelistedDestination[destinationToAdd] = true;
+        whitelistedStakingDestination[destinationToAdd] = true;
         emit AddedDestination(destinationToAdd);
     }
 
@@ -323,7 +323,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
      */
     function removeDestination(address destinationToRemove) external onlyOwner {
         if (balanceOf(destinationToRemove) > 0) revert DestinationOwnsTokens();
-        whitelistedDestination[destinationToRemove] = false;
+        whitelistedStakingDestination[destinationToRemove] = false;
         emit RemovedDestination(destinationToRemove);
     }
 
