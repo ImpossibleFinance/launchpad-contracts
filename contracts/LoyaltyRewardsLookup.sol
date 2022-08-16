@@ -22,11 +22,18 @@ contract LoyaltyRewardsLookup is Ownable {
     /// @dev credential code => credential data (name and points)
     mapping(uint256 => Credential) public credentialByCode;
 
+    /// @dev credential name => whether it's already in use (i.e. associated with a credential code)
+    mapping(string => bool) public credentialNameInUse;
+
     event SetCredential(uint256 code, string name, uint256 points);
     event UpdateCredentialName(uint256 code, string name);
     event UpdateCredentialPoints(uint256 code, uint256 points);
 
     error CredentialMismatch();
+    error DuplicateCredentialName();
+    error EmptyCredentialName();
+    error ZeroCredentialPoints();
+    error CredentialCodeAlreadyInUse();
 
     modifier intendedCredential(uint256 credCode, string calldata credName) {
         if (keccak256(abi.encodePacked(credentialByCode[credCode].name)) != 
@@ -34,24 +41,51 @@ contract LoyaltyRewardsLookup is Ownable {
         _;
     }
 
+    modifier noDuplicate(string calldata credName) {
+        if (credentialNameInUse[credName]) revert DuplicateCredentialName();
+        _;
+    }
+
+    modifier nonEmpty(string calldata credName) {
+        if (bytes(credName).length == 0) revert EmptyCredentialName();
+        _;
+    }
+
+    modifier nonZero(uint256 points) {
+        if (points == 0) revert ZeroCredentialPoints();
+        _;
+    }
+
     /// @notice Set the name of a credential (based on its numeric code) and how many 
     /// reward points the fulfillment should bring the user
+    /// @notice Works as a DB insert - only as "first write" for given credential code
     /// @param credCode Credential code
     /// @param points How many reward points are associated   
     /// @param credName The name of the credential
     function setCredential(uint256 credCode, uint256 points, string calldata credName)
         external
         onlyOwner
+        noDuplicate(credName)
+        nonEmpty(credName)
+        nonZero(points)
     {
+        /// @dev since names must be non empty, the checked condition is reliable
+        if (bytes(credentialByCode[credCode].name).length > 0) revert CredentialCodeAlreadyInUse();
         credentialByCode[credCode].name = credName;
         credentialByCode[credCode].points = points;
+        credentialNameInUse[credName] = true;
         emit SetCredential(credCode, credName, points);
     }
 
-    /// @notice Update the name of a specific credential, as it identified by its credential code
+    /// @notice Update the name of a specific credential, as it is identified by its credential code
     /// @param credCode The numeric credential code
     /// @param credName The credential name
-    function updateCredentialName(uint256 credCode, string memory credName) external onlyOwner {
+    function updateCredentialName(uint256 credCode, string calldata credName) 
+        external
+        onlyOwner
+        noDuplicate(credName)
+        nonEmpty(credName)
+    {
         credentialByCode[credCode].name = credName;
         emit UpdateCredentialName(credCode, credName);
     }
@@ -65,8 +99,10 @@ contract LoyaltyRewardsLookup is Ownable {
         external 
         onlyOwner 
         intendedCredential(credCode, credName) 
+        nonZero(points)
     {
         credentialByCode[credCode].points = points;
+        emit UpdateCredentialPoints(credCode, points);
     }
 
     /// @notice Retrieve a credential's name based on its code
@@ -86,53 +122,4 @@ contract LoyaltyRewardsLookup is Ownable {
     {
         return credentialByCode[credCode].points;
     }
-
-    // ================ INITIAL DESIGN ============== // 
-
-
-    //               (lacks flexibility)                     
-
-    // enum Credential {
-    //     KYC,
-    //     LAUNCHPAD_STAKE_STANDARD_AURIGAMI,
-    //     LAUNCHPAD_STAKE_UNLIMITED_AURIGAMI,
-    //     LAUNCHPAD_STAKE_IDIA,
-    //     LAUNCHPAD_STAKE_BLOCTO,
-    //     LAUNCHPAD_STAKE_HIGHSTREET,
-    //     LAUNCHPAD_STAKE_GENOPETS,
-    //     LAUNCHPAD_PURCHASE,
-    //     LAUNCHPAD_PURCHASE_FULL,
-    //     DIAMOND_HAND1,
-    //     DIAMOND_HAND2,
-    //     FOLLOW_TWITTER,
-    //     FOLLOW_INSTAGRAM,
-    //     IN_TELEGRAM,
-    //     IN_FRIENDS,
-    //     IN_DISCORD,
-    //     DISCORD_SCORE,
-    //     SWAP_USER,
-    //     SWAP_STAKER,
-    //     SWAP_USER2, // traded over x
-    //     SWAP_STAKER2, // staked over x
-    //     REFERRAL,
-    //     ATTEND_A_METAVERSE_EVENT,
-    //     AURIGAMI_POWER_USER, // ( IF AURIGAMI + WNEAR/PLY LP STAKING % OR #)
-    //     REGIONAL_MARKETING_CAMPAIGN,
-    //     IF_MASTER, // complete l & e for impossible finance
-    //     PROJECT_X_MASTER, // complete l & e for a project we launch/incubate
-    //     IMPOSSIBLE_BULLS,
-    //     VOTE_ON_DAO_PROPOSALS,
-    //     SUBMIT_NEW_PROJ,
-    //     SUBMIT_NEW_PROJ_WITH_HIGH_QUALITY,
-    //     XX_POWER_USER,
-    //     LAUNCHPAD_EARLY_STAKE,
-    //     IMPOWER_ACCESS //（FROM RANKING BUT NOT IN LOYALTY)
-    // }
-
-    // mapping(Credential => uint256) public credentialToPoints;
-
-    // /// @notice Set how many reward points the fulfillment of a specific credential should bring the user   
-    // function setPoints(Credential cred, uint256 points) external onlyOwner {
-    //     credentialToPoints[cred] = points;
-    // }
 }

@@ -16,16 +16,14 @@ export default describe('Loyalty Card Rewarder contract', function () {
   let user: SignerWithAddress
   let user2: SignerWithAddress
   const KYC_CREDENTIAL_CODE = 0
+  const OTHER_CREDENTIAL_CODE = 1
   const KYC_CREDENTIAL_NAME = 'KYC'
   const KYC_CREDENTIAL_POINTS = 10
   const OTHER_CREDENTIAL_NAME = 'ABC'
 
   beforeEach(async function () {
     owner = (await ethers.getSigners())[0]
-
-    attacker = (await ethers.getSigners())[9]
     user = (await ethers.getSigners())[10]
-    user2 = (await ethers.getSigners())[11]
     LoyaltyCardMaster = await ethers.getContractFactory('LoyaltyCardMaster')
     loyaltyCardMaster = await LoyaltyCardMaster.deploy(
       'ImpossibleLoyaltyCard',
@@ -110,5 +108,74 @@ export default describe('Loyalty Card Rewarder contract', function () {
         OTHER_CREDENTIAL_NAME
       )
     ).to.be.revertedWith('CredentialMismatch')
+  })
+
+  it('Refuses to set credential if code is already in use', async function () {
+    expect(
+      loyaltyRewardsLookup.setCredential(
+        KYC_CREDENTIAL_CODE,
+        KYC_CREDENTIAL_POINTS,
+        KYC_CREDENTIAL_NAME
+      )
+    ).to.be.revertedWith('CredentialCodeAlreadyInUse')
+  })
+
+  it('Refuses an empty name when setting credential', async function () {
+    const credPoints = 123
+    expect(
+      loyaltyRewardsLookup.setCredential(OTHER_CREDENTIAL_CODE, credPoints, '')
+    ).to.be.revertedWith('EmptyCredentialName')
+  })
+
+  it('Refuses an empty name when updating credential', async function () {
+    expect(
+      loyaltyRewardsLookup.updateCredentialName(OTHER_CREDENTIAL_CODE, '')
+    ).to.be.revertedWith('EmptyCredentialName')
+  })
+
+  it('Refuses a duplicate name when setting credential', async function () {
+    const credPoints = 123
+    expect(
+      loyaltyRewardsLookup.setCredential(
+        OTHER_CREDENTIAL_CODE,
+        credPoints,
+        KYC_CREDENTIAL_NAME
+      )
+    ).to.be.revertedWith('DuplicateCredentialName')
+  })
+
+  it('Refuses a duplicate name when updating a credential name', async function () {
+    const credPoints = 123
+    await loyaltyRewardsLookup.setCredential(
+      OTHER_CREDENTIAL_CODE,
+      credPoints,
+      OTHER_CREDENTIAL_NAME
+    )
+    expect(
+      loyaltyRewardsLookup.updateCredentialName(
+        OTHER_CREDENTIAL_CODE,
+        KYC_CREDENTIAL_NAME
+      )
+    ).to.be.revertedWith('DuplicateCredentialName')
+  })
+
+  it('Refuses to set a zero points credential', async function () {
+    expect(
+      loyaltyRewardsLookup.setCredential(
+        OTHER_CREDENTIAL_CODE,
+        OTHER_CREDENTIAL_NAME,
+        0
+      )
+    ).to.be.revertedWith('ZeroCredentialPoints')
+  })
+
+  it('Refuses to update credential points with 0 value', async function () {
+    expect(
+      loyaltyRewardsLookup.updateCredentialPoints(
+        KYC_CREDENTIAL_CODE,
+        0,
+        KYC_CREDENTIAL_NAME
+      )
+    ).to.be.revertedWith('ZeroCredentialPoints')
   })
 })
