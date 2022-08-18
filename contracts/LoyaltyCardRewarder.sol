@@ -13,8 +13,8 @@ import "./LoyaltyRewardsLookup.sol";
  */
 
 contract LoyaltyCardRewarder is Ownable {
-    ILoyaltyCardMaster public loyaltyCardMaster;
-    LoyaltyRewardsLookup public rewardsLookup;
+    ILoyaltyCardMaster public immutable loyaltyCardMaster;
+    LoyaltyRewardsLookup public immutable rewardsLookup;
 
     constructor(address loyaltyCardMasterAddress, address loyaltyRewardsLookupAddress) {
         loyaltyCardMaster = ILoyaltyCardMaster(loyaltyCardMasterAddress);
