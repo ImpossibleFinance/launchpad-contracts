@@ -4,6 +4,7 @@ import { expect } from 'chai'
 import { getBlockTime, mineNext, mineTimeDelta, setAutomine } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from 'ethers'
+import { END_TIMESTAMP_TOO_EARLY, INPUT_SHOULD_NOT_BE_0_WHEN_SALE_PRIVE_IS_0 } from './reverts/msg-IFAllocationSale'
 
 export default describe('IF Allocation Sale Deployment', function () {
   this.timeout(0)
@@ -115,9 +116,7 @@ export default describe('IF Allocation Sale Deployment', function () {
         currTime + 250,
         maxTotalDeposit
       )
-    ).to.be.revertedWith(
-      'paymentToken or maxTotalPayment should not be 0 when salePrice is 0'
-    )
+    ).to.be.revertedWith(INPUT_SHOULD_NOT_BE_0_WHEN_SALE_PRIVE_IS_0)
   })
 
   // TokenAddress = PaymentAddress
@@ -139,9 +138,7 @@ export default describe('IF Allocation Sale Deployment', function () {
         currTime + 250,
         0 // maxTotalPayment 0
       )
-    ).to.be.revertedWith(
-      'paymentToken or maxTotalPayment should not be 0 when salePrice is 0'
-    )
+    ).to.be.revertedWith(INPUT_SHOULD_NOT_BE_0_WHEN_SALE_PRIVE_IS_0)
   })
 
   // TokenAddress = PaymentAddress
@@ -163,7 +160,7 @@ export default describe('IF Allocation Sale Deployment', function () {
         currTime + 250,
         maxTotalDeposit
       )
-    ).to.be.revertedWith('total weight is 0 on while using older timestamp')
+    ).to.be.revertedWith(END_TIMESTAMP_TOO_EARLY)
   })
 
   // TokenAddress = PaymentAddress
@@ -192,7 +189,7 @@ export default describe('IF Allocation Sale Deployment', function () {
       0,
       currTime - 5,
       currTime + 150,
-      currTime + 250,
+      currTime + 3751,
       maxTotalDeposit
     )
     mineNext()

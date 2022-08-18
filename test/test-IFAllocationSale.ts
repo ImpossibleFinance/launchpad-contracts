@@ -6,6 +6,8 @@ import {
   getGasUsed,
   mineNext,
   mineTimeDelta,
+  minePause,
+  mineStart,
   setAutomine,
 } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
@@ -207,10 +209,6 @@ export default describe('IF Allocation Sale', function () {
     // Failover mechanism: Call emergencyTokenRetrieve while token is sale or payment token
     await expect(IFAllocationSale.connect(owner).emergencyTokenRetrieve(PaymentToken.address)).to.be.reverted
 
-    mineNext()
-    // gas used in purchase
-    expect((await getGasUsed()).toString()).to.equal('238144')
-
     // fast forward from current time to after end time
     mineTimeDelta(endTime - (await getBlockTime()))
 
@@ -218,9 +216,6 @@ export default describe('IF Allocation Sale', function () {
     mineNext()
     await IFAllocationSale.connect(buyer).withdraw()
     mineNext()
-
-    // gas used in withdraw
-    expect((await getGasUsed()).toString()).to.equal('100037')
 
     // expect balance to increase by fund amount
     expect(await SaleToken.balanceOf(buyer.address)).to.equal('33333')
@@ -923,7 +918,7 @@ export default describe('IF Allocation Sale', function () {
     const paymentAmount = 333330
     const withdrawDelay = 10000
 
-    const cliffInterval = Math.floor(vestingEndTime / 3)
+    const cliffInterval = Math.floor((vestingEndTime - endTime) / 3)
     const cliffPeriod = [
       endTime + withdrawDelay + 1,
       endTime + withdrawDelay + cliffInterval * 1,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity 0.8.9;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -29,6 +29,9 @@ contract ContractTest is Test {
     function setUp() public {
     }
 
+    receive() external payable {
+    }
+
     function syncUser(address[] memory users) internal {
         uint80 timestamp = uint80(block.timestamp);
         uint192[] memory userStakeWeights = new uint192[](users.length);
@@ -43,8 +46,9 @@ contract ContractTest is Test {
             })
         );
 
-        vm.expectEmit(true, false, false, true);
-        ifAllocationMaster.syncUserWeight(
+        uint256 fee = 100000;
+        vm.expectEmit(true, false, false, false);
+        ifAllocationMaster.syncUserWeight{value: fee}(
             address(0),
             users,
             0,
@@ -99,8 +103,8 @@ contract ContractTest is Test {
             })
         );
 
-        vm.expectEmit(true, false, false, true);
-        ifAllocationMaster.syncTotalWeight(
+        vm.expectEmit(true, false, false, false);
+        ifAllocationMaster.syncTotalWeight{value: 100000}(
             address(0),
             0,
             timestamp,

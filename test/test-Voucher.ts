@@ -30,7 +30,6 @@ export default describe('Solv Voucher', function () {
   let idiaContract: Contract
 
   this.timeout(0)
-  hre.tracer.enabled = true
 
   beforeEach(async () => {
     minter = await ethers.getSigner(MINTER_ADDRESS)
@@ -75,8 +74,7 @@ export default describe('Solv Voucher', function () {
     // the minter transfer the voucher to another address
     const userClaimValue = voucherValue.div(10).mul(2)
     const id = voucherContract.nextTokenId()
-    const newTokenId = await voucherContract.connect(minter)['transferFrom(address,address,uint256,uint256)'](minter.address, user.address, tokenId, userClaimValue)
-    console.log('new token id:', newTokenId)
+    await voucherContract.connect(minter)['transferFrom(address,address,uint256,uint256)'](minter.address, user.address, tokenId, userClaimValue)
     await voucherContract.connect(user).claim(id, userClaimValue)
     expect(await voucherContract.claimableAmount(tokenId)).to.be.equals(voucherValue.sub(minterClaimValue).sub(userClaimValue))
   })
@@ -92,7 +90,6 @@ export default describe('Solv Voucher', function () {
     // approve the contract to spend idia
     await idiaContract.connect(minter).approve(mintVoucher.address, totalValue)
     const tokenId = await voucherContract.nextTokenId()
-    console.log(mintVoucher.address)
 
     // mint
     await mintVoucher.connect(minter).batchMint(

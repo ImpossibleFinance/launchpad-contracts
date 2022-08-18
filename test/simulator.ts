@@ -14,13 +14,11 @@ interface SimInputRow {
 }
 
 interface SimOutputRow {
-  block: number
   user1Stake: BigNumber
   user1Weight: BigNumber
   user1SaleCount: number
   totalWeight: BigNumber
   trackSaleCount: number
-  gasUsed: BigNumber
 }
 
 export const simAllocationMaster = async (
@@ -93,9 +91,6 @@ export const simAllocationMaster = async (
     // current block
     const currBlock = await ethers.provider.getBlock(currBlockNum)
 
-    // gas used
-    const gasUsed = currBlock.gasUsed
-
     // max stakes
     const trackMaxStakes = await allocationMaster.trackMaxStakes(trackNum)
 
@@ -130,7 +125,6 @@ export const simAllocationMaster = async (
 
     // save data row
     simOutput.push({
-      block: currBlockNum,
       user1Stake: user1Cp.staked,
       user1Weight: await allocationMaster.getUserStakeWeight(
         trackNum,
@@ -153,7 +147,6 @@ export const simAllocationMaster = async (
       ),
       trackSaleCount: trackCp.numFinishedSales,
       trackMaxStakes,
-      gasUsed: gasUsed,
     })
   }
   await setAutomine(true)

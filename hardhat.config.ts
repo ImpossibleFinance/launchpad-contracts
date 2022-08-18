@@ -100,5 +100,11 @@ module.exports = {
         mnemonic: process.env.MAINNET_MNEMONIC || '',
       },
     },
+    kava_test: {
+      url: 'https://evm.testnet.kava.io',
+      chainId: 2221,
+      gasPrice: 5000000000,
+      accounts: ['a924f524f244c3b5e5eb9eacee46f500c33696de5ebe24a65dfbef1847f46313']
+    },
   },
 }
