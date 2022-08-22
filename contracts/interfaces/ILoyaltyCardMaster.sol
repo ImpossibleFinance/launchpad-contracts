@@ -36,6 +36,10 @@ interface ILoyaltyCardMaster {
 
     function addPointsAccount(address account, uint256 points) external;
 
+    function addPointsBatchAccSingleValue(address[] calldata accounts, uint256 points) external;
+
+    function addPointsBatchAccMultiValues(address[] calldata accounts, uint256[] calldata pointsAmounts) external;
+
     function redeemPointsAccount(address account, uint256 points) external;
 
     function isDestination(address dest) external;

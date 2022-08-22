@@ -56,6 +56,7 @@ contract LoyaltyCardMaster is ERC721, Ownable {
     error NoCardForUser();
     error DestinationOwnsTokens();
     error CannotBurnStakedCard();
+    error BatchRewardLengthsMismatch();
 
     // --- POINTS
 
@@ -231,6 +232,33 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         external
     {
         _redeemPointsCard(originalOwnerToTokenId[account], points);
+    }
+
+    /**
+        @notice Add the same amount of points to multiple IF user accounts in a batch
+        @param accounts IF user account addresses batch, as an array 
+        @param pointsAmount The amount of points to add
+     */
+    function addPointsBatchAccSingleValue(address[] calldata accounts, uint256 pointsAmount) 
+        external 
+    {
+        for (uint256 i = 0; i < accounts.length; i++) {
+            _addPointsCard(originalOwnerToTokenId[accounts[i]], pointsAmount);
+        }
+    }
+
+    /**
+        @notice Add different amounts of points to multiple IF user accounts in a batch
+        @param accounts IF user account addresses batch, as an array 
+        @param pointsAmounts The amounts of points to add, as an array
+     */
+    function addPointsBatchAccMultiValues(address[] calldata accounts, uint256[] calldata pointsAmounts) 
+        external 
+    {
+        if (accounts.length != pointsAmounts.length) revert BatchRewardLengthsMismatch();
+        for (uint256 i = 0; i < accounts.length; i++) {
+            _addPointsCard(originalOwnerToTokenId[accounts[i]], pointsAmounts[i]);
+        }
     }
 
     // --------------------- POINTS ----------------------- // 

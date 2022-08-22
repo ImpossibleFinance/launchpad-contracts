@@ -11,6 +11,10 @@ export default describe('Loyalty Card Master contract', function () {
   let attacker: SignerWithAddress
   let user: SignerWithAddress
   let user2: SignerWithAddress
+  let user3: SignerWithAddress
+  let user4: SignerWithAddress
+  let user5: SignerWithAddress
+  let user6: SignerWithAddress
 
   let operator1: SignerWithAddress
   // let operator2: SignerWithAddress
@@ -30,6 +34,10 @@ export default describe('Loyalty Card Master contract', function () {
     attacker = (await ethers.getSigners())[9]
     user = (await ethers.getSigners())[10]
     user2 = (await ethers.getSigners())[11]
+    user3 = (await ethers.getSigners())[12]
+    user4 = (await ethers.getSigners())[13]
+    user5 = (await ethers.getSigners())[14]
+    user6 = (await ethers.getSigners())[15]
     LoyaltyCardMaster = await ethers.getContractFactory('LoyaltyCardMaster')
     loyaltyCardMaster = await LoyaltyCardMaster.deploy(
       'ImpossibleLoyaltyCard',
@@ -261,7 +269,7 @@ export default describe('Loyalty Card Master contract', function () {
     ).to.emit(loyaltyCardMaster, 'RedeemedPoints')
   })
 
-  it('Should correctly account points', async function () {
+  it('Should correctly account, add & redeem points per card (NFT)', async function () {
     await loyaltyCardMaster.setMinter(owner.address)
     await loyaltyCardMaster.mint(user.address)
     const mintedTokenId = await loyaltyCardMaster.mintCounter()
@@ -295,7 +303,7 @@ export default describe('Loyalty Card Master contract', function () {
     ).to.be.revertedWith('InsufficientPoints')
   })
 
-  it('Should be able to account, add & redeem points based on user account', async function () {
+  it('Should correctly account, add & redeem points based on user account', async function () {
     await loyaltyCardMaster.setMinter(owner.address)
     await loyaltyCardMaster.mint(user.address)
     await loyaltyCardMaster.addOperator(operator1.address)
@@ -311,6 +319,77 @@ export default describe('Loyalty Card Master contract', function () {
     expect(await loyaltyCardMaster.currentPointsAccount(user.address)).to.equal(
       0
     )
+  })
+
+  it('Should be able to add the same amount of points to a batch of user accounts', async function () {
+    await loyaltyCardMaster.setMinter(owner.address)
+    await loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user2.address)
+    await loyaltyCardMaster.mint(user3.address)
+    await loyaltyCardMaster.mint(user4.address)
+    await loyaltyCardMaster.mint(user5.address)
+    await loyaltyCardMaster.mint(user6.address)
+    await loyaltyCardMaster.addOperator(operator1.address)
+    const userAccs = [user, user2, user3, user4, user5, user6].map(
+      (u) => u.address
+    )
+    const pointsAmount = 11
+    await loyaltyCardMaster
+      .connect(operator1)
+      .addPointsBatchAccSingleValue(userAccs, pointsAmount)
+
+    for (const acc of userAccs) {
+      expect(await loyaltyCardMaster.currentPointsAccount(acc)).to.equal(
+        pointsAmount
+      )
+    }
+  })
+
+  it('Should be able to add the different rewards to a batch of user accounts', async function () {
+    await loyaltyCardMaster.setMinter(owner.address)
+    await loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user2.address)
+    await loyaltyCardMaster.mint(user3.address)
+    await loyaltyCardMaster.mint(user4.address)
+    await loyaltyCardMaster.mint(user5.address)
+    await loyaltyCardMaster.mint(user6.address)
+    await loyaltyCardMaster.addOperator(operator1.address)
+    const userAccs = [user, user2, user3, user4, user5, user6].map(
+      (u) => u.address
+    )
+    const pointsAmounts = [11, 12, 13, 14, 15, 16]
+    await loyaltyCardMaster
+      .connect(operator1)
+      .addPointsBatchAccMultiValues(userAccs, pointsAmounts)
+
+    let i = 0
+    for (const acc of userAccs) {
+      expect(await loyaltyCardMaster.currentPointsAccount(acc)).to.equal(
+        pointsAmounts[i++]
+      )
+    }
+  })
+
+  it('Should revert on data length mismatch when adding different rewards to a batch of user accounts', async function () {
+    await loyaltyCardMaster.setMinter(owner.address)
+    await loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user2.address)
+    const userAccs = [user, user2].map((u) => u.address)
+
+    const pointsAmountsTooShort = [11]
+    const pointsAmountsTooLong = [11, 12, 13]
+
+    await expect(
+      loyaltyCardMaster
+        .connect(operator1)
+        .addPointsBatchAccMultiValues(userAccs, pointsAmountsTooShort)
+    ).to.be.revertedWith('BatchRewardLengthsMismatch')
+
+    await expect(
+      loyaltyCardMaster
+        .connect(operator1)
+        .addPointsBatchAccMultiValues(userAccs, pointsAmountsTooLong)
+    ).to.be.revertedWith('BatchRewardLengthsMismatch')
   })
 
   // ============= TRANSFERS
