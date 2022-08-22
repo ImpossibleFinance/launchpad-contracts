@@ -28,21 +28,17 @@ export default describe('Solv Voucher', function () {
   let sourceContract: Contract
   let idiaContract: Contract
 
-  this.timeout(0)
 
-  beforeEach(async () => {
-    minter = await ethers.getSigner(MINTER_ADDRESS)
+  it('can impersonate', async function () {
     await hre.network.provider.request({
             method: 'hardhat_impersonateAccount',
             params: [MINTER_ADDRESS],
     })
+    minter = await ethers.getSigner(MINTER_ADDRESS)
     user = (await hre.ethers.getSigners())[0]
     idiaContract = new ethers.Contract(IDIA_ADDRESS, GenericToken.abi, minter)
     sourceContract = new ethers.Contract(IDIA_VOUCHER_ADDRESS, IDIAVoucher, minter)
     voucherContract = sourceContract.attach(PROXY_ADDRESS)
-  })
-
-  it('can impersonate', async function () {
     const TRANSFER_AMOUNT = ethers.constants.WeiPerEther
     const initialBalance = await idiaContract.balanceOf(ADMIN_ADDRESS)
     await idiaContract.connect(minter).transfer(ADMIN_ADDRESS, TRANSFER_AMOUNT)
