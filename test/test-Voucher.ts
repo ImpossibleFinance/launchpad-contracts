@@ -10,7 +10,7 @@ import BatchMintParams from '../scripts/inputs/BatchMintParams.json'
 import { expect } from 'chai'
 import { BigNumber } from '@ethersproject/bignumber'
 
-export default describe('Solv Voucher', function () {
+export default describe.skip('Solv Voucher', function () {
   // wallet address
   const MINTER_ADDRESS = '0x22b6eb86Dc704E34b4C729cFeab6CaA4F57EfeE7'
   const ADMIN_ADDRESS = '0x21Bc9179d5c529B52e3EE8f6Ecf0e63FA231d16C'
