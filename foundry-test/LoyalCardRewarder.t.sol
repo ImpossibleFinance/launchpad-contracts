@@ -29,7 +29,7 @@ contract ContractTest is Test {
         loyaltyCardRewarder = new LoyaltyCardRewarder(address(loyaltyCardMaster), address(loyaltyRewardsLookup));
         loyaltyCardMaster.addOperator(address(loyaltyCardRewarder));
         loyaltyCardMaster.setMinter(address(this));
-        for (uint i = 1; i < 10; ++i) {
+        for (uint i = 1; i < 11; ++i) {
             testCodes[i] = Strings.toString(i);
             loyaltyRewardsLookup.setCredential(i, i, testCodes[i]);
         }
@@ -38,8 +38,8 @@ contract ContractTest is Test {
             users[i] = user;
         }
         for (uint i = 0; i < users.length; ++i) {
-            credCodes[i] = [1,2,3,4,5,6,7,8,9];
-            credNames[i] = ["1","2","3","4","5","6","7","8","9"];
+            credCodes[i] = [1,2,3,4,5,6,7,8,9, 10];
+            credNames[i] = ["1","2","3","4","5","6","7","8","9", "10"];
         }
     }
 
@@ -53,8 +53,22 @@ contract ContractTest is Test {
 
 
     function testSingleUserMultiCreds() public {
-        for (uint code = 1; code < 10; ++code) {
+        for (uint code = 1; code < 11; ++code) {
             loyaltyCardRewarder.rewardAccount(user, code, testCodes[code]);
+        }
+    }
+
+    function testBundled() public {
+        for (uint i; i < users.length; ++i) {
+            loyaltyCardRewarder.rewardAccount(user, 1, "1");
+        }
+    }
+
+    function testBundledMultiCreds() public {
+        for (uint i; i < users.length; ++i) {
+            for (uint code = 1; code < 11; ++code) {
+                loyaltyCardRewarder.rewardAccount(user, code, testCodes[code]);
+            }
         }
     }
 
