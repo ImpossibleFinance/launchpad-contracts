@@ -16,7 +16,7 @@ contract ContractTest is Test {
     LoyaltyCardRewarder internal loyaltyCardRewarder;
     LoyaltyRewardsLookup internal loyaltyRewardsLookup;
     address internal user = 0x1f1BDFE288a8C9ac31F1f7C70dfEE6c82EDF77f6;
-    uint256 internal numUsers = 10;
+    uint256 internal numUsers = 100;
     address[] internal users = new address[](numUsers);
     mapping(uint256 => string) internal testCodes;
     uint256[][] internal credCodes = new uint256[][](numUsers);
