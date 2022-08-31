@@ -493,7 +493,6 @@ export default describe('vIDIA', async () => {
   })
 
   it('test padding zero admin and underlying address', async () => {
-    console.log(owner.address)
     const VIDIAFactory = await ethers.getContractFactory('vIDIA')
     expect(
       VIDIAFactory.deploy('VIDIA', 'VIDIA', ZERO_ADDRESS, ZERO_ADDRESS)

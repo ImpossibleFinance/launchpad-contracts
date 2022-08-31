@@ -10,11 +10,10 @@ import BatchMintParams from '../scripts/inputs/BatchMintParams.json'
 import { expect } from 'chai'
 import { BigNumber } from '@ethersproject/bignumber'
 
-export default describe('Solv Voucher', function () {
+export default describe.skip('Solv Voucher', function () {
   // wallet address
   const MINTER_ADDRESS = '0x22b6eb86Dc704E34b4C729cFeab6CaA4F57EfeE7'
   const ADMIN_ADDRESS = '0x21Bc9179d5c529B52e3EE8f6Ecf0e63FA231d16C'
-  const USER_ADDRESS = '0x4b91909484296dfdc302996708cacaec99fda7b8'
 
   // contract address
   const IDIA_VOUCHER_ADDRESS = '0x039Bb4b13F252597a69fA2e6ad19034E3CCbbF1C'
@@ -29,25 +28,17 @@ export default describe('Solv Voucher', function () {
   let sourceContract: Contract
   let idiaContract: Contract
 
-  this.timeout(0)
 
-  beforeEach(async () => {
-    minter = await ethers.getSigner(MINTER_ADDRESS)
+  it('can impersonate', async function () {
     await hre.network.provider.request({
             method: 'hardhat_impersonateAccount',
             params: [MINTER_ADDRESS],
     })
-    user = await ethers.getSigner(USER_ADDRESS)
-    await hre.network.provider.request({
-            method: 'hardhat_impersonateAccount',
-            params: [USER_ADDRESS],
-    })
+    minter = await ethers.getSigner(MINTER_ADDRESS)
+    user = (await hre.ethers.getSigners())[0]
     idiaContract = new ethers.Contract(IDIA_ADDRESS, GenericToken.abi, minter)
-    sourceContract = await (new ethers.Contract(IDIA_VOUCHER_ADDRESS, IDIAVoucher, minter))
-    voucherContract = await sourceContract.attach(PROXY_ADDRESS)
-  })
-
-  it('can impersonate', async function () {
+    sourceContract = new ethers.Contract(IDIA_VOUCHER_ADDRESS, IDIAVoucher, minter)
+    voucherContract = sourceContract.attach(PROXY_ADDRESS)
     const TRANSFER_AMOUNT = ethers.constants.WeiPerEther
     const initialBalance = await idiaContract.balanceOf(ADMIN_ADDRESS)
     await idiaContract.connect(minter).transfer(ADMIN_ADDRESS, TRANSFER_AMOUNT)
