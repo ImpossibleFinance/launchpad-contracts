@@ -15,8 +15,8 @@ contract LoyaltyRewardsLookup is Ownable {
 
     /// @dev For on-chain transparency we track not only the points, both also the name associated with a credential
     struct Credential {
-        string name;
         uint256 points;
+        string name;
     }
 
     /// @dev credential code => credential data (name and points)
@@ -34,6 +34,7 @@ contract LoyaltyRewardsLookup is Ownable {
     error EmptyCredentialName();
     error ZeroCredentialPoints();
     error CredentialCodeAlreadyInUse();
+    error CredentialNotSet(uint256);
 
     modifier intendedCredential(uint256 credCode, string calldata credName) {
         if (keccak256(abi.encodePacked(credentialByCode[credCode].name)) != 
@@ -53,6 +54,12 @@ contract LoyaltyRewardsLookup is Ownable {
 
     modifier nonZero(uint256 points) {
         if (points == 0) revert ZeroCredentialPoints();
+        _;
+    }
+
+    modifier onlySetCredential(uint256 credCode) {
+        string memory name = credentialByCode[credCode].name;
+        if (bytes(name).length == 0) revert CredentialNotSet(credCode);
         _;
     }
 
@@ -117,9 +124,26 @@ contract LoyaltyRewardsLookup is Ownable {
     /// while also ensuring it's the intended credential based on its name
     function getPoints(uint256 credCode, string calldata credName)
         external view 
+        onlySetCredential(credCode)
         intendedCredential(credCode, credName)
         returns (uint256) 
     {
         return credentialByCode[credCode].points;
     }
+
+    /// @notice Convenience function to read all credential info for given codes
+    /// @dev Each tuple from return data is decoded as a 2-element array with ethers.js
+    function getNamesAndPointsForAll(uint256[] calldata credCodes)
+        external view
+        returns (Credential[] memory credentials) 
+    {
+        credentials = new Credential[](credCodes.length);
+        for (uint256 i = 0; i < credCodes.length; i++) {
+            string memory credName = credentialByCode[credCodes[i]].name;
+            if (bytes(credName).length == 0) revert CredentialNotSet(credCodes[i]);
+            credentials[i] = credentialByCode[credCodes[i]];
+        }
+    }
 }
+
+

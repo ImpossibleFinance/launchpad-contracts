@@ -3,6 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ethers } from 'hardhat'
 import { Contract } from 'ethers'
 import { expect } from 'chai'
+import { BigNumber } from '@ethersproject/bignumber'
 
 export default describe('Loyalty Card Rewarder contract', function () {
   let LoyaltyCardMaster
@@ -64,6 +65,16 @@ export default describe('Loyalty Card Rewarder contract', function () {
     expect(
       loyaltyRewardsLookup.getPoints(KYC_CREDENTIAL_CODE, OTHER_CREDENTIAL_NAME)
     ).to.be.revertedWith('CredentialMismatch')
+  })
+
+  it('Reverts on retrieval of credential points if credential is not set', async function () {
+    // only KYC credential is set so far
+    expect(
+      loyaltyRewardsLookup.getPoints(
+        OTHER_CREDENTIAL_CODE,
+        OTHER_CREDENTIAL_NAME
+      )
+    ).to.be.revertedWith(`CredentialNotSet(${OTHER_CREDENTIAL_CODE})`)
   })
 
   it('Allows updating a credential name', async function () {
@@ -177,5 +188,32 @@ export default describe('Loyalty Card Rewarder contract', function () {
         KYC_CREDENTIAL_NAME
       )
     ).to.be.revertedWith('ZeroCredentialPoints')
+  })
+
+  it('Returns all credential info for given array of credential codes', async function () {
+    // kyc code (0) already set
+    await loyaltyRewardsLookup.setCredential(1, 10, 'name0')
+    await loyaltyRewardsLookup.setCredential(2, 11, 'name1')
+    await loyaltyRewardsLookup.setCredential(3, 12, 'name2')
+    const retrieved = await loyaltyRewardsLookup.getNamesAndPointsForAll([
+      0, 1, 2, 3,
+    ])
+    const converted = retrieved.map((pair: [BigNumber, string]) => [
+      pair[0].toNumber(),
+      pair[1],
+    ])
+    expect(converted).to.eql([
+      [KYC_CREDENTIAL_POINTS, KYC_CREDENTIAL_NAME],
+      [10, 'name0'],
+      [11, 'name1'],
+      [12, 'name2'],
+    ])
+  })
+
+  it('Reverts if batch credential info is queried with unknown (not set) credential codes', async function () {
+    // so far only KYC code is set (0)
+    expect(
+      loyaltyRewardsLookup.getNamesAndPointsForAll([KYC_CREDENTIAL_CODE, 1])
+    ).to.be.revertedWith('CredentialNotSet')
   })
 })
