@@ -36,6 +36,7 @@ contract BatchMintVoucher is Ownable {
     ) external {
         // send the required tokens to the contract
         idia.transferFrom(msg.sender, address(this), totalValue);
+        uint256 valuesSent = 0;
         for (uint256 i = 0; i < params.users.length; i++) {
             // mint a voucher
             (, uint256 tokenId) = iicToken.mint(
@@ -46,9 +47,11 @@ contract BatchMintVoucher is Ownable {
                 params.originalInvestors[i]
             );
             address userAddr = params.users[i];
+            valuesSent += params.values[i];
             // transfer the voucher to a user
             iicToken.transferFrom(address(this), userAddr, tokenId);
         }
+        require(valuesSent >= totalValue, "Input value less than voucher value");
     }
 
     function withdraw(address erc20Address) external onlyOwner {
