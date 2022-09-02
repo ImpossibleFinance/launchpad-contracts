@@ -7,7 +7,7 @@ const _getFinished = async (apiKey: string) => {
   let data: { session_id: string; alias: string }[]
   try {
     const response = await nodeFetch(
-      `https://workflow-api.synaps.io/v2/session/list/FINISHED`,
+      'https://workflow-api.synaps.io/v2/session/list/FINISHED',
       {
         method: 'GET',
         headers: {
@@ -30,7 +30,7 @@ const _getProgress = async (sessionId: string) => {
 
   try {
     const response = await nodeFetch(
-      `https://workflow-api.synaps.io/v2/workflow/progress`,
+      'https://workflow-api.synaps.io/v2/workflow/progress',
       {
         method: 'GET',
         headers: {
