@@ -3,7 +3,6 @@ import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import {
   getBlockTime,
-  getGasUsed,
   mineNext,
   mineTimeDelta,
   minePause,
@@ -16,6 +15,7 @@ import {
   computeMerkleRoot,
   computeMerkleProof,
   getAddressIndex,
+  pad,
 } from '../library/merkleWhitelist'
 import { BigNumber } from 'ethers'
 import { ALREADY_CASHED, NO_TOKEN_TO_BE_WITHDRAWN, CANNOT_WITHDRAW_YET, EXCEED_MAX_PAYMENT, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_WHITELIST_SETTER_OR_OWNER, NOT_A_GIVEAWAY, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, PROOF_INVALID, SALE_IS_STARTED } from './reverts/msg-IFAllocationSale'
@@ -985,5 +985,41 @@ export default describe('IF Allocation Sale', function () {
       )).to.be.revertedWith(NOT_OWNER)
       await expect(IFAllocationSale.connect(user).emergencyTokenRetrieve(PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
     }
+  })
+  it('can save purchase amount in merkle tree', async function () {
+    const leaves: string[] = []
+    const addressValMap = new Map();
+    (await ethers.getSigners())
+      .forEach((s: SignerWithAddress, i: number) => {
+        const amount = '0x' + pad(ethers.constants.One.mul(i + 1).toString().toLowerCase().replace('0x', ''))
+        const packed = ethers.utils.solidityPack(
+          ['address', 'bytes32'],
+          [s.address.toLowerCase(), amount],
+        )
+        leaves.push(packed)
+        addressValMap.set(s.address.toLowerCase(), [packed, amount])
+    })
+    leaves.sort()
+
+    const merkleRoot = computeMerkleRoot(leaves)
+    await IFAllocationSale.connect(owner).setWhitelist(merkleRoot)
+    mineNext()
+
+    const tempAcct = (await ethers.getSigners())[0]
+    const [packed, amount] = addressValMap.get(tempAcct.address.toLowerCase())
+    const tempAcctIdx = getAddressIndex(leaves, packed)
+    expect(
+      await IFAllocationSale.connect(tempAcct).checkWhitelist(
+        tempAcct.address,
+        [amount, ...computeMerkleProof(leaves, tempAcctIdx)]
+      )
+    ).to.equal(true)
+    const wrongAmount = '0x' + pad(ethers.constants.One.mul(100).toString().toLowerCase().replace('0x', ''))
+    expect(
+      await IFAllocationSale.connect(tempAcct).checkWhitelist(
+        tempAcct.address,
+        [wrongAmount, ...computeMerkleProof(leaves, tempAcctIdx)]
+      )
+    ).to.equal(false)
   })
 })
