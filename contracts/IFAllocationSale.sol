@@ -102,16 +102,11 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     uint256 public minTotalPayment;
     // max for payment token amount
     uint256 public maxTotalPayment;
-    // optional flat allocation override
-    uint256 public saleTokenAllocationOverride;
 
     // EVENTS
 
     event Fund(address indexed sender, uint256 amount);
     event SetMinTotalPayment(uint256 indexed minTotalPayment);
-    event SetSaleTokenAllocationOverride(
-        uint256 indexed saleTokenAllocationOverride
-    );
     event SetCasher(address indexed casher);
     event SetWhitelistSetter(address indexed whitelistSetter);
     event SetWhitelist(bytes32 indexed whitelistRootHash);
@@ -240,20 +235,6 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         emit SetMinTotalPayment(_minTotalPayment);
     }
 
-    // Function for owner to set an optional, flat allocation override
-    function setSaleTokenAllocationOverride(
-        uint256 _saleTokenAllocationOverride
-    ) external onlyOwner {
-        // sale must not have started
-        require(block.timestamp < startTime, 'sale already started');
-
-        saleTokenAllocationOverride = _saleTokenAllocationOverride;
-
-        // emit
-        emit SetSaleTokenAllocationOverride(_saleTokenAllocationOverride);
-    }
-
-    // Function for owner to set an optional, separate casher
     function setCasher(address _casher) external onlyOwner {
         // sale must not have started
         require(block.timestamp < startTime, 'sale already started');
@@ -347,10 +328,18 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         returns (bool)
     {
         // compute merkle leaf from input
-        bytes32 leaf = keccak256(abi.encodePacked(user));
+        bytes32 leaf = keccak256(abi.encodePacked(user, merkleProof[0]));
 
         // verify merkle proof
-        return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
+        return MerkleProof.verify(merkleProof[1:], whitelistRootHash, leaf);
+    }
+
+    function getSaleTokenAllocationOverride(bytes32[] calldata merkleProof)
+        internal
+        pure
+        returns (uint256)
+    {
+        return uint256(merkleProof[1]);
     }
 
     // Function to get the total allocation of a user in allocation sale
@@ -378,25 +367,17 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // determine TOTAL allocation (in payment token)
         uint256 paymentTokenAllocation;
 
-        // different calculation for whether override is set
-        if (saleTokenAllocationOverride == 0) {
-            // calculate allocation (times 10**18)
-            uint256 allocationE18 = (userWeight * 10**18) / totalWeight;
+        // calculate allocation (times 10**18)
+        uint256 allocationE18 = (userWeight * 10**18) / totalWeight;
 
-            // calculate max amount of obtainable sale token
-            uint256 saleTokenAllocationE18 = (saleAmount * allocationE18);
+        // calculate max amount of obtainable sale token
+        uint256 saleTokenAllocationE18 = (saleAmount * allocationE18);
 
-            // calculate equivalent value in payment token
-            paymentTokenAllocation =
-                (saleTokenAllocationE18 * salePrice) /
-                SALE_PRICE_DECIMALS /
-                10**18;
-        } else {
-            // override payment token allocation
-            paymentTokenAllocation =
-                (salePrice * saleTokenAllocationOverride) /
-                SALE_PRICE_DECIMALS;
-        }
+        // calculate equivalent value in payment token
+        paymentTokenAllocation =
+            (saleTokenAllocationE18 * salePrice) /
+            SALE_PRICE_DECIMALS /
+            10**18;
 
         return paymentTokenAllocation;
     }
@@ -420,7 +401,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
 
     // Internal function for making purchase in allocation sale
     // Used by external functions `purchase` and `whitelistedPurchase`
-    function _purchase(uint256 paymentAmount) internal nonReentrant {
+    function _purchase(uint256 paymentAmount, uint256 allocationOverride) internal nonReentrant {
         // sale must be active
         require(startTime <= block.timestamp, 'sale has not begun');
         require(block.timestamp <= endTime, 'sale over');
@@ -433,7 +414,10 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         require(paymentAmount >= minTotalPayment, 'amount below min');
 
         // get max payment of user
-        uint256 remaining = getMaxPayment(_msgSender());
+        uint256 remaining = allocationOverride;
+        if (allocationOverride != 0) {
+            remaining = getMaxPayment(_msgSender());
+        }
 
         // payment must not exceed remaining
         require(paymentAmount <= remaining, 'exceeds max payment');
@@ -466,7 +450,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // there must not be a whitelist set (sales that use whitelist must be used with whitelistedPurchase)
         require(whitelistRootHash == 0, 'use whitelistedPurchase');
 
-        _purchase(paymentAmount);
+        _purchase(paymentAmount, 0);
     }
 
     // purchase function when there is a whitelist
@@ -476,8 +460,9 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     ) external {
         // require that user is whitelisted by checking proof
         require(checkWhitelist(_msgSender(), merkleProof), 'proof invalid');
+        uint256 allocationOverride = getSaleTokenAllocationOverride(merkleProof);
 
-        _purchase(paymentAmount);
+        _purchase(paymentAmount, allocationOverride);
     }
 
     // Function for withdrawing purchased sale token after sale end
@@ -558,12 +543,13 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[_msgSender()]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
-            if (saleTokenAllocationOverride == 0) {
+            uint256 _saleTokenAllocationOverride = getSaleTokenAllocationOverride(merkleProof);
+            if (_saleTokenAllocationOverride == 0) {
                 // if there is no override, fetch the total payment allocation
                 claimable[_msgSender()] = getUserStakeValue(_msgSender());
             } else {
                 // if override, set the override amount
-                claimable[_msgSender()] = saleTokenAllocationOverride;
+                claimable[_msgSender()] = _saleTokenAllocationOverride;
             }
             totalPurchased[_msgSender()] = claimable[_msgSender()];
         }
