@@ -986,7 +986,7 @@ export default describe('IF Allocation Sale', function () {
       await expect(IFAllocationSale.connect(user).emergencyTokenRetrieve(PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
     }
   })
-  it('can save purchase amount in merkle tree', async function () {
+  it('can save allocation amount in merkle tree', async function () {
     const leaves: string[] = []
     const addressValMap = new Map();
     (await ethers.getSigners())
