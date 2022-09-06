@@ -15,7 +15,7 @@ export async function main(): Promise<void> {
   // We get the contract to deploy
   const VIDIAFactory = await hre.ethers.getContractFactory('vIDIA')
   
-  const VIDIA = await VIDIAFactory.deploy(name, symbol, admin, underlying);
+  const VIDIA = await VIDIAFactory.deploy(name, symbol, admin, underlying)
 
   console.log('VIDIA deployed to ', VIDIA.address)
 }
