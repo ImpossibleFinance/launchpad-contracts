@@ -13,3 +13,5 @@ artifacts
 .env
 
 .tmp.*
+
+.vscode
