@@ -102,11 +102,16 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     uint256 public minTotalPayment;
     // max for payment token amount
     uint256 public maxTotalPayment;
+    // optional flat allocation override
+    uint256 public saleTokenAllocationOverride;
 
     // EVENTS
 
     event Fund(address indexed sender, uint256 amount);
     event SetMinTotalPayment(uint256 indexed minTotalPayment);
+    event SetSaleTokenAllocationOverride(
+        uint256 indexed saleTokenAllocationOverride
+    );
     event SetCasher(address indexed casher);
     event SetWhitelistSetter(address indexed whitelistSetter);
     event SetWhitelist(bytes32 indexed whitelistRootHash);
@@ -235,6 +240,20 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         emit SetMinTotalPayment(_minTotalPayment);
     }
 
+    // Function for owner to set an optional, flat allocation override
+    function setSaleTokenAllocationOverride(
+        uint256 _saleTokenAllocationOverride
+    ) external onlyOwner {
+        // sale must not have started
+        require(block.timestamp < startTime, 'sale already started');
+
+        saleTokenAllocationOverride = _saleTokenAllocationOverride;
+
+        // emit
+        emit SetSaleTokenAllocationOverride(_saleTokenAllocationOverride);
+    }
+
+    // Function for owner to set an optional, separate casher
     function setCasher(address _casher) external onlyOwner {
         // sale must not have started
         require(block.timestamp < startTime, 'sale already started');
@@ -328,18 +347,18 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         returns (bool)
     {
         // compute merkle leaf from input
-        bytes32 leaf = keccak256(abi.encodePacked(user, merkleProof[0]));
+        bytes32 leaf = _hashPair(keccak256(abi.encodePacked(user)), merkleProof[0]);
 
         // verify merkle proof
         return MerkleProof.verify(merkleProof[1:], whitelistRootHash, leaf);
     }
 
-    function getSaleTokenAllocationOverride(bytes32[] calldata merkleProof)
+    function getSaleTokenAllocationOverride(bytes32[] calldata proof)
         internal
         pure
         returns (uint256)
-    {
-        return uint256(merkleProof[1]);
+    {   
+        return uint256(uint(proof[0]));
     }
 
     // Function to get the total allocation of a user in allocation sale
@@ -367,17 +386,25 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // determine TOTAL allocation (in payment token)
         uint256 paymentTokenAllocation;
 
-        // calculate allocation (times 10**18)
-        uint256 allocationE18 = (userWeight * 10**18) / totalWeight;
+        // different calculation for whether override is set
+        if (saleTokenAllocationOverride == 0) {
+            // calculate allocation (times 10**18)
+            uint256 allocationE18 = (userWeight * 10**18) / totalWeight;
 
-        // calculate max amount of obtainable sale token
-        uint256 saleTokenAllocationE18 = (saleAmount * allocationE18);
+            // calculate max amount of obtainable sale token
+            uint256 saleTokenAllocationE18 = (saleAmount * allocationE18);
 
-        // calculate equivalent value in payment token
-        paymentTokenAllocation =
-            (saleTokenAllocationE18 * salePrice) /
-            SALE_PRICE_DECIMALS /
-            10**18;
+            // calculate equivalent value in payment token
+            paymentTokenAllocation =
+                (saleTokenAllocationE18 * salePrice) /
+                SALE_PRICE_DECIMALS /
+                10**18;
+        } else {
+            // override payment token allocation
+            paymentTokenAllocation =
+                (salePrice * saleTokenAllocationOverride) /
+                SALE_PRICE_DECIMALS;
+        }
 
         return paymentTokenAllocation;
     }
@@ -415,7 +442,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
 
         // get max payment of user
         uint256 remaining = allocationOverride;
-        if (allocationOverride != 0) {
+        if (allocationOverride == 0) {
             remaining = getMaxPayment(_msgSender());
         }
 
@@ -645,4 +672,28 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
 
         return saleTokenOwed;
     }
+
+    function _hashPair(bytes32 a, bytes32 b) private pure returns (bytes32) {
+        return a < b ? _efficientHash(a, b) : _efficientHash(b, a);
+    }
+
+    function _efficientHash(bytes32 a, bytes32 b) private pure returns (bytes32 value) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            mstore(0x00, a)
+            mstore(0x20, b)
+            value := keccak256(0x00, 0x40)
+        }
+    }
+
+    function toUint256(bytes memory _bytes)   
+        internal
+        pure
+    returns (uint256 value) {
+
+        assembly {
+        value := calldataload(add(_bytes, 0x20))
+        }
+    }
+
 }
