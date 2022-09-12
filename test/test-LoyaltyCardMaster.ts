@@ -334,14 +334,17 @@ export default describe('Loyalty Card Master contract', function () {
       (u) => u.address
     )
     const pointsAmount = 11
+    const multipliers = [11, 12, 13, 14, 15, 16]
     await loyaltyCardMaster
       .connect(operator1)
-      .addPointsBatchAccSingleValue(userAccs, pointsAmount)
+      .addPointsBatchAccSingleValue(userAccs, pointsAmount, multipliers)
 
+    let idx = 0
     for (const acc of userAccs) {
       expect(await loyaltyCardMaster.currentPointsAccount(acc)).to.equal(
-        pointsAmount
+        pointsAmount * multipliers[idx]
       )
+      idx++
     }
   })
 
@@ -378,6 +381,7 @@ export default describe('Loyalty Card Master contract', function () {
 
     const pointsAmountsTooShort = [11]
     const pointsAmountsTooLong = [11, 12, 13]
+    const pointsAmounts = [11, 12]
 
     await expect(
       loyaltyCardMaster
@@ -389,6 +393,28 @@ export default describe('Loyalty Card Master contract', function () {
       loyaltyCardMaster
         .connect(operator1)
         .addPointsBatchAccMultiValues(userAccs, pointsAmountsTooLong)
+    ).to.be.revertedWith('BatchRewardLengthsMismatch')
+
+    const multipliersTooShort = [11]
+    const multipliersTooLong = [11, 12, 13]
+    await expect(
+      loyaltyCardMaster
+        .connect(operator1)
+        .addPointsBatchAccSingleValue(
+          userAccs,
+          pointsAmounts,
+          multipliersTooShort
+        )
+    ).to.be.revertedWith('BatchRewardLengthsMismatch')
+
+    await expect(
+      loyaltyCardMaster
+        .connect(operator1)
+        .addPointsBatchAccSingleValue(
+          userAccs,
+          pointsAmounts,
+          multipliersTooLong
+        )
     ).to.be.revertedWith('BatchRewardLengthsMismatch')
   })
 

@@ -238,12 +238,17 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         @notice Add the same amount of points to multiple IF user accounts in a batch
         @param accounts IF user account addresses batch, as an array 
         @param pointsAmount The amount of points to add
+        @param multipliers Points multiplier for each account
      */
-    function addPointsBatchAccSingleValue(address[] calldata accounts, uint256 pointsAmount) 
+    function addPointsBatchAccSingleValue(
+        address[] calldata accounts,
+        uint256 pointsAmount,
+        uint256[] calldata multipliers) 
         external 
     {
+        if (accounts.length != multipliers.length) revert BatchRewardLengthsMismatch();
         for (uint256 i = 0; i < accounts.length; i++) {
-            _addPointsCard(originalOwnerToTokenId[accounts[i]], pointsAmount);
+            _addPointsCard(originalOwnerToTokenId[accounts[i]], pointsAmount * multipliers[i]);
         }
     }
 
