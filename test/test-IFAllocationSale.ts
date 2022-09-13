@@ -829,7 +829,7 @@ export default describe('IF Allocation Sale', function () {
     await IFAllocationSale.connect(buyer).purchase(paymentAmount / 2)
     await IFAllocationSale.connect(buyer).purchase(paymentAmount / 2)
     await IFAllocationSale.connect(buyer2).purchase(paymentAmount * 2)
-    const maxPayment: BigNumber = await IFAllocationSale.getMaxPayment(buyer.address)
+    const maxPayment: BigNumber = await IFAllocationSale.connect(buyer).getMaxPayment(buyer.address)
     // linear vesting: User has a purchase cap of x. He tried to buy x +1.
     await expect(IFAllocationSale.connect(buyer).purchase(maxPayment.add(1))).to.be.revertedWith(EXCEED_MAX_PAYMENT)
 
@@ -1003,6 +1003,7 @@ export default describe('IF Allocation Sale', function () {
 
     const merkleRoot = computeMerkleRoot(leaves)
     await IFAllocationSale.connect(owner).setWhitelist(merkleRoot)
+    await IFAllocationSale.connect(owner).setWhitelistAllocation(merkleRoot)
     mineNext()
 
     const tempAcct = (await ethers.getSigners())[0]
