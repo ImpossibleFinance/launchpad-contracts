@@ -3,7 +3,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ethers } from 'hardhat'
 import { Contract } from 'ethers'
 import { expect } from 'chai'
-import { Console } from 'console'
 
 export default describe('Loyalty Card Rewarder contract', function () {
   let LoyaltyCardMaster

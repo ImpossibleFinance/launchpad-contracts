@@ -35,7 +35,7 @@ interface ILoyaltyCardMaster {
     function currentPointsAccount(address account) external;
 
     function addPointsAccount(address account, uint256 points) external;
-
+    
     function addPointsBatchAccSingleValue(
         address[] calldata accounts,
         uint256 points,

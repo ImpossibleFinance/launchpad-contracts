@@ -102,7 +102,7 @@ const hashAddress = (address: string) => {
 }
 
 // pad a string with some character
-const pad = (str: string, width: number = 64, char: string = '0') => {
+const pad = (str: string, width = 64, char = '0') => {
   return char.repeat(Math.max(0, width - str.length)) + str
 }
 

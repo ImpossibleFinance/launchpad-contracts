@@ -30,12 +30,14 @@ contract LoyaltyCardRewarder is Ownable {
       @param credCode The numeric credential code of the credential that is to be rewarded
       @param credName The name of the credential that is to be rewarded
       @param credCount The number of times that this credential should be rewarded
+
       @notice The reward is given based on the provided numeric credential code. 
         An additional check is performed to see if the provided credential name matches 
         the name which the rewards lookup contract itself associates with the provided credential code
       @dev Typically this would be called by the IF backend.
       @dev Can be part of a regular task (daily updates from KNN3) or an isolated call (user has completed a L&E quiz)
      */
+
     function rewardAccount(
         address account,
         uint256 credCode,
@@ -52,7 +54,7 @@ contract LoyaltyCardRewarder is Ownable {
         @param credCode The numeric credential code that identifies given credential
         @param credName The name of given credential (to double check that given reward is intended)
         @param credCounts The number of times that this credential should be rewarded per each user
-     */
+    */
     function rewardBatchSingleCredential(
         address[] calldata accounts,
         uint256 credCode,
