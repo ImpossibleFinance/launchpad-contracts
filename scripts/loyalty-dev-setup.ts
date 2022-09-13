@@ -48,9 +48,16 @@ export async function main(): Promise<void> {
     )
   }
 
-  await loyaltyRewardsLookup.setCredential(0, 1, 'dao')
-  await loyaltyRewardsLookup.setCredential(1, 1, 'swap1')
-  await loyaltyRewardsLookup.setCredential(2, 2, 'stake1')
+  const credCodes = [1, 2, 3]
+  const credPoints = [11, 12, 13]
+  const credNames = ['dao', 'swap1', 'stake1']
+
+  for (const i of [1, 2, 3])
+    await loyaltyRewardsLookup.setCredential(
+      credCodes[i],
+      credPoints[i],
+      credNames[i]
+    )
 }
 
 // We recommend this pattern to be able to use async/await everywhere

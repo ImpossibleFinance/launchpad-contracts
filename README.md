@@ -202,9 +202,9 @@ Additionally it will initialize the RewardsLookup contract with some credential 
 ```
 CODE    POINTS   NAME
 
-0       11       'dao'
-1       12       'swap1'
-2       13       'stake1'
+1       11       'dao'
+2       12       'swap1'
+3       13       'stake1'
 ```
 
 ```shell

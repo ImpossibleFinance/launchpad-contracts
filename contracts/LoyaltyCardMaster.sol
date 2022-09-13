@@ -106,10 +106,27 @@ contract LoyaltyCardMaster is ERC721, Ownable {
       @param to The account to mint to
      */
     function mint(address to) external onlyMinter {
+        _mintChecked(to);
+    }
+
+    /// @dev created as internal for easier batch minting 
+    function _mintChecked(address to) internal {
         if (originalOwnerToTokenId[to] != 0) revert AlreadyOwnsCard();
         uint256 tokenId = ++mintCounter; /// @dev first tokenId will be 1;
         _mint(to, tokenId);
         originalOwnerToTokenId[to] = tokenId;
+    }
+
+    /**
+      @notice Mint a batch of new card to given accounts
+      @notice Helps us save some gas when we need to mint for many several users at once
+      @param owners The accounts to mint to
+      @dev This call only goes through if each individual mint is possible: no duplicate owners in param
+     */
+    function mintBatch(address[] memory owners) external onlyMinter {
+        for (uint256 i = 0; i < owners.length; i++) {
+            _mintChecked(owners[i]);
+        }
     }
 
     function setMinter(address _minter) external onlyOwner {
