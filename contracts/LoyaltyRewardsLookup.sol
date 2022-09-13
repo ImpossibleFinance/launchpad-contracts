@@ -144,6 +144,15 @@ contract LoyaltyRewardsLookup is Ownable {
             credentials[i] = credentialByCode[credCodes[i]];
         }
     }
+
+    /// @notice Check whether credentials with given codes have been set in this contract
+    function checkExistenceForCredentials(uint256[] calldata credCodes) external view returns (bool[] memory existenceFlags) {
+        existenceFlags = new bool[](credCodes.length);
+        for (uint256 i = 0; i < credCodes.length; i++) {
+            string memory credName = credentialByCode[credCodes[i]].name;
+            existenceFlags[i] = bytes(credName).length > 0;
+        }
+    }
 }
 
 
