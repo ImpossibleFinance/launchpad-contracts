@@ -353,13 +353,17 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         vestingEndTime = 0;
     }
 
+    function _useWhitelistWithAllocation() internal view returns(bool) {
+        return whitelistAllocationRootHash == 0;
+    }
+
     // Returns true if user is on whitelist, otherwise false
     function checkWhitelist(address user, bytes32[] calldata merkleProof)
         public
         view
         returns (bool)
     {
-        if (whitelistAllocationRootHash == 0) {
+        if (!_useWhitelistWithAllocation()) {
             // compute merkle leaf from input
             bytes32 leaf = keccak256(abi.encodePacked(user));
 
@@ -379,7 +383,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         view
         returns (uint256)
     {
-        if (whitelistAllocationRootHash == 0 || !checkWhitelist(user, merkleProof)) {
+        if (!checkWhitelist(user, merkleProof)) {
             return 0;
         } else {
             return uint256(uint(merkleProof[0]));
@@ -434,6 +438,9 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         return paymentTokenAllocation;
     }
 
+    // Overloading getTotalPaymentAllocation(address user).
+    // The function checks allocation from merkleProof. 
+    // It is same as the original getTotalPaymentAllocation if the proof doesn't pass,
     function getTotalPaymentAllocation(address user, bytes32[] calldata merkleProof)
         public
         view
