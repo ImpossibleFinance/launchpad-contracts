@@ -1023,4 +1023,81 @@ export default describe('IF Allocation Sale', function () {
       )
     ).to.equal(false)
   })
+  it('can vest with allocated purchase saved in merkle tree', async function () {
+    const leaves: string[] = []
+    const addressValMap = new Map()
+    const signers = await ethers.getSigners()
+    const whitelistedBuyer = signers[1]
+
+    signers.forEach((s: SignerWithAddress, i: number) => {
+      const amount = '0x' + pad(ethers.constants.One.mul(i + 1).toString().toLowerCase().replace('0x', ''))
+      const packed = ethers.utils.solidityPack(
+        ['address', 'bytes32'],
+        [s.address.toLowerCase(), amount],
+      )
+      leaves.push(packed)
+      addressValMap.set(s.address.toLowerCase(), [packed, amount])
+    })
+    leaves.sort()
+
+    const merkleRoot = computeMerkleRoot(leaves)
+    await IFAllocationSale.connect(owner).setWhitelist(merkleRoot)
+    await IFAllocationSale.connect(owner).setWhitelistAllocation(merkleRoot)
+    mineNext()
+
+
+    // amount to pay
+    const paymentAmount = 333330
+    const withdrawDelay = 10000
+
+    const cliffInterval = Math.floor((vestingEndTime - endTime) / 3)
+    const cliffPeriod = [
+      endTime + withdrawDelay + 1,
+      endTime + withdrawDelay + cliffInterval * 1,
+      endTime + withdrawDelay + cliffInterval * 2,
+      endTime + withdrawDelay + cliffInterval * 3
+    ]
+    const cliffPct = [10, 20, 30, 40]
+    await IFAllocationSale.connect(owner).setWithdrawDelay(withdrawDelay)
+    await IFAllocationSale.connect(owner).setCliffPeriod(cliffPeriod, cliffPct)
+
+    // fast forward from current time to start time
+    mineTimeDelta(startTime - (await getBlockTime()))
+    // purchase
+    mineNext()
+    await PaymentToken.connect(whitelistedBuyer).approve(
+      IFAllocationSale.address,
+      paymentAmount
+    )
+
+    const [packed, amount] = addressValMap.get(whitelistedBuyer.address.toLowerCase())
+    const acctIdx = getAddressIndex(leaves, packed)
+    await IFAllocationSale.connect(whitelistedBuyer).whitelistedPurchase(
+      paymentAmount,
+      [amount, ...computeMerkleProof(leaves, acctIdx)]
+    )
+    // cliff vesting: User makes a purchase and claim before cliff vesting starts
+    await expect(IFAllocationSale.connect(whitelistedBuyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+
+    mineTimeDelta(endTime + withdrawDelay - (await getBlockTime()) + 1)
+
+    // test withdraw
+    await IFAllocationSale.connect(whitelistedBuyer).withdraw()
+    expect(await SaleToken.balanceOf(whitelistedBuyer.address)).to.equal('3333')
+
+    // just before the second cliff time
+    mineNext()
+    mineTimeDelta((endTime + withdrawDelay + cliffInterval * 1) - (await getBlockTime()) - 2)
+    // cliff vesting: User makes a purchase. Time pasts cliff 1. He makes claims.
+    await expect(IFAllocationSale.connect(whitelistedBuyer).withdraw()).to.be.revertedWith(NO_TOKEN_TO_BE_WITHDRAWN)
+
+    mineNext()
+    await IFAllocationSale.connect(whitelistedBuyer).withdraw()
+    expect(await SaleToken.balanceOf(whitelistedBuyer.address)).to.equal('9999')
+
+
+    mineTimeDelta(cliffPeriod[3] - (await getBlockTime()))
+    await IFAllocationSale.connect(whitelistedBuyer).withdraw()
+    expect(await SaleToken.balanceOf(whitelistedBuyer.address)).to.equal('33333')
+  })
 })

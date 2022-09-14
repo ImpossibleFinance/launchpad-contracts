@@ -354,7 +354,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     }
 
     function _useWhitelistWithAllocation() internal view returns(bool) {
-        return whitelistAllocationRootHash == 0;
+        return whitelistAllocationRootHash != 0;
     }
 
     // Returns true if user is on whitelist, otherwise false
