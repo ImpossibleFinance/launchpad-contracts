@@ -383,10 +383,10 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         view
         returns (uint256)
     {
-        if (!checkWhitelist(user, merkleProof)) {
-            return 0;
-        } else {
+        if (_useWhitelistWithAllocation() && checkWhitelist(user, merkleProof)) {
             return uint256(uint(merkleProof[0]));
+        } else {
+            return 0;
         }
     }
 
