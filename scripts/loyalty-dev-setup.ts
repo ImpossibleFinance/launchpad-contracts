@@ -52,7 +52,7 @@ export async function main(): Promise<void> {
   const credPoints = [11, 12, 13]
   const credNames = ['dao', 'swap1', 'stake1']
 
-  for (const i of [1, 2, 3])
+  for (const i of [0, 1, 2])
     await loyaltyRewardsLookup.setCredential(
       credCodes[i],
       credPoints[i],
