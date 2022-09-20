@@ -93,6 +93,7 @@ contract LoyaltyRewardsLookup is Ownable {
         noDuplicate(credName)
         nonEmpty(credName)
     {
+        credentialNameInUse[credentialByCode[credCode].name] = false;
         credentialByCode[credCode].name = credName;
         emit UpdateCredentialName(credCode, credName);
     }
