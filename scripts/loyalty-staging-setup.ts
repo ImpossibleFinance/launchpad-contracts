@@ -6,15 +6,8 @@
 import hre from 'hardhat'
 import chalk from 'chalk'
 
+// Run this script on staging chain (testnet)
 export async function main(): Promise<void> {
-  // values for local chain run with $ ganache-cli --deterministic
-  const GANACHE_CARD_MASTER_ADDRESS =
-    '0xe78A0F7E598Cc8b0Bb87894B0F60dD2a88d6a8Ab'
-  const GANACHE_REWARDS_LOOKUP_ADDRESS =
-    '0x5b1869D9A4C187F2EAa108f3062412ecf0526b24'
-  const GANACHE_LOYALTY_CARD_REWARDER_ADDRESS =
-    '0xCfEB869F69431e42cdB54A4F4f105C19C080A601'
-
   const signerAddress = (await hre.ethers.getSigners())[0].address
   console.log(chalk.magentaBright('Deployer'), chalk.green(signerAddress))
 
@@ -54,24 +47,10 @@ export async function main(): Promise<void> {
     chalk.green(loyaltyCardRewarder.address)
   )
 
-  // make sure addresses are as expected (so we can dev using precisely these in the backend-service loyalty program)
-  const deploymentOK =
-    loyaltyCardMaster.address == GANACHE_CARD_MASTER_ADDRESS &&
-    loyaltyRewardsLookup.address == GANACHE_REWARDS_LOOKUP_ADDRESS &&
-    loyaltyCardRewarder.address == GANACHE_LOYALTY_CARD_REWARDER_ADDRESS
-  if (!deploymentOK) {
-    console.log(
-      chalk.red(
-        'Contract addresses not as expected. Are you using ganace-cli --deterministic?'
-      )
-    )
-    return
-  }
-
-  // Setup Credentials
+  // Setup credentials - use realistic values
 
   const credCodes = [1, 2, 3]
-  const credPoints = [11, 12, 13]
+  const credPoints = [1, 1, 2]
   const credNames = ['dao', 'swap1', 'stake1']
 
   for (const i of [0, 1, 2])
@@ -86,9 +65,8 @@ export async function main(): Promise<void> {
   console.log('Points: ', credPoints)
   console.log()
 
-  // The deployer of the loyalty card master is allowed to mint the nfts
+  // Allow the deployer of the loyalty card master to mint the nfts
   // IN PRODUCTION WE NEED TO MAKE SURE THIS IS AS INTENDED
-  // (who deploys LoyaltyCardMaster vs. who is the loyalty RewarderWallet)
   await loyaltyCardMaster.setMinter(signerAddress)
   console.log(
     'Set',
