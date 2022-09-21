@@ -59,11 +59,13 @@ export async function main(): Promise<void> {
       credNames[i]
     )
 
+  const signerAddress = (await hre.ethers.getSigners())[0].address
   // The deployer of the loyalty card master is allowed to mint the nfts
   // IN PRODUCTION WE NEED TO MAKE SURE THIS IS AS INTENDED
   // (who deploys LoyaltyCardMaster vs. who is the loyalty RewarderWallet)
-  const signerAddress = (await hre.ethers.getSigners())[0].address
   await loyaltyCardMaster.setMinter(signerAddress)
+  // The rewarder contract is allowed to operate on loyalty card nfts
+  await loyaltyCardMaster.addOperator(loyaltyCardRewarder.address)
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -85,11 +85,12 @@ contract LoyaltyCardRewarder is Ownable {
         string[][] calldata credNames,
         uint256[][] calldata credCounts
     ) external onlyOwner {
-        if (accounts.length != credCodes.length) revert BatchRewardLengthsMismatch();
-        if (accounts.length != credNames.length) revert BatchRewardLengthsMismatch();
-        if (accounts.length != credCounts.length) revert BatchRewardLengthsMismatch();
-        uint256[] memory pointsPerUser = new uint256[](credCodes.length);
-        for (uint256 i = 0; i < credCodes.length; i++) {
+        uint256 numAccounts = accounts.length;
+        if (numAccounts != credCodes.length) revert BatchRewardLengthsMismatch();
+        if (numAccounts != credNames.length) revert BatchRewardLengthsMismatch();
+        if (numAccounts != credCounts.length) revert BatchRewardLengthsMismatch();
+        uint256[] memory pointsPerUser = new uint256[](numAccounts);
+        for (uint256 i = 0; i < numAccounts; i++) {
             for (uint256 j = 0; j < credCodes[i].length; j++) {
                 pointsPerUser[i] += rewardsLookup.getPoints(credCodes[i][j], credNames[i][j]) * credCounts[i][j];
             }
