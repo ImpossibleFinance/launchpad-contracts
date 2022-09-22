@@ -118,18 +118,13 @@ contract LoyaltyCardMaster is ERC721, Ownable {
     }
 
     /**
-      @notice Mint a batch of loyalty cards. Any account that is not yet an owner receives a card.
+      @notice Mint a batch of loyalty cards. Every account receives a card.
       @notice Helps us save some gas when we need to mint for many users at once
-      @param potentialOwners The accounts to mint to (only non-owners are minted a card)
-      @dev When dealing with tens of thousands of users at once, this 2-in-1 approach is more convenient
-        than the alternative: to separately check for ownership status for a batch, and then attempt 
-        minting specifically for the confirmed non-owners
+      @param nonOwners The accounts to mint to (only non-owners are allowed)
      */
-    function mintForNonOwners(address[] memory potentialOwners) external onlyMinter {
-        for (uint256 i = 0; i < potentialOwners.length; i++) {
-            if (originalOwnerToTokenId[potentialOwners[i]] == 0) {
-                _mintChecked(potentialOwners[i]);
-            } 
+    function mintForNonOwners(address[] memory nonOwners) external onlyMinter {
+        for (uint256 i = 0; i < nonOwners.length; i++) {    
+            _mintChecked(nonOwners[i]);
         }
     }
 
