@@ -146,7 +146,7 @@ export default describe('Loyalty Card Master contract', function () {
     await loyaltyCardMaster.setMinter(owner.address)
     expect(await loyaltyCardMaster.mintCounter()).to.equal(0)
     const users = [user, user2, user3, user4, user5].map((u) => u.address)
-    await loyaltyCardMaster.mintBatch(users)
+    await loyaltyCardMaster.mintForNonOwners(users)
     expect(await loyaltyCardMaster.mintCounter()).to.equal(users.length)
   })
 

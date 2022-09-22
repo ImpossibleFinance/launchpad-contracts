@@ -118,14 +118,35 @@ contract LoyaltyCardMaster is ERC721, Ownable {
     }
 
     /**
-      @notice Mint a batch of new card to given accounts
-      @notice Helps us save some gas when we need to mint for many several users at once
-      @param owners The accounts to mint to
-      @dev This call only goes through if each individual mint is possible: no duplicate owners in param
+      @notice Mint a batch of loyalty cards. Any account that is not yet an owner receives a card.
+      @notice Helps us save some gas when we need to mint for many users at once
+      @param potentialOwners The accounts to mint to (only non-owners are minted a card)
+      @dev When dealing with tens of thousands of users at once, this 2-in-1 approach is more convenient
+        than the alternative: to separately check for ownership status for a batch, and then attempt 
+        minting specifically for the confirmed non-owners
      */
-    function mintBatch(address[] memory owners) external onlyMinter {
-        for (uint256 i = 0; i < owners.length; i++) {
-            _mintChecked(owners[i]);
+    function mintForNonOwners(address[] memory potentialOwners) external onlyMinter {
+        for (uint256 i = 0; i < potentialOwners.length; i++) {
+            if (originalOwnerToTokenId[potentialOwners[i]] == 0) {
+                _mintChecked(potentialOwners[i]);
+            } 
+        }
+    }
+
+    /**
+      @notice Retrieve loyalty card ownership status for a batch of accounts
+      @param accounts the accounts for which to check whether they own a loyalty card
+      @return statusFlags an array of boolean values indicating ownership
+      @dev We're creating this in order to efficiently check status for large numbers of users
+     */
+    function getBatchOwnershipStatus(address[] calldata accounts)
+        external
+        view
+        returns (bool[] memory statusFlags)
+    {
+        statusFlags = new bool[](accounts.length);
+        for (uint256 i = 0; i < accounts.length; i++) {
+            statusFlags[i] = originalOwnerToTokenId[accounts[i]] != 0;
         }
     }
 
