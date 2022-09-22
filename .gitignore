@@ -15,3 +15,5 @@ artifacts
 .tmp.*
 
 .vscode
+
+loyalty-load-tests
