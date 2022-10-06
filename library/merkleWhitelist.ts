@@ -29,7 +29,7 @@ export const computeMerkleProof = (addresses: string[], index: number) => {
 
   // compute proof
   let path = index
-  let proof = []
+  const proof = []
   let tempLeaves = [...leaves]
   while (tempLeaves.length > 1) {
     if (path % 2 === 1) {
