@@ -26,6 +26,11 @@ contract IFAllocationMaster is
     using SafeERC20 for ERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    // CONSTANTS
+
+    // number of decimals of rollover factors
+    uint64 constant ROLLOVER_FACTOR_DECIMALS = 10**18;
+
     // STRUCTS
 
     // Celer Multichain Integration
