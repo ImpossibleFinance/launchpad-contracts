@@ -85,7 +85,6 @@ const computeLeaves = (addresses: string[]) => {
     pairwiseSorted.push(left)
     if (left !== right) pairwiseSorted.push(right)
   }
-
   return pairwiseSorted
 }
 
@@ -102,13 +101,13 @@ const hashAddress = (address: string) => {
 }
 
 // pad a string with some character
-const pad = (str: string, width = 64, char = '0') => {
+export const pad = (str: string, width = 64, char = '0') => {
   return char.repeat(Math.max(0, width - str.length)) + str
 }
 
 // reduce a level of the merkle tree
 const merkleReduce = (leaves: string[]) => {
-  let output = []
+  const output = []
 
   while (leaves.length) {
     const leaf1 = (leaves.shift() as string).replace(/^0x/, '')
