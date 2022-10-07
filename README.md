@@ -187,3 +187,30 @@ SALE=0xABCD NEW_OWNER=0xABCD npx hardhat run ./scripts/IFAllocationSale-transfer
 ```
 SALE=0xABCD npx hardhat run ./scripts/IFAllocationSale-cash.ts --network bsc_test
 ```
+
+## Local Development
+
+### Init Loyalty Program contracts
+
+This will deploy the following contracts locally with addresses that those preset in backend-service for local development
+- LoyaltyCardMaster.sol
+- LoyaltyRewardsLookup.sol
+- LoyaltyCardRewarder.sol
+
+Additionally it will initialize the RewardsLookup contract with some credential values which should match the preset values used in the backend-service to populate the loyalty_credential table in dev-mode
+
+```
+CODE    POINTS   NAME
+
+1       11       'dao'
+2       12       'swap1'
+3       13       'stake1'
+```
+
+```shell
+# terminal 1 - keeps logging blockchain
+ganache-cli --deterministic
+
+# terminal 2 - loyalty setup output
+npx hardhat run --network localhost ./scripts/loyalty-dev-setup.ts
+```

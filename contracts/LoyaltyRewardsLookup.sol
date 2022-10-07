@@ -93,6 +93,7 @@ contract LoyaltyRewardsLookup is Ownable {
         noDuplicate(credName)
         nonEmpty(credName)
     {
+        credentialNameInUse[credentialByCode[credCode].name] = false;
         credentialByCode[credCode].name = credName;
         emit UpdateCredentialName(credCode, credName);
     }
@@ -142,6 +143,15 @@ contract LoyaltyRewardsLookup is Ownable {
             string memory credName = credentialByCode[credCodes[i]].name;
             if (bytes(credName).length == 0) revert CredentialNotSet(credCodes[i]);
             credentials[i] = credentialByCode[credCodes[i]];
+        }
+    }
+
+    /// @notice Check whether credentials with given codes have been set in this contract
+    function checkExistenceForCredentials(uint256[] calldata credCodes) external view returns (bool[] memory existenceFlags) {
+        existenceFlags = new bool[](credCodes.length);
+        for (uint256 i = 0; i < credCodes.length; i++) {
+            string memory credName = credentialByCode[credCodes[i]].name;
+            existenceFlags[i] = bytes(credName).length > 0;
         }
     }
 }

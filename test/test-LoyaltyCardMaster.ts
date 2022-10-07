@@ -67,7 +67,7 @@ export default describe('Loyalty Card Master contract', function () {
 
   it('Allows token owner to burn', async function () {
     await loyaltyCardMaster.setMinter(owner.address)
-    loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user.address)
     expect(await loyaltyCardMaster.mintCounter()).to.equal(1)
     const tokenId = 1
     expect(await loyaltyCardMaster.connect(user).burn(tokenId))
@@ -77,7 +77,7 @@ export default describe('Loyalty Card Master contract', function () {
 
   it('Allows approved burner to burn', async function () {
     await loyaltyCardMaster.setMinter(owner.address)
-    loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user.address)
     expect(await loyaltyCardMaster.mintCounter()).to.equal(1)
     const tokenId = 1
     await loyaltyCardMaster.setBurner(owner.address)
@@ -89,7 +89,7 @@ export default describe('Loyalty Card Master contract', function () {
 
   it('Prevents burning if not by token owner or approved burner', async function () {
     await loyaltyCardMaster.setMinter(owner.address)
-    loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user.address)
     expect(await loyaltyCardMaster.mintCounter()).to.equal(1)
     const tokenId = 1
 
@@ -109,9 +109,9 @@ export default describe('Loyalty Card Master contract', function () {
     await loyaltyCardMaster.setMinter(owner.address)
     expect(await loyaltyCardMaster.mintCounter()).to.equal(0)
     expect(await loyaltyCardMaster.burnCounter()).to.equal(0)
-    loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user.address)
     expect(await loyaltyCardMaster.mintCounter()).to.equal(1)
-    loyaltyCardMaster.mint(user2.address)
+    await loyaltyCardMaster.mint(user2.address)
     expect(await loyaltyCardMaster.mintCounter()).to.equal(2)
     await loyaltyCardMaster.setBurner(owner.address)
     const tokenId = 1
@@ -122,7 +122,7 @@ export default describe('Loyalty Card Master contract', function () {
 
   it('Should prevent a user from having multiple loyalty cards', async function () {
     await loyaltyCardMaster.setMinter(owner.address)
-    loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user.address)
     const tokenId1 = 1
     expect(await loyaltyCardMaster.balanceOf(user.address)).to.equal(1)
     expect(loyaltyCardMaster.mint(user.address)).to.be.revertedWith(
@@ -133,7 +133,7 @@ export default describe('Loyalty Card Master contract', function () {
     expect(await loyaltyCardMaster.burn(tokenId1))
 
     // Once an existing loyalty card is burned, minting is possible again
-    loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user.address)
     const tokenId2 = 2
     expect(
       await loyaltyCardMaster.originalOwnerToTokenId(user.address)
@@ -142,12 +142,20 @@ export default describe('Loyalty Card Master contract', function () {
     expect(await loyaltyCardMaster.burnCounter()).to.equal(1)
   })
 
+  it('Allows for batch minting', async function () {
+    await loyaltyCardMaster.setMinter(owner.address)
+    expect(await loyaltyCardMaster.mintCounter()).to.equal(0)
+    const users = [user, user2, user3, user4, user5].map((u) => u.address)
+    await loyaltyCardMaster.mintForNonOwners(users)
+    expect(await loyaltyCardMaster.mintCounter()).to.equal(users.length)
+  })
+
   // ============= OWNED TOKEN LOOKUP
 
   it('Should provide the tokenId of the loyalty card of a given user', async function () {
     await loyaltyCardMaster.setMinter(owner.address)
-    loyaltyCardMaster.mint(user.address)
-    loyaltyCardMaster.mint(user2.address)
+    await loyaltyCardMaster.mint(user.address)
+    await loyaltyCardMaster.mint(user2.address)
     const tokenId1 = 1
     const tokenId2 = 2
     expect(
@@ -334,14 +342,17 @@ export default describe('Loyalty Card Master contract', function () {
       (u) => u.address
     )
     const pointsAmount = 11
+    const multipliers = [11, 12, 13, 14, 15, 16]
     await loyaltyCardMaster
       .connect(operator1)
-      .addPointsBatchAccSingleValue(userAccs, pointsAmount)
+      .addPointsBatchAccSingleValue(userAccs, pointsAmount, multipliers)
 
+    let idx = 0
     for (const acc of userAccs) {
       expect(await loyaltyCardMaster.currentPointsAccount(acc)).to.equal(
-        pointsAmount
+        pointsAmount * multipliers[idx]
       )
+      idx++
     }
   })
 
@@ -378,6 +389,7 @@ export default describe('Loyalty Card Master contract', function () {
 
     const pointsAmountsTooShort = [11]
     const pointsAmountsTooLong = [11, 12, 13]
+    const pointsAmounts = [11, 12]
 
     await expect(
       loyaltyCardMaster
@@ -389,6 +401,28 @@ export default describe('Loyalty Card Master contract', function () {
       loyaltyCardMaster
         .connect(operator1)
         .addPointsBatchAccMultiValues(userAccs, pointsAmountsTooLong)
+    ).to.be.revertedWith('BatchRewardLengthsMismatch')
+
+    const multipliersTooShort = [11]
+    const multipliersTooLong = [11, 12, 13]
+    await expect(
+      loyaltyCardMaster
+        .connect(operator1)
+        .addPointsBatchAccSingleValue(
+          userAccs,
+          pointsAmounts,
+          multipliersTooShort
+        )
+    ).to.be.revertedWith('BatchRewardLengthsMismatch')
+
+    await expect(
+      loyaltyCardMaster
+        .connect(operator1)
+        .addPointsBatchAccSingleValue(
+          userAccs,
+          pointsAmounts,
+          multipliersTooLong
+        )
     ).to.be.revertedWith('BatchRewardLengthsMismatch')
   })
 

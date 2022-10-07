@@ -106,10 +106,43 @@ contract LoyaltyCardMaster is ERC721, Ownable {
       @param to The account to mint to
      */
     function mint(address to) external onlyMinter {
+        _mintChecked(to);
+    }
+
+    /// @dev created as internal for easier batch minting 
+    function _mintChecked(address to) internal {
         if (originalOwnerToTokenId[to] != 0) revert AlreadyOwnsCard();
         uint256 tokenId = ++mintCounter; /// @dev first tokenId will be 1;
         _mint(to, tokenId);
         originalOwnerToTokenId[to] = tokenId;
+    }
+
+    /**
+      @notice Mint a batch of loyalty cards. Every account receives a card.
+      @notice Helps us save some gas when we need to mint for many users at once
+      @param nonOwners The accounts to mint to (only non-owners are allowed)
+     */
+    function mintForNonOwners(address[] memory nonOwners) external onlyMinter {
+        for (uint256 i = 0; i < nonOwners.length; i++) {    
+            _mintChecked(nonOwners[i]);
+        }
+    }
+
+    /**
+      @notice Retrieve loyalty card ownership status for a batch of accounts
+      @param accounts the accounts for which to check whether they own a loyalty card
+      @return statusFlags an array of boolean values indicating ownership
+      @dev We're creating this in order to efficiently check status for large numbers of users
+     */
+    function getBatchOwnershipStatus(address[] calldata accounts)
+        external
+        view
+        returns (bool[] memory statusFlags)
+    {
+        statusFlags = new bool[](accounts.length);
+        for (uint256 i = 0; i < accounts.length; i++) {
+            statusFlags[i] = originalOwnerToTokenId[accounts[i]] != 0;
+        }
     }
 
     function setMinter(address _minter) external onlyOwner {
@@ -238,12 +271,17 @@ contract LoyaltyCardMaster is ERC721, Ownable {
         @notice Add the same amount of points to multiple IF user accounts in a batch
         @param accounts IF user account addresses batch, as an array 
         @param pointsAmount The amount of points to add
+        @param multipliers Points multiplier for each account
      */
-    function addPointsBatchAccSingleValue(address[] calldata accounts, uint256 pointsAmount) 
+    function addPointsBatchAccSingleValue(
+        address[] calldata accounts,
+        uint256 pointsAmount,
+        uint256[] calldata multipliers) 
         external 
     {
+        if (accounts.length != multipliers.length) revert BatchRewardLengthsMismatch();
         for (uint256 i = 0; i < accounts.length; i++) {
-            _addPointsCard(originalOwnerToTokenId[accounts[i]], pointsAmount);
+            _addPointsCard(originalOwnerToTokenId[accounts[i]], pointsAmount * multipliers[i]);
         }
     }
 

@@ -29,14 +29,22 @@ contract LoyaltyCardRewarder is Ownable {
       @param account The IF user account that should be rewarderd
       @param credCode The numeric credential code of the credential that is to be rewarded
       @param credName The name of the credential that is to be rewarded
+      @param credCount The number of times that this credential should be rewarded
+
       @notice The reward is given based on the provided numeric credential code. 
         An additional check is performed to see if the provided credential name matches 
         the name which the rewards lookup contract itself associates with the provided credential code
       @dev Typically this would be called by the IF backend.
       @dev Can be part of a regular task (daily updates from KNN3) or an isolated call (user has completed a L&E quiz)
      */
-    function rewardAccount(address account, uint256 credCode, string calldata credName) external onlyOwner {
-        loyaltyCardMaster.addPointsAccount(account, rewardsLookup.getPoints(credCode, credName));
+
+    function rewardAccount(
+        address account,
+        uint256 credCode,
+        string calldata credName,
+        uint256 credCount
+    ) external onlyOwner {
+        loyaltyCardMaster.addPointsAccount(account, rewardsLookup.getPoints(credCode, credName) * credCount);
     }
 
     /**
@@ -45,13 +53,20 @@ contract LoyaltyCardRewarder is Ownable {
         @param accounts IF user account addresses, as an array
         @param credCode The numeric credential code that identifies given credential
         @param credName The name of given credential (to double check that given reward is intended)
-     */
+        @param credCounts The number of times that this credential should be rewarded per each user
+    */
     function rewardBatchSingleCredential(
         address[] calldata accounts,
         uint256 credCode,
-        string calldata credName
+        string calldata credName,
+        uint256[] calldata credCounts
     ) external onlyOwner {
-        loyaltyCardMaster.addPointsBatchAccSingleValue(accounts, rewardsLookup.getPoints(credCode, credName));
+        if (accounts.length != credCounts.length) revert BatchRewardLengthsMismatch();
+        loyaltyCardMaster.addPointsBatchAccSingleValue(
+            accounts,
+            rewardsLookup.getPoints(credCode, credName),
+            credCounts
+        );
     }
 
     /**
@@ -62,18 +77,22 @@ contract LoyaltyCardRewarder is Ownable {
                         Each sub-array represents one IF user's fulfilled credentials codes (to be rewarded)
         @param credNames An array of credential name arrays, corresponding to the array of addresses.
                         Each sub-array represents one IF user's fulfilled credentials names (to be rewarded)
+        @param credCounts The number of times that any credential should be rewarded per each user
      */
     function rewardBatchMultiCredentials(
         address[] calldata accounts,
         uint256[][] calldata credCodes,
-        string[][] calldata credNames
+        string[][] calldata credNames,
+        uint256[][] calldata credCounts
     ) external onlyOwner {
-        if (accounts.length != credCodes.length) revert BatchRewardLengthsMismatch();
-        if (accounts.length != credNames.length) revert BatchRewardLengthsMismatch();
-        uint256[] memory pointsPerUser = new uint256[](credCodes.length);
-        for (uint256 i = 0; i < credCodes.length; i++) {
+        uint256 numAccounts = accounts.length;
+        if (numAccounts != credCodes.length) revert BatchRewardLengthsMismatch();
+        if (numAccounts != credNames.length) revert BatchRewardLengthsMismatch();
+        if (numAccounts != credCounts.length) revert BatchRewardLengthsMismatch();
+        uint256[] memory pointsPerUser = new uint256[](numAccounts);
+        for (uint256 i = 0; i < numAccounts; i++) {
             for (uint256 j = 0; j < credCodes[i].length; j++) {
-                pointsPerUser[i] += rewardsLookup.getPoints(credCodes[i][j], credNames[i][j]);
+                pointsPerUser[i] += rewardsLookup.getPoints(credCodes[i][j], credNames[i][j]) * credCounts[i][j];
             }
         }
         loyaltyCardMaster.addPointsBatchAccMultiValues(accounts, pointsPerUser);
