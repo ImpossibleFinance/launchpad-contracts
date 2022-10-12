@@ -353,41 +353,31 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         vestingEndTime = 0;
     }
 
-    function _useWhitelistWithAllocation() internal view returns(bool) {
-        return whitelistAllocationRootHash != 0;
-    }
-
     // Returns true if user is on whitelist, otherwise false
     function checkWhitelist(address user, bytes32[] calldata merkleProof)
         public
         view
         returns (bool)
     {
-        if (!_useWhitelistWithAllocation()) {
-            // compute merkle leaf from input
-            bytes32 leaf = keccak256(abi.encodePacked(user));
+        // compute merkle leaf from input
+        bytes32 leaf = keccak256(abi.encodePacked(user));
 
-            // verify merkle proof
-            return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
-        } else {
-            // compute merkle leaf from input
-            bytes32 leaf = keccak256(abi.encodePacked(user, merkleProof[0]));
-
-            // verify merkle proof
-            return MerkleProof.verify(merkleProof[1:], whitelistAllocationRootHash, leaf);
-        }
+        // verify merkle proof
+        return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
+        // } else {
+        // }
     }
-
-    function getSaleTokenAllocationOverride(address user, bytes32[] calldata merkleProof)
-        internal
+    // Returns true if user's allocation matches the one in merkle root, otherwise false
+    function checkWhitelistAllocation(address user, bytes32[] calldata merkleProof, uint256 allocation)
+        public
         view
-        returns (uint256)
+        returns (bool)
     {
-        if (_useWhitelistWithAllocation() && checkWhitelist(user, merkleProof)) {
-            return uint256(uint(merkleProof[0]));
-        } else {
-            return 0;
-        }
+        // compute merkle leaf from input
+        bytes32 leaf = keccak256(abi.encodePacked(user, allocation));
+
+        // verify merkle proof
+        return MerkleProof.verify(merkleProof, whitelistAllocationRootHash, leaf);
     }
 
     // Function to get the total allocation of a user in allocation sale
@@ -438,20 +428,6 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         return paymentTokenAllocation;
     }
 
-    // Overloading getTotalPaymentAllocation(address user).
-    // The function checks allocation from merkleProof. 
-    // It is same as the original getTotalPaymentAllocation if the proof doesn't pass,
-    function getTotalPaymentAllocation(address user, bytes32[] calldata merkleProof)
-        public
-        view
-        returns (uint256) {
-        uint256 allocation = getSaleTokenAllocationOverride(user, merkleProof) / SALE_PRICE_DECIMALS;
-        if (allocation != 0) {
-            return salePrice * allocation / SALE_PRICE_DECIMALS;
-        }
-        return getTotalPaymentAllocation(user);
-    }
-
     // Function to get the MAX REMAINING amount of allocation for a user (in terms of payment token)
     // it is whichever is smaller:
     //      1. user's payment allocation, which is determined by
@@ -461,18 +437,6 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     function getMaxPayment(address user) public view returns (uint256) {
         // get the maximum total payment for a user
         uint256 max = getTotalPaymentAllocation(user);
-        if (maxTotalPayment < max) {
-            max = maxTotalPayment;
-        }
-
-        // calculate and return remaining
-        return max - paymentReceived[user];
-    }
-
-    // It will not check if the merkle proof is valid or not. Need to validate the merkle proof before using this function
-    function getMaxPaymentOverride(address user, bytes32[] calldata merkleProof) public view returns (uint256) {
-        // get the maximum total payment for a user
-        uint256 max = getTotalPaymentAllocation(user, merkleProof);
         if (maxTotalPayment < max) {
             max = maxTotalPayment;
         }
@@ -542,7 +506,18 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     ) external {
         // require that user is whitelisted by checking proof
         require(checkWhitelist(_msgSender(), merkleProof), 'proof invalid');
-        uint256 allocation = getMaxPaymentOverride(_msgSender(), merkleProof);
+
+        _purchase(paymentAmount, 0);
+    }
+
+    function whitelistedPurchaseAllocation(
+        uint256 paymentAmount,
+        bytes32[] calldata merkleProof,
+        uint256 allocation
+    ) external {
+        // require that user is whitelisted by checking proof
+        require(checkWhitelistAllocation(_msgSender(), merkleProof, allocation), 'proof invalid');
+
         _purchase(paymentAmount, allocation);
     }
 
@@ -624,7 +599,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[_msgSender()]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
-            if ( saleTokenAllocationOverride == 0) {
+            if (saleTokenAllocationOverride == 0) {
                 // if there is no override, fetch the total payment allocation
                 claimable[_msgSender()] = getUserStakeValue(_msgSender());
             } else {
