@@ -280,7 +280,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
 
     // Function for owner or whitelist setter to set a whitelist; if not set, then everyone allowed
     function setWhitelist(bytes32 _whitelistRootHash)
-        external
+        public
         onlyWhitelistSetterOrOwner
     {
         whitelistRootHash = _whitelistRootHash;
@@ -290,9 +290,10 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     }
 
     function setWhitelistAllocation(bytes32 _whitelistRootHashWithAllocation)
-        external
+        public
         onlyWhitelistSetterOrOwner
     {
+        setWhitelist(_whitelistRootHashWithAllocation);
         whitelistAllocationRootHash = _whitelistRootHashWithAllocation;
 
         // emit
@@ -518,6 +519,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // require that user is whitelisted by checking proof
         require(checkWhitelistAllocation(_msgSender(), merkleProof, allocation), 'proof invalid');
 
+        console.log(allocation);
         _purchase(paymentAmount, allocation);
     }
 

@@ -991,14 +991,16 @@ export default describe('IF Allocation Sale', function () {
     const addressValMap = new Map();
     (await ethers.getSigners())
       .forEach((s: SignerWithAddress, i: number) => {
-        const amount = '0x' + pad(ethers.constants.One.mul(i + 1).toString().toLowerCase().replace('0x', ''))
+        const amount = ethers.utils.parseUnits((i + 1).toString(), 'ether')
+        console.log('ts amount', amount)
         const packed = ethers.utils.solidityPack(
-          ['address', 'bytes32'],
+          ['address', 'uint256'],
           [s.address.toLowerCase(), amount],
         )
         leaves.push(packed)
         addressValMap.set(s.address.toLowerCase(), [packed, amount])
-    })
+      }
+    )
     leaves.sort()
 
     const merkleRoot = computeMerkleRoot(leaves)
@@ -1010,16 +1012,19 @@ export default describe('IF Allocation Sale', function () {
     const [packed, amount] = addressValMap.get(tempAcct.address.toLowerCase())
     const tempAcctIdx = getAddressIndex(leaves, packed)
     expect(
-      await IFAllocationSale.connect(tempAcct).checkWhitelist(
+      await IFAllocationSale.connect(tempAcct).checkWhitelistAllocation(
         tempAcct.address,
-        [amount, ...computeMerkleProof(leaves, tempAcctIdx)]
+        computeMerkleProof(leaves, tempAcctIdx),
+        amount,
+
       )
     ).to.equal(true)
     const wrongAmount = '0x' + pad(ethers.constants.One.mul(100).toString().toLowerCase().replace('0x', ''))
     expect(
-      await IFAllocationSale.connect(tempAcct).checkWhitelist(
+      await IFAllocationSale.connect(tempAcct).checkWhitelistAllocation(
         tempAcct.address,
-        [wrongAmount, ...computeMerkleProof(leaves, tempAcctIdx)]
+        computeMerkleProof(leaves, tempAcctIdx),
+        wrongAmount,
       )
     ).to.equal(false)
   })
@@ -1030,11 +1035,10 @@ export default describe('IF Allocation Sale', function () {
     const whitelistedBuyer = signers[1]
 
     signers.forEach((s: SignerWithAddress, i: number) => {
-      const amount = ethers.constants.One.mul(i + 1)
-      const amountStr = '0x' + pad(amount.toString().toLowerCase().replace('0x', ''))
+      const amount = ethers.utils.parseUnits((i + 1).toString(), 'ether')
       const packed = ethers.utils.solidityPack(
-        ['address', 'bytes32'],
-        [s.address.toLowerCase(), amountStr],
+        ['address', 'uint256'],
+        [s.address.toLowerCase(), amount],
       )
       leaves.push(packed)
       addressValMap.set(s.address.toLowerCase(), [packed, amount])
@@ -1076,7 +1080,7 @@ export default describe('IF Allocation Sale', function () {
     await IFAllocationSale.connect(whitelistedBuyer).whitelistedPurchaseAllocation(
       paymentAmount,
       computeMerkleProof(leaves, acctIdx),
-      amount
+      amount,
     )
     // cliff vesting: User makes a purchase and claim before cliff vesting starts
     await expect(IFAllocationSale.connect(whitelistedBuyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
