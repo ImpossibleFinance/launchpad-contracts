@@ -109,7 +109,6 @@ contract IFAllocationSaleFixed is Ownable, ReentrancyGuard {
     event SetMinTotalPayment(uint256 indexed minTotalPayment);
     event SetCasher(address indexed casher);
     event SetWhitelistSetter(address indexed whitelistSetter);
-    event SetWhitelist(bytes32 indexed whitelistRootHash);
     event SetWhitelistAllocation(bytes32 indexed whitelistAllocationRootHash);
     event SetWithdrawDelay(uint24 indexed withdrawDelay);
     event SetVestingEndTime(uint256 indexed vestingEndTime);
@@ -446,23 +445,6 @@ contract IFAllocationSaleFixed is Ownable, ReentrancyGuard {
         }
         // users can get all of the tokens after vestingEndTime
         return claimable[_msgSender()];
-    }
-
-    function getUserStakeValue(address user) public view returns (uint256) {
-        uint256 userWeight = allocationMaster.getUserStakeWeight(
-            trackId,
-            user,
-            allocSnapshotTimestamp
-        );
-        uint256 totalWeight = allocationMaster.getTotalStakeWeight(
-            trackId,
-            allocSnapshotTimestamp
-        );
-        // total weight must be greater than 0
-        require(totalWeight > 0, 'total weight is 0');
-
-        // calculate max amount of obtainable sale token by user
-        return (saleAmount * userWeight) / (totalWeight);
     }
 
     // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale

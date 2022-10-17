@@ -6,14 +6,29 @@ import { computeMerkleProof, computeMerkleRoot, getAddressIndex, pad } from '../
 import { mineNext } from './helpers'
 import IFAllocationSaleGeneralTest, { _ctx } from './IFAllocationSaleGeneralTest'
 
-export default describe('IF Allocation Sale Fixed', function () {
+export default describe('IF Allocation Sale Fixed', async function () {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctx: any = _ctx
 
-  const contract = 'MockIFAllocationSaleFixed'
-
   const generalTest = IFAllocationSaleGeneralTest
-  generalTest(this, contract, ctx)
+  generalTest(this, 'MockIFAllocationSaleFixed', ctx)
+
+  const IFAllocationSaleFactory = await ethers.getContractFactory(
+    'IFAllocationSaleFixed'
+  )
+
+  const IFAllocationSaleFixed = await IFAllocationSaleFactory.deploy(
+    ctx.salePrice,
+    ctx.seller.address,
+    ctx.PaymentToken.address,
+    ctx.SaleToken.address,
+    ctx.IFAllocationMaster.address,
+    ctx.trackId,
+    ctx.snapshotTimestamp,
+    ctx.startTime,
+    ctx.endTime,
+    ctx.maxTotalDeposit
+  )
 
   generalTest.prototype.it = it('can save allocation amount in merkle tree', async function () {
     const leaves: string[] = []
@@ -32,7 +47,7 @@ export default describe('IF Allocation Sale Fixed', function () {
     leaves.sort()
 
     const merkleRoot = computeMerkleRoot(leaves)
-    await ctx.IFAllocationSale.connect(ctx.owner).setWhitelistAllocation(merkleRoot)
+    await IFAllocationSaleFixed.connect(ctx.owner).setWhitelistAllocation(merkleRoot)
     mineNext()
 
     const tempAcct = (await ethers.getSigners())[0]
@@ -48,7 +63,7 @@ export default describe('IF Allocation Sale Fixed', function () {
     ).to.equal(true)
     const wrongAmount = '0x' + pad(ethers.constants.One.mul(100).toString().toLowerCase().replace('0x', ''))
     expect(
-      await ctx.IFAllocationSale.connect(tempAcct).checkWhitelistAllocation(
+      await IFAllocationSaleFixed.connect(tempAcct).checkWhitelistAllocation(
         tempAcct.address,
         computeMerkleProof(leaves, tempAcctIdx),
         wrongAmount,
