@@ -588,7 +588,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
         [10, 20, 30, 40]
       )).to.be.revertedWith(NOT_OWNER)
       await expect(ctx.IFAllocationSale.connect(user).emergencyTokenRetrieve(ctx.PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
-      // IFAllocationSaleFixed doesn't have this function
+      // IFMerkleAllocationSale doesn't have this function
       if (typeof ctx.IFAllocationSale.setSaleTokenAllocationOverride === 'function') {
         await expect(ctx.IFAllocationSale.connect(user).setSaleTokenAllocationOverride(0)).to.be.revertedWith(NOT_OWNER)
       }

@@ -2,10 +2,10 @@
 pragma solidity ^0.8.9;
 
 import 'hardhat/console.sol';
-import '../../contracts/IFAllocationSaleFixed.sol';
+import '../../contracts/IFMerkleAllocationSale.sol';
 
 // Contract to set max allocation on all buyers
-contract MockIFAllocationSaleFixed is IFAllocationSaleFixed {
+contract MockIFMerkleAllocationSale is IFMerkleAllocationSale {
     constructor(
         uint256 _salePrice,
         address _funder,
@@ -18,7 +18,7 @@ contract MockIFAllocationSaleFixed is IFAllocationSaleFixed {
         uint256 _endTime,
         uint256 _maxTotalPayment
     )
-        IFAllocationSaleFixed(
+        IFMerkleAllocationSale(
             _salePrice,
             _funder,
             _paymentToken,

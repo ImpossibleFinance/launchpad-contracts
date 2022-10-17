@@ -11,13 +11,13 @@ export default describe('IF Allocation Sale Fixed', async function () {
   const ctx: any = _ctx
 
   const generalTest = IFAllocationSaleGeneralTest
-  generalTest(this, 'MockIFAllocationSaleFixed', ctx)
+  generalTest(this, 'MockIFMerkleAllocationSale', ctx)
 
   const IFAllocationSaleFactory = await ethers.getContractFactory(
-    'IFAllocationSaleFixed'
+    'IFMerkleAllocationSale'
   )
 
-  const IFAllocationSaleFixed = await IFAllocationSaleFactory.deploy(
+  const IFMerkleAllocationSale = await IFAllocationSaleFactory.deploy(
     ctx.salePrice,
     ctx.seller.address,
     ctx.PaymentToken.address,
@@ -47,7 +47,7 @@ export default describe('IF Allocation Sale Fixed', async function () {
     leaves.sort()
 
     const merkleRoot = computeMerkleRoot(leaves)
-    await IFAllocationSaleFixed.connect(ctx.owner).setWhitelistAllocation(merkleRoot)
+    await IFMerkleAllocationSale.connect(ctx.owner).setWhitelistAllocation(merkleRoot)
     mineNext()
 
     const tempAcct = (await ethers.getSigners())[0]
@@ -63,7 +63,7 @@ export default describe('IF Allocation Sale Fixed', async function () {
     ).to.equal(true)
     const wrongAmount = '0x' + pad(ethers.constants.One.mul(100).toString().toLowerCase().replace('0x', ''))
     expect(
-      await IFAllocationSaleFixed.connect(tempAcct).checkWhitelistAllocation(
+      await IFMerkleAllocationSale.connect(tempAcct).checkWhitelistAllocation(
         tempAcct.address,
         computeMerkleProof(leaves, tempAcctIdx),
         wrongAmount,

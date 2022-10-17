@@ -10,7 +10,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import './interfaces/IIFRetrievableStakeWeight.sol';
 
-contract IFAllocationSaleFixed is Ownable, ReentrancyGuard {
+contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
 
     // store how many percentage of the token can be claimed at a certain cliff date
