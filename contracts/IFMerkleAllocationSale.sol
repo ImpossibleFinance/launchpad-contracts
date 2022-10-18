@@ -455,10 +455,7 @@ contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
         // if there is whitelist, require that user is whitelisted by checking proof
-        require(
-            whitelistAllocationRootHash == 0 || checkWhitelistAllocation(_msgSender(), merkleProof, allocation),
-            'proof invalid'
-        );
+        require(checkWhitelistAllocation(_msgSender(), merkleProof, allocation), 'proof invalid');
 
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[_msgSender()]) {
