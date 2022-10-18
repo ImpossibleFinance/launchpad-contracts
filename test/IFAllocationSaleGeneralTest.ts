@@ -275,10 +275,6 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     await expect(ctx.IFAllocationSale.connect(ctx.casher).fund(ctx.fundAmount)).to.be.revertedWith(NOT_FUNDER) // fund
     await expect(ctx.IFAllocationSale.connect(ctx.buyer).fund(ctx.fundAmount)).to.be.revertedWith(NOT_FUNDER) // fund
 
-    // set sale token allocation override (flat amount every participant receives)
-    await ctx.IFAllocationSale.setSaleTokenAllocationOverride(5000)
-    mineNext()
-
     // fast forward from current time to start time
     mineTimeDelta(ctx.startTime - (await getBlockTime()))
 
@@ -306,9 +302,9 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     await ctx.IFAllocationSale.connect(ctx.buyer2).withdrawGiveaway([])
     mineNext()
 
-    // expect balance to be 5000 for both participants
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('5000')
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('5000')
+    // expect both participants can claim
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.gt(0)
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.gt(0)
 
     // test purchaser counter (should be 0! nothing purchased in 0 price sales)
     // note: _this is the only scenario where _this is different from withdrawer counter

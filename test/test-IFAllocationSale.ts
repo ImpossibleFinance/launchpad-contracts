@@ -5,7 +5,7 @@ import { ethers } from 'hardhat'
 import { computeMerkleProof, computeMerkleRoot, getAddressIndex } from '../library/merkleWhitelist'
 import { getBlockTime, mineNext, mineTimeDelta } from './helpers'
 import IFAllocationSaleGeneralTest, { _ctx } from './IFAllocationSaleGeneralTest'
-import { CANNOT_WITHDRAW_YET, EXCEED_MAX_PAYMENT, NOT_A_GIVEAWAY, NOT_WHITELIST_SETTER_OR_OWNER, NO_TOKEN_TO_BE_WITHDRAWN, PROOF_INVALID, SALE_IS_STARTED, USE_WITHDRAWGIVEAWAY } from './reverts/msg-IFAllocationSale'
+import { CANNOT_WITHDRAW_YET, EXCEED_MAX_PAYMENT, NOT_WHITELIST_SETTER_OR_OWNER, PROOF_INVALID, SALE_IS_STARTED, USE_WITHDRAWGIVEAWAY } from './reverts/msg-IFAllocationSale'
 
 export default describe('IF Allocation Sale', function () {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,96 +171,6 @@ export default describe('IF Allocation Sale', function () {
     expect(await ctx.IFAllocationSale.withdrawerCount()).to.equal(2)
   })
 
-  generalTest.prototype.it = it('can override sale token allocations (test preventing exceeding allocation)', async function () {
-    mineNext()
-
-    // amount to pay (should fail, because _this is 1 over allocation)
-    const paymentAmount = '100001'
-
-    // set sale token allocation override
-    await ctx.IFAllocationSale.setSaleTokenAllocationOverride(10000)
-    mineNext()
-
-    // fast forward from current time to start time
-    mineTimeDelta(ctx.startTime - (await getBlockTime()))
-
-    // test purchase
-    mineNext()
-    await ctx.PaymentToken.connect(ctx.buyer).approve(
-      ctx.IFAllocationSale.address,
-      paymentAmount
-    )
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)).to.be.revertedWith(EXCEED_MAX_PAYMENT)
-
-    mineNext()
-
-    // fast forward from current time to after end time
-    mineTimeDelta(ctx.endTime - (await getBlockTime()))
-
-    // test withdraw
-    mineNext()
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(NO_TOKEN_TO_BE_WITHDRAWN)
-    mineNext()
-
-    // expect balance to be 0
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('0')
-  })
-
-  generalTest.prototype.it = it('can override sale token allocations (test multiple buyers)', async function () {
-    mineNext()
-
-    // amount to pay for each claimer (should go through since _this is exactly how much allocation they have)
-    const paymentAmount = '50000'
-
-    // set sale token allocation override
-    await ctx.IFAllocationSale.setSaleTokenAllocationOverride(5000)
-    mineNext()
-
-    // fast forward from current time to start time
-    mineTimeDelta(ctx.startTime - (await getBlockTime()))
-
-    // test purchase for buyers 1 and 2
-    mineNext()
-    await ctx.PaymentToken.connect(ctx.buyer).approve(
-      ctx.IFAllocationSale.address,
-      paymentAmount
-    )
-    await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
-
-    mineNext()
-    await ctx.PaymentToken.connect(ctx.buyer2).approve(
-      ctx.IFAllocationSale.address,
-      paymentAmount
-    )
-    await ctx.IFAllocationSale.connect(ctx.buyer2)['purchase(uint256)'](paymentAmount)
-
-    mineNext()
-
-    // fast forward from current time to after end time
-    mineTimeDelta(ctx.endTime - (await getBlockTime()))
-
-    // test withdraw
-    mineNext()
-    // access control: Withdraw giveaway when sale price is not 0
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdrawGiveaway([])).to.be.revertedWith(NOT_A_GIVEAWAY)
-    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
-    mineNext()
-    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
-    // access control: Withdraw giveaway when sale price is not 0
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdrawGiveaway([])).to.be.revertedWith(NOT_A_GIVEAWAY)
-    mineNext()
-
-    // expect balance to be 5000 for both buyers
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('5000')
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('5000')
-
-    // test purchaser counter
-    expect(await ctx.IFAllocationSale.purchaserCount()).to.equal(2)
-
-    // test withdrawer counter
-    expect(await ctx.IFAllocationSale.withdrawerCount()).to.equal(2)
-  })
-
   generalTest.prototype.it = it('can perform a zero price giveaway sale (whitelisted)', async function () {
     mineNext()
 
@@ -292,10 +202,6 @@ export default describe('IF Allocation Sale', function () {
       ctx.fundAmount
     ) // approve
     await ctx.IFAllocationSale.connect(ctx.seller).fund(ctx.fundAmount) // fund
-
-    // set sale token allocation override (flat amount every participant receives)
-    await ctx.IFAllocationSale.setSaleTokenAllocationOverride(5000)
-    mineNext()
 
     // whitelisted addresses (sorted)
     const addresses = (await ethers.getSigners())
@@ -339,10 +245,6 @@ export default describe('IF Allocation Sale', function () {
       computeMerkleProof(addresses, getAddressIndex(addresses, ctx.buyer2.address))
     )
     mineNext()
-
-    // expect balance to be 5000 for both participants
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('5000')
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('5000')
   })
 
   generalTest.prototype.it = it('can limit payment amount', async function () {
@@ -382,9 +284,6 @@ export default describe('IF Allocation Sale', function () {
     await ctx.IFAllocationSale.connect(ctx.seller).fund(ctx.fundAmount) // fund
     await ctx.IFAllocationSale.connect(ctx.owner).setWithdrawDelay(withdrawDelay)
 
-    // set sale token allocation override (flat amount every participant receives)
-    await ctx.IFAllocationSale.setSaleTokenAllocationOverride(33330)
-
     ctx.IFAllocationSale.connect(ctx.owner).setVestingEndTime(ctx.vestingEndTime)
 
     // fast forward from current time to after end time
@@ -396,10 +295,11 @@ export default describe('IF Allocation Sale', function () {
 
     mineTimeDelta(ctx.endTime + withdrawDelay - (await getBlockTime()))
     await ctx.IFAllocationSale.connect(ctx.buyer).withdrawGiveaway([])
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('1')
+    const value: number = await ctx.IFAllocationSale.getUserStakeValue(ctx.buyer.address)
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal(value / 20000)
 
     mineTimeDelta(ctx.vestingEndTime - ctx.endTime)
     await ctx.IFAllocationSale.connect(ctx.buyer).withdrawGiveaway([])
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('33330')
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal(value)
   })
 })

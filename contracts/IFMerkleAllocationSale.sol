@@ -38,7 +38,7 @@ contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
     // SALE STATE
 
     // whitelist merkle root with allocation;
-    bytes32 public whitelistAllocationRootHash;
+    bytes32 public whitelistRootHash;
     // amount of sale token to sell
     uint256 public saleAmount;
     // tracks amount purchased by each address
@@ -109,7 +109,7 @@ contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
     event SetMinTotalPayment(uint256 indexed minTotalPayment);
     event SetCasher(address indexed casher);
     event SetWhitelistSetter(address indexed whitelistSetter);
-    event SetWhitelistAllocation(bytes32 indexed whitelistAllocationRootHash);
+    event SetWhitelist(bytes32 indexed whitelistRootHash);
     event SetWithdrawDelay(uint24 indexed withdrawDelay);
     event SetVestingEndTime(uint256 indexed vestingEndTime);
     event SetCliffVestingPeriod(Cliff[] indexed cliffPeriod);
@@ -257,14 +257,14 @@ contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
         emit SetWhitelistSetter(_whitelistSetter);
     }
 
-    function setWhitelistAllocation(bytes32 _whitelistRootHashWithAllocation)
+    function setWhitelistAllocation(bytes32 _whitelistRootHash)
         public
         onlyWhitelistSetterOrOwner
     {
-        whitelistAllocationRootHash = _whitelistRootHashWithAllocation;
+        whitelistRootHash = _whitelistRootHash;
 
         // emit
-        emit SetWhitelistAllocation(_whitelistRootHashWithAllocation);
+        emit SetWhitelist(_whitelistRootHash);
     }
 
     // Function for owner to set a withdraw delay
@@ -331,7 +331,7 @@ contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
         bytes32 leaf = keccak256(abi.encodePacked(user, allocation));
 
         // verify merkle proof
-        return MerkleProof.verify(merkleProof, whitelistAllocationRootHash, leaf);
+        return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
     }
 
     // Function to get the MAX REMAINING amount of allocation for a user (in terms of payment token)

@@ -103,15 +103,11 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     // max for payment token amount
     uint256 public maxTotalPayment;
     // optional flat allocation override
-    uint256 public saleTokenAllocationOverride;
 
     // EVENTS
 
     event Fund(address indexed sender, uint256 amount);
     event SetMinTotalPayment(uint256 indexed minTotalPayment);
-    event SetSaleTokenAllocationOverride(
-        uint256 indexed saleTokenAllocationOverride
-    );
     event SetCasher(address indexed casher);
     event SetWhitelistSetter(address indexed whitelistSetter);
     event SetWhitelist(bytes32 indexed whitelistRootHash);
@@ -240,19 +236,6 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         emit SetMinTotalPayment(_minTotalPayment);
     }
 
-    // Function for owner to set an optional, flat allocation override
-    function setSaleTokenAllocationOverride(
-        uint256 _saleTokenAllocationOverride
-    ) external onlyOwner {
-        // sale must not have started
-        require(block.timestamp < startTime, 'sale already started');
-
-        saleTokenAllocationOverride = _saleTokenAllocationOverride;
-
-        // emit
-        emit SetSaleTokenAllocationOverride(_saleTokenAllocationOverride);
-    }
-
     // Function for owner to set an optional, separate casher
     function setCasher(address _casher) external onlyOwner {
         // sale must not have started
@@ -378,25 +361,17 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // determine TOTAL allocation (in payment token)
         uint256 paymentTokenAllocation;
 
-        // different calculation for whether override is set
-        if (saleTokenAllocationOverride == 0) {
-            // calculate allocation (times 10**18)
-            uint256 allocationE18 = (userWeight * 10**18) / totalWeight;
+        // calculate allocation (times 10**18)
+        uint256 allocationE18 = (userWeight * 10**18) / totalWeight;
 
-            // calculate max amount of obtainable sale token
-            uint256 saleTokenAllocationE18 = (saleAmount * allocationE18);
+        // calculate max amount of obtainable sale token
+        uint256 saleTokenAllocationE18 = (saleAmount * allocationE18);
 
-            // calculate equivalent value in payment token
-            paymentTokenAllocation =
-                (saleTokenAllocationE18 * salePrice) /
-                SALE_PRICE_DECIMALS /
-                10**18;
-        } else {
-            // override payment token allocation
-            paymentTokenAllocation =
-                (salePrice * saleTokenAllocationOverride) /
-                SALE_PRICE_DECIMALS;
-        }
+        // calculate equivalent value in payment token
+        paymentTokenAllocation =
+            (saleTokenAllocationE18 * salePrice) /
+            SALE_PRICE_DECIMALS /
+            10**18;
 
         return paymentTokenAllocation;
     }
@@ -558,13 +533,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[_msgSender()]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
-            if (saleTokenAllocationOverride == 0) {
-                // if there is no override, fetch the total payment allocation
-                claimable[_msgSender()] = getUserStakeValue(_msgSender());
-            } else {
-                // if override, set the override amount
-                claimable[_msgSender()] = saleTokenAllocationOverride;
-            }
+            claimable[_msgSender()] = getUserStakeValue(_msgSender());
             totalPurchased[_msgSender()] = claimable[_msgSender()];
         }
 
