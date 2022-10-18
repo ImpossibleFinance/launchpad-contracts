@@ -590,5 +590,4 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
       }
     }
   })
-
 }

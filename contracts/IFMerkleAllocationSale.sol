@@ -72,7 +72,6 @@ contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
     // NOTE: sale price must accomodate any differences in decimals between sale and payment tokens. If payment token has A decimals and sale token has B decimals, then the price must be adjusted by multiplying by 10**(A-B).
     // If A was 18 but B was only 12, then the salePrice should be adjusted by multiplying by 1,000,000. If A was 12 and B was 18, then salePrice should be adjusted by dividing by 1,000,000.
 
-    //TODO: binary search or some function on allocMaster to give accurate timestamp from allocSnapshotTimestamp
     uint256 public salePrice;
     // funder
     address public funder;
@@ -84,12 +83,8 @@ contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
     ERC20 public paymentToken;
     // sale token
     ERC20 public saleToken;
-    // allocation master
-    IIFRetrievableStakeWeight public allocationMaster;
     // track id
     uint24 public trackId;
-    // allocation snapshot block
-    uint80 public allocSnapshotTimestamp;
     // start timestamp when sale is active (inclusive)
     uint256 public startTime;
     // end timestamp when sale is active (inclusive)
@@ -129,9 +124,7 @@ contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
         address _funder,
         ERC20 _paymentToken,
         ERC20 _saleToken,
-        IIFRetrievableStakeWeight _allocationMaster,
         uint24 _trackId,
-        uint80 _allocSnapshotTimestamp,
         uint256 _startTime,
         uint256 _endTime,
         uint256 _maxTotalPayment
@@ -158,24 +151,11 @@ contract IFMerkleAllocationSale is Ownable, ReentrancyGuard {
         require(_startTime < _endTime - ONE_HOUR, 'end timestamp before start should be least 1 hour');
         require(_endTime - TEN_YEARS < _startTime, 'end time has to be within 10 years');
 
-        require(
-            _allocSnapshotTimestamp > block.timestamp ||
-                (_allocSnapshotTimestamp <= block.timestamp &&
-                    _allocationMaster.getTotalStakeWeight(
-                        _trackId,
-                        _allocSnapshotTimestamp
-                    ) >
-                    0),
-            'total weight is 0 on while using older timestamp'
-        );
-
         salePrice = _salePrice; // can be 0 (for giveaway)
         funder = _funder;
         paymentToken = _paymentToken; // can be 0 (for giveaway)
         saleToken = _saleToken;
-        allocationMaster = _allocationMaster; // can be 0 (with allocation override)
         trackId = _trackId; // can be 0 (with allocation override)
-        allocSnapshotTimestamp = _allocSnapshotTimestamp; // can be 0 (with allocation override)
         startTime = _startTime;
         endTime = _endTime;
         maxTotalPayment = _maxTotalPayment; // can be 0 (for giveaway)

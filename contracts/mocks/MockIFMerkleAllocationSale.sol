@@ -11,9 +11,7 @@ contract MockIFMerkleAllocationSale is IFMerkleAllocationSale {
         address _funder,
         ERC20 _paymentToken,
         ERC20 _saleToken,
-        IIFRetrievableStakeWeight _allocationMaster,
         uint24 _trackId,
-        uint80 _allocSnapshotTimestamp,
         uint256 _startTime,
         uint256 _endTime,
         uint256 _maxTotalPayment
@@ -23,9 +21,7 @@ contract MockIFMerkleAllocationSale is IFMerkleAllocationSale {
             _funder,
             _paymentToken,
             _saleToken,
-            _allocationMaster,
             _trackId,
-            _allocSnapshotTimestamp,
             _startTime,
             _endTime,
             _maxTotalPayment
