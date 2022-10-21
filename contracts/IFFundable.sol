@@ -13,13 +13,13 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     // number of decimals of sale price
     uint64 constant SALE_PRICE_DECIMALS = 10**18;
     // seconds in 1 hours
-    uint64 constant ONE_HOUR = 3600;
-    // seconds in 1 year
-    uint64 constant ONE_YEAR = 31556926;
-    // seconds in 5 years
-    uint64 constant FIVE_YEARS = 157784630;
-    // seconds in 10 years
-    uint64 constant TEN_YEARS = 315569260;
+    uint64 private constant ONE_HOUR = 3600;
+    //  seconds in 1 year
+    uint64 private constant ONE_YEAR = 31556926;
+    //  seconds in 5 years
+    uint64 private constant FIVE_YEARS = 157784630;
+    //  seconds in 10 years
+    uint64 private constant TEN_YEARS = 315569260;
 
     // Operators Info
     // funder
@@ -34,16 +34,15 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     // end timestamp when sale is active (inclusive)
     uint256 private immutable endTime;
     // payment token
-    ERC20 public immutable paymentToken;
+    ERC20 private immutable paymentToken;
     // sale token
-    ERC20 public immutable saleToken;
-    // amount of sale token to sell
-    uint256 public saleAmount;
+    ERC20 private immutable saleToken;
     // withdraw/cash delay timestamp (inclusive)
     uint24 private withdrawDelay;
 
     // STAT
-
+    // amount of sale token to sell
+    uint256 public saleAmount;
     // tracks whether sale has been cashed
     bool public hasCashed;
     // total payment received for sale
@@ -143,7 +142,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     }
 
     // Function for owner to set a withdraw delay
-    function setWithdrawDelay(uint24 _withdrawDelay) public onlyOwner onlyBeforeSale{
+    function setWithdrawDelay(uint24 _withdrawDelay) virtual public onlyOwner onlyBeforeSale{
         require(_withdrawDelay < FIVE_YEARS, "withdrawDelay has to be within 5 years");
         withdrawDelay = _withdrawDelay;
 
@@ -174,7 +173,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         uint256 saleTokenBal = saleToken.balanceOf(address(this));
 
         // get amount of sold token
-        uint256 totalTokensSold = getTokensSold();
+        uint256 totalTokensSold = getSaleTokensSold();
 
         // get principal (whichever is bigger between sale amount or amount on contract)
         uint256 principal = saleAmount < saleTokenBal

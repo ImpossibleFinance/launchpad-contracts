@@ -2,10 +2,10 @@
 pragma solidity ^0.8.9;
 
 import 'hardhat/console.sol';
-import '../../contracts/IFMerkleAllocationSale.sol';
+import '../../contracts/IFFixedSale.sol';
 
 // Contract to set max allocation on all buyers
-contract MockIFMerkleAllocationSale is IFMerkleAllocationSale {
+contract MockIFFixedSale is IFFixedSale {
     constructor(
         uint256 _salePrice,
         address _funder,
@@ -16,7 +16,7 @@ contract MockIFMerkleAllocationSale is IFMerkleAllocationSale {
         uint256 _endTime,
         uint256 _maxTotalPayment
     )
-        IFMerkleAllocationSale(
+        IFFixedSale(
             _salePrice,
             _funder,
             _paymentToken,
@@ -28,7 +28,7 @@ contract MockIFMerkleAllocationSale is IFMerkleAllocationSale {
         )
     {}
 
-    function purchase(uint256 paymentAmount) external {
+    function purchase(uint256 paymentAmount) override public {
         // Skip merkle check and set max allocation
         _purchase(paymentAmount, type(uint256).max);
     }

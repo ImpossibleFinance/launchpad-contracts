@@ -26,8 +26,8 @@ function computeMerkleRootWithAllocation(signers: SignerWithAddress[], allocatio
     return [leaves, addressValMap]
 }
 
-export default describe('IF Merkle Allocation Sale', function () {
-  const contractName = 'MockIFMerkleAllocationSale'
+export default describe('IF Fixed Sale', function () {
+  const contractName = 'MockIFFixedSale'
   // unset timeout from the test
   this.timeout(800000)
 

@@ -3,11 +3,10 @@ pragma solidity ^0.8.9;
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import './IFAccessControl.sol';
 
 contract IFVestable is Ownable {
     // seconds in 10 years
-    uint64 constant TEN_YEARS = 315569260;
+    uint64 private constant TEN_YEARS = 315569260;
 
     // store how many percentage of the token can be claimed at a certain cliff date
     struct Cliff {
@@ -40,8 +39,7 @@ contract IFVestable is Ownable {
 
     constructor(
         uint256 _startTime,
-        uint256 _endTime,
-        uint24 _withdrawDelay
+        uint256 _endTime
     ) {
         startTime = _startTime;
         endTime = _endTime;
@@ -97,13 +95,13 @@ contract IFVestable is Ownable {
         vestingEndTime = 0;
     }
 
-    function getCurrentClaimableToken() public view returns (uint256) {
+    function getCurrentClaimableToken(address user) public view returns (uint256) {
         // prevent returning a negative number
         require(block.timestamp > withdrawTime, 'claim not yet started');
         // linear vesting
         if (vestingEndTime > block.timestamp) {
             // current claimable = (now - last claimed time) / (total vesting time) * totalClaimable
-            return totalPurchased[_msgSender()] * (block.timestamp - Math.max(latestClaimTime[_msgSender()], endTimePlusDelay)) / (vestingEndTime - (endTimePlusDelay));
+            return totalPurchased[user] * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (vestingEndTime - (withdrawTime));
         }
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
@@ -112,7 +110,7 @@ contract IFVestable is Ownable {
             for (uint8 i; i < cliffPeriodLength; i++) {
                 // if the cliff timestamp has been passed, add the claimable percentage
                 if (cliffPeriod[i].claimTime > block.timestamp) { break; }
-                if (latestClaimTime[_msgSender()] < cliffPeriod[i].claimTime) {
+                if (latestClaimTime[user] < cliffPeriod[i].claimTime) {
                     claimablePct += cliffPeriod[i].pct;
                 }
             }
@@ -120,22 +118,22 @@ contract IFVestable is Ownable {
             if (claimablePct == 0) {
                 return 0;
             }
-            return totalPurchased[_msgSender()] * claimablePct / 100;
+            return totalPurchased[user] * claimablePct / 100;
         }
         // users can get all of the tokens after vestingEndTime
-        return claimable[_msgSender()];
+        return claimable[user];
     }
 
-    function updateVestingOnPurchase(uint256 tokenPurchased) internal {
-        totalPurchased[_msgSender()] = tokenPurchased;
-        claimable[_msgSender()] = totalPurchased[_msgSender()];
+    function updateVestingOnPurchase(uint256 tokenPurchased, address user) internal {
+        totalPurchased[user] = tokenPurchased;
+        claimable[user] = totalPurchased[user];
     }
 
-    function updateVestingOnWithdraw(uint256 tokenSent) internal {
+    function updateVestingOnWithdraw(uint256 tokenSent, address user) internal {
         // update claimable
-        claimable[_msgSender()] -= tokenSent;
+        claimable[user] -= tokenSent;
         // update last claimed time
-        latestClaimTime[_msgSender()] = block.timestamp;
+        latestClaimTime[user] = block.timestamp;
         // transfer giveaway sale token to participant
     }
 }

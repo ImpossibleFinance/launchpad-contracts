@@ -75,15 +75,15 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
         _;
     }
 
-    function purchase(uint256 paymentAmount) virtual external {}
+    function purchase(uint256 paymentAmount) virtual public {}
 
     // Function for withdrawing purchased sale token after sale end
     function withdraw() virtual public nonReentrant {}   
 
     // purchase function when there is a whitelist
-    function whitelistedPurchase(uint256 paymentAmount, bytes32[] calldata merkleProof) virtual external {}
+    function whitelistedPurchase(uint256 paymentAmount, bytes32[] calldata merkleProof) virtual public {}
 
-    function withdrawGiveaway(bytes32[] calldata merkleProof) virtual external nonReentrant {}
+    function withdrawGiveaway(bytes32[] calldata merkleProof) virtual public nonReentrant {}
 
 
     // Function for owner to set an optional, separate whitelist setter
@@ -96,7 +96,7 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
 
     // Function for owner or whitelist setter to set a whitelist; if not set, then everyone allowed
     function setWhitelist(bytes32 _whitelistRootHash)
-        external
+        public
         onlyWhitelistSetterOrOwner
     {
         whitelistRootHash = _whitelistRootHash;
@@ -106,8 +106,8 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     }
 
     // Function for owner to set an optional, minTotalPayment
-    // function setMinTotalPayment(uint256 _minTotalPayment) external onlyOwner onlyBeforeSale{
-    function setMinTotalPayment(uint256 _minTotalPayment) external onlyOwner {
+    // function setMinTotalPayment(uint256 _minTotalPayment) public onlyOwner onlyBeforeSale{
+    function setMinTotalPayment(uint256 _minTotalPayment) public onlyOwner {
         // sale must not have started
 
         minTotalPayment = _minTotalPayment;
@@ -117,9 +117,9 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     }
 
     // Internal function for making purchase
-    // Used by external functions `purchase`
+    // Used by public functions `purchase`
     // function _purchase(uint256 paymentAmount, uint256 remaining) internal nonReentrant onlyDuringSale {
-    function _purchase(uint256 paymentAmount, uint256 remaining) internal nonReentrant {
+    function _purchase(uint256 paymentAmount, uint256 remaining) virtual internal nonReentrant {
         // amount must be greater than minTotalPayment
         // by default, minTotalPayment is 0 unless otherwise set
         require(paymentAmount >= minTotalPayment, 'amount below min');
@@ -144,7 +144,7 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     }
 
     // function _withdraw(uint256 saleTokenOwed) internal onlyDuringClaim {
-    function _withdraw(uint256 saleTokenOwed) internal {
+    function _withdraw(uint256 saleTokenOwed) virtual internal {
         require(saleTokenOwed != 0, 'no token to be withdrawn');
         // must pass the first cliff date if there's a cliff period
         // if (cliffPeriod.length != 0) {
