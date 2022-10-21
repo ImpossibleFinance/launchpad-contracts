@@ -63,6 +63,7 @@ contract IFFixedSale is IFSale {
 
         // send token and update states
         uint256 tokenOwed = getCurrentClaimableToken(_msgSender());
+        _withdraw(tokenOwed);
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'no token to be withdrawn');
     }   

@@ -3,11 +3,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Contract } from 'ethers'
 import { ethers } from 'hardhat'
-import { computeMerkleProof, computeMerkleRoot, getAddressIndex, pad } from '../library/merkleWhitelist'
+import { computeMerkleProof, computeMerkleRoot, getAddressIndex } from '../library/merkleWhitelist'
 import { getBlockTime, mineNext, minePause, mineStart, mineTimeDelta, setAutomine } from './helpers'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { _ctx } from './IFAllocationSaleGeneralTest'
-import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY, ALREADY_CASHED, CANNOT_WITHDRAW_YET, NOT_CASHER_OR_OWNER, NOT_FUNDER, NOT_OWNER, USE_WITHDRAWGIVEAWAY } from './reverts/msg-IFAllocationSale'
+import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY, ALREADY_CASHED, CLAIM_NOT_YET_STARTED, NOT_CASHER_OR_OWNER, NOT_FUNDER, NOT_OWNER, USE_WITHDRAWGIVEAWAY } from './reverts/msg-IFAllocationSale'
 
 function computeMerkleRootWithAllocation(signers: SignerWithAddress[], allocations: number[]): [string[], Map<string, string>]{
     const leaves: string[] = []
@@ -29,7 +29,7 @@ function computeMerkleRootWithAllocation(signers: SignerWithAddress[], allocatio
 export default describe('IF Fixed Sale', function () {
   const contractName = 'MockIFFixedSale'
   // unset timeout from the test
-  this.timeout(800000)
+  this.timeout(2000000)
 
   // deployer address
   let owner: SignerWithAddress
@@ -339,7 +339,7 @@ export default describe('IF Fixed Sale', function () {
     mineTimeDelta(endTime - (await getBlockTime()))
 
     // test withdraw and cash (should fail because need 1 more block)
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(CLAIM_NOT_YET_STARTED)
     // access control: Call cash before endTime + withdrawDelay
     await expect(IFAllocationSale.connect(casher).cash())
 
@@ -483,7 +483,7 @@ export default describe('IF Fixed Sale', function () {
     mineNext()
 
     // linear vesting: User makes a purchase and claim before vesting starts
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(CLAIM_NOT_YET_STARTED)
     expect(await SaleToken.balanceOf(buyer.address)).to.equal('0')
 
     // fast forward from current time to after end time
@@ -535,7 +535,7 @@ export default describe('IF Fixed Sale', function () {
     )
     await IFAllocationSale.connect(buyer)['purchase(uint256)'](paymentAmount)
     // cliff vesting: User makes a purchase and claim before cliff vesting starts
-    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(IFAllocationSale.connect(buyer).withdraw()).to.be.revertedWith(CLAIM_NOT_YET_STARTED)
 
     mineTimeDelta(endTime + withdrawDelay - (await getBlockTime()) + 1)
 
@@ -599,14 +599,14 @@ export default describe('IF Fixed Sale', function () {
     const packed = addressValMap.get(tempAcct.address.toLowerCase()) || ''
     const tempAcctIdx = getAddressIndex(leaves, packed)
     expect(
-      await IFAllocationSale.connect(tempAcct).checkWhitelistAllocation(
+      await IFAllocationSale.connect(tempAcct)['checkWhitelist(address,bytes32[],uint256)'](
         tempAcct.address,
         computeMerkleProof(leaves, tempAcctIdx),
         1,
       )
     ).to.equal(true)
     expect(
-      await IFAllocationSale.connect(tempAcct).checkWhitelistAllocation(
+      await IFAllocationSale.connect(tempAcct)['checkWhitelist(address,bytes32[],uint256)'](
         tempAcct.address,
         computeMerkleProof(leaves, tempAcctIdx),
         200,
@@ -637,7 +637,7 @@ export default describe('IF Fixed Sale', function () {
 
     const packed = addressValMap.get(buyer.address.toLowerCase()) || ''
     const tempAcctIdx = getAddressIndex(leaves, packed)
-    await expect(IFAllocationSale.connect(buyer)['purchase(uint256,bytes32[],uint256)'](
+    await expect(IFAllocationSale.connect(buyer)['whitelistedPurchase(uint256,bytes32[],uint256)'](
       paymentAmount,
       computeMerkleProof(leaves, tempAcctIdx),
       allocationAmount,
@@ -679,7 +679,7 @@ export default describe('IF Fixed Sale', function () {
     )
     const packed = addressValMap.get(buyer.address.toLowerCase()) || ''
     const tempAcctIdx = getAddressIndex(leaves, packed)
-    await IFAllocationSale.connect(buyer)['purchase(uint256,bytes32[],uint256)'](
+    await IFAllocationSale.connect(buyer)['whitelistedPurchase(uint256,bytes32[],uint256)'](
       paymentAmount,
       computeMerkleProof(leaves, tempAcctIdx),
       allocationAmount,
@@ -693,7 +693,7 @@ export default describe('IF Fixed Sale', function () {
 
     const packed2 = addressValMap.get(buyer2.address.toLowerCase()) || ''
     const tempAcctIdx2 = getAddressIndex(leaves, packed2)
-    await IFAllocationSale.connect(buyer2)['purchase(uint256,bytes32[],uint256)'](
+    await IFAllocationSale.connect(buyer2)['whitelistedPurchase(uint256,bytes32[],uint256)'](
       paymentAmount,
       computeMerkleProof(leaves, tempAcctIdx2),
       allocationAmount,
@@ -707,12 +707,12 @@ export default describe('IF Fixed Sale', function () {
     // test withdraw
     mineNext()
     // access control: Withdraw giveaway when sale price is not 0
-    await expect(IFAllocationSale.connect(buyer).withdrawGiveaway([], allocationAmount)).to.be.revertedWith(NOT_A_GIVEAWAY)
+    await expect(IFAllocationSale.connect(buyer)['withdrawGiveaway(bytes32[],uint256)']([], allocationAmount)).to.be.revertedWith(NOT_A_GIVEAWAY)
     await IFAllocationSale.connect(buyer).withdraw()
     mineNext()
     await IFAllocationSale.connect(buyer2).withdraw()
     // access control: Withdraw giveaway when sale price is not 0
-    await expect(IFAllocationSale.connect(buyer).withdrawGiveaway([], allocationAmount)).to.be.revertedWith(NOT_A_GIVEAWAY)
+    await expect(IFAllocationSale.connect(buyer)['withdrawGiveaway(bytes32[],uint256)']([], allocationAmount)).to.be.revertedWith(NOT_A_GIVEAWAY)
     mineNext()
 
     // expect balance to be 5000 for both buyers
