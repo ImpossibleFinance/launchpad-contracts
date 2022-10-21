@@ -25,6 +25,8 @@ contract IFVestable is Ownable {
 
     // tracks amount of tokens owed to each address
     mapping(address => uint256) public claimable;
+    // tracks amount of tokens purchased by each address
+    mapping(address => uint256) public totalPurchased;
     // the most recent time the user claimed the saleToken
     mapping(address => uint256) public latestClaimTime;
     // cliff vesting time and percentage
@@ -49,7 +51,7 @@ contract IFVestable is Ownable {
     }
 
     // Function for owner to set a vesting end time
-    function setVestingEndTime(uint256 _vestingEndTime) public {
+    function setVestingEndTime(uint256 _vestingEndTime) public onlyOwner {
     // function setVestingEndTime(uint256 _vestingEndTime) external onlyOwner onlyBeforeSale {
         require(block.timestamp < startTime, 'sale already started');
         require(_vestingEndTime > withdrawTime, "vesting end time has to be after withdrawal start time");
@@ -64,7 +66,7 @@ contract IFVestable is Ownable {
     }
 
     // function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) external onlyOwner {
-    function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) public {
+    function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) public onlyOwner {
         // sale must not have started
         require(block.timestamp < startTime, "can't be set after a sale is started");
 
@@ -94,13 +96,13 @@ contract IFVestable is Ownable {
         vestingEndTime = 0;
     }
 
-    function getClaimablePct(address user) public view returns (uint256) {
+    function getCurrentClaimableToken(address user) public view returns (uint256) {
         // prevent returning a negative number
         require(block.timestamp > withdrawTime, 'claim not yet started');
         // linear vesting
         if (vestingEndTime > block.timestamp) {
-            // current claimable = (now - last claimed time) / (total vesting time) 
-            return (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) * 100 / (vestingEndTime - (withdrawTime));
+            // current claimable = (now - last claimed time) / (total vesting time) * totalClaimable
+            return totalPurchased[user] * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (vestingEndTime - (withdrawTime));
         }
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
@@ -117,9 +119,22 @@ contract IFVestable is Ownable {
             if (claimablePct == 0) {
                 return 0;
             }
-            return claimablePct;
+            return totalPurchased[user] * claimablePct / 100;
         }
         // users can get all of the tokens after vestingEndTime
-        return 100;
+        return claimable[user];
+    }
+
+    function updateVestingOnPurchase(uint256 tokenPurchased, address user) internal {
+        totalPurchased[user] = tokenPurchased;
+        claimable[user] = totalPurchased[user];
+    }
+
+    function updateVestingOnWithdraw(uint256 tokenSent, address user) internal {
+        // update claimable
+        claimable[user] -= tokenSent;
+        // update last claimed time
+        latestClaimTime[user] = block.timestamp;
+        // transfer giveaway sale token to participant
     }
 }

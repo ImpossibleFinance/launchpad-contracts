@@ -592,7 +592,7 @@ export default describe('IF Fixed Sale', function () {
     const allocations = Array(signers.length).fill(1)
     const [leaves, addressValMap] = computeMerkleRootWithAllocation(signers, allocations)
     const merkleRoot = computeMerkleRoot(leaves)
-    await IFAllocationSale.connect(owner).setWhitelistAllocation(merkleRoot)
+    await IFAllocationSale.connect(owner).setWhitelist(merkleRoot)
     mineNext()
 
     const tempAcct = (await ethers.getSigners())[0]
@@ -622,7 +622,7 @@ export default describe('IF Fixed Sale', function () {
     // amount to pay (should fail, because this is 1 over allocation)
 
     // set sale token allocation override
-    await IFAllocationSale.connect(owner).setWhitelistAllocation(computeMerkleRoot(leaves))
+    await IFAllocationSale.connect(owner).setWhitelist(computeMerkleRoot(leaves))
     mineNext()
 
     // fast forward from current time to start time
@@ -665,7 +665,7 @@ export default describe('IF Fixed Sale', function () {
     const paymentAmount = 50000
 
     const [leaves, addressValMap] = computeMerkleRootWithAllocation([buyer, buyer2], [allocationAmount, allocationAmount])
-    await IFAllocationSale.connect(owner).setWhitelistAllocation(computeMerkleRoot(leaves))
+    await IFAllocationSale.connect(owner).setWhitelist(computeMerkleRoot(leaves))
     mineNext()
 
     // fast forward from current time to start time

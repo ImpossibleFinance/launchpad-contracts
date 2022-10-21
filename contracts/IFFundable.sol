@@ -38,7 +38,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     // sale token
     ERC20 private immutable saleToken;
     // withdraw/cash delay timestamp (inclusive)
-    uint24 private withdrawDelay;
+    uint24 public withdrawDelay;
 
     // STAT
     // amount of sale token to sell

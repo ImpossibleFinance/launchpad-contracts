@@ -148,18 +148,18 @@ contract IFAllocationSale is IFSale {
         require(salePrice == 0, 'not a giveaway');
         // if there is whitelist, require that user is whitelisted by checking proof
         require(
-            whitelistRootHash == 0 || checkWhitelist(_msgSender(), merkleProof),
+            whitelistRootHash == 0 || checkWhitelist(user, merkleProof),
             'proof invalid'
         );
 
-        uint256 saleTokenOwed = 0;
         // initialize claimable before the first time of withdrawal
-        if (!hasWithdrawn[_msgSender()]) {
+        if (!hasWithdrawn[user]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
-            saleTokenOwed = getUserStakeValue(_msgSender());
-            claimable[user] = saleTokenOwed;
-            totalPurchased[user] = saleTokenOwed;
+            uint256 value = getUserStakeValue(user);
+            claimable[user] = value;
+            totalPurchased[user] = value;
         }
+        uint256 saleTokenOwed = getCurrentClaimableToken(user);
 
         // send token and update states
         _withdraw(saleTokenOwed);

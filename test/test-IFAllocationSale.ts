@@ -8,7 +8,7 @@ import IFAllocationSaleGeneralTest, { _ctx } from './IFAllocationSaleGeneralTest
 import { CANNOT_WITHDRAW_YET, EXCEED_MAX_PAYMENT, NOT_WHITELIST_SETTER_OR_OWNER, PROOF_INVALID, SALE_ALREADY_STARTED, USE_WITHDRAWGIVEAWAY } from './reverts/msg-IFAllocationSale'
 
 export default describe('IF Allocation Sale', function () {
-  this.timeout(200000)
+  this.timeout(2000000)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctx: any = _ctx
 
@@ -292,7 +292,7 @@ export default describe('IF Allocation Sale', function () {
 
     // set withdrawal delay
     await expect(ctx.IFAllocationSale.connect(ctx.owner).setWithdrawDelay(withdrawDelay)).to.be.revertedWith(SALE_ALREADY_STARTED)
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdrawGiveaway([])).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdrawGiveaway([])).to.be.reverted
 
     mineTimeDelta(ctx.endTime + withdrawDelay - (await getBlockTime()))
     await ctx.IFAllocationSale.connect(ctx.buyer).withdrawGiveaway([])

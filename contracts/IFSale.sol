@@ -10,10 +10,6 @@ import './IFSaleAbstract.sol';
 import './IFVestable.sol';
 
 contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
-
-    // tracks amount of tokens purchased by each address
-    mapping(address => uint256) public totalPurchased;
-
     // CONSTRUCTOR
     constructor(
         address _funder,
@@ -45,7 +41,7 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
         // send token and update states
-        uint256 tokenOwed = getClaimableToken(_msgSender());
+        uint256 tokenOwed = getCurrentClaimableToken(_msgSender());
         _withdraw(tokenOwed);
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'no token to be withdrawn');
@@ -56,7 +52,6 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         uint256 paymentAmount,
         bytes32[] calldata merkleProof
     ) virtual override public {
-        console.log("ifs whitelisted purchase");
         // require that user is whitelisted by checking proof
         require(checkWhitelist(_msgSender(), merkleProof), 'proof invalid');
         _purchase(paymentAmount, type(uint256).max);
@@ -74,12 +69,11 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
             'proof invalid'
         );
 
-        uint256 saleTokenOwed = 0;
+        uint256 saleTokenOwed = getCurrentClaimableToken(user);
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[user]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
             // claimable[_msgSender()] = getUserStakeValue(_msgSender());
-            saleTokenOwed = getClaimableToken(user);
             claimable[user] = saleTokenOwed;
             totalPurchased[user] = saleTokenOwed;
         }
@@ -100,37 +94,23 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
     }
 
-    function getClaimableToken(address user) internal view returns (uint256 amount) {
-        return totalPurchased[user] * getClaimablePct(user) / 100;
-    }
-
     function getSaleTokensSold() override internal view returns (uint256 amount) {
         return (totalPaymentReceived * SALE_PRICE_DECIMALS) /
             salePrice;
     }
 
-
-    function _updateClaimableOnPurchase(uint256 tokenPurchased, address user) internal {
-        totalPurchased[user] = tokenPurchased;
-        claimable[user] = totalPurchased[user];
-    }
-
-    function _updateClaimableOnWithdraw(uint256 tokenSent, address user) internal {
-        // update claimable
-        claimable[user] -= tokenSent;
-        // update last claimed time
-        latestClaimTime[user] = block.timestamp;
-        // transfer giveaway sale token to participant
-    }
-
     function _purchase(uint256 paymentAmount, uint256 remaining) override internal onlyDuringSale {
         totalPaymentReceived += paymentAmount;
         super._purchase(paymentAmount, remaining);
-        _updateClaimableOnPurchase((paymentReceived[_msgSender()] * SALE_PRICE_DECIMALS) / salePrice, _msgSender());
+        updateVestingOnPurchase((paymentReceived[_msgSender()] * SALE_PRICE_DECIMALS) / salePrice, _msgSender());
     }
 
     function _withdraw(uint256 tokenOwed) override internal onlyDuringClaim {
+        require(endTime + withdrawDelay < block.timestamp, 'cannot withdraw yet');
+        if (cliffPeriod.length != 0) {
+            require(cliffPeriod[0].claimTime < block.timestamp, 'cannot withdraw yet');
+        }
         super._withdraw(tokenOwed);
-        _updateClaimableOnWithdraw(tokenOwed, _msgSender());
+        updateVestingOnWithdraw(tokenOwed, _msgSender());
     }
 }
