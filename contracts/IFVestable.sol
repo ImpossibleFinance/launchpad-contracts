@@ -25,8 +25,6 @@ contract IFVestable is Ownable {
 
     // tracks amount of tokens owed to each address
     mapping(address => uint256) public claimable;
-    // tracks amount of tokens purchased by each address
-    mapping(address => uint256) public totalPurchased;
     // the most recent time the user claimed the saleToken
     mapping(address => uint256) public latestClaimTime;
     // cliff vesting time and percentage
@@ -43,6 +41,7 @@ contract IFVestable is Ownable {
     ) {
         startTime = _startTime;
         endTime = _endTime;
+        withdrawTime = endTime;
     }
 
     function setWithdrawTime(uint256 _withdrawTime) internal {
@@ -54,7 +53,7 @@ contract IFVestable is Ownable {
     // function setVestingEndTime(uint256 _vestingEndTime) external onlyOwner onlyBeforeSale {
         require(block.timestamp < startTime, 'sale already started');
         require(_vestingEndTime > withdrawTime, "vesting end time has to be after withdrawal start time");
-        require(endTime + withdrawTime > _vestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
+        require(withdrawTime > _vestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
         vestingEndTime = _vestingEndTime;
 
         // unset cliff vesting
@@ -80,7 +79,7 @@ contract IFVestable is Ownable {
 
         uint256 maxDate;
         uint8 totalPct;
-        require(claimTimes[0] > endTime + withdrawTime, "first claim time is before end time + withdraw delay");
+        require(claimTimes[0] > withdrawTime, "first claim time is before end time + withdraw delay");
         for (uint i = 0; i < claimTimes.length; i++) {
             require(maxDate < claimTimes[i], "dates not in ascending order");
             maxDate = claimTimes[i];
@@ -95,13 +94,13 @@ contract IFVestable is Ownable {
         vestingEndTime = 0;
     }
 
-    function getCurrentClaimableToken(address user) public view returns (uint256) {
+    function getClaimablePct(address user) public view returns (uint256) {
         // prevent returning a negative number
         require(block.timestamp > withdrawTime, 'claim not yet started');
         // linear vesting
         if (vestingEndTime > block.timestamp) {
-            // current claimable = (now - last claimed time) / (total vesting time) * totalClaimable
-            return totalPurchased[user] * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (vestingEndTime - (withdrawTime));
+            // current claimable = (now - last claimed time) / (total vesting time) 
+            return (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) * 100 / (vestingEndTime - (withdrawTime));
         }
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
@@ -118,22 +117,9 @@ contract IFVestable is Ownable {
             if (claimablePct == 0) {
                 return 0;
             }
-            return totalPurchased[user] * claimablePct / 100;
+            return claimablePct;
         }
         // users can get all of the tokens after vestingEndTime
-        return claimable[user];
-    }
-
-    function updateVestingOnPurchase(uint256 tokenPurchased, address user) internal {
-        totalPurchased[user] = tokenPurchased;
-        claimable[user] = totalPurchased[user];
-    }
-
-    function updateVestingOnWithdraw(uint256 tokenSent, address user) internal {
-        // update claimable
-        claimable[user] -= tokenSent;
-        // update last claimed time
-        latestClaimTime[user] = block.timestamp;
-        // transfer giveaway sale token to participant
+        return 100;
     }
 }

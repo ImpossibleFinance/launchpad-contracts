@@ -16,16 +16,16 @@ contract IFAllocationSale is IFSale {
     // CONSTRUCTOR
 
     constructor(
-        address _funder,
         uint256 _salePrice,
+        address _funder,
         ERC20 _paymentToken,
         ERC20 _saleToken,
+        IIFRetrievableStakeWeight _allocationMaster,
         uint24 _trackId,
+        uint80 _allocSnapshotTimestamp,
         uint256 _startTime,
         uint256 _endTime,
-        uint256 _maxTotalPayment,
-        IIFRetrievableStakeWeight _allocationMaster,
-        uint80 _allocSnapshotTimestamp
+        uint256 _maxTotalPayment
     ) 
         IFSale(
             _funder,

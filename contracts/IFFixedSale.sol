@@ -62,7 +62,7 @@ contract IFFixedSale is IFSale {
         require(salePrice != 0, 'use withdrawGiveaway');
 
         // send token and update states
-        uint256 tokenOwed = getCurrentClaimableToken(_msgSender());
+        uint256 tokenOwed = getClaimableToken(_msgSender());
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'no token to be withdrawn');
     }   
@@ -87,7 +87,7 @@ contract IFFixedSale is IFSale {
         if (!hasWithdrawn[user]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
             // claimable[_msgSender()] = getUserStakeValue(_msgSender());
-            saleTokenOwed = getCurrentClaimableToken(user);
+            saleTokenOwed = getClaimableToken(user);
             claimable[user] = saleTokenOwed;
             totalPurchased[user] = saleTokenOwed;
         }

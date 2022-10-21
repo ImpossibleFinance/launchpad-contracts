@@ -11,7 +11,7 @@ import {
 } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
-import { ALREADY_CASHED, NO_TOKEN_TO_BE_WITHDRAWN, CANNOT_WITHDRAW_YET, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY } from './reverts/msg-IFAllocationSale'
+import { ALREADY_CASHED, NO_TOKEN_TO_BE_WITHDRAWN, CANNOT_WITHDRAW_YET, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CLAIM_NOT_YET_STARTED } from './reverts/msg-IFAllocationSale'
 
 export const _ctx ={
   owner: SignerWithAddress,
@@ -39,7 +39,7 @@ export const _ctx ={
 
 export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
   // unset timeout from the test
-  _this.timeout(0)
+  _this.timeout(200000)
 
   _this.beforeAll(async () => {
     await setAutomine(false)
@@ -344,7 +344,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     mineTimeDelta(ctx.endTime - (await getBlockTime()))
 
     // test withdraw and cash (should fail because need 1 more block)
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CLAIM_NOT_YET_STARTED)
     // access control: Call cash before ctx.endTime + withdrawDelay
     await expect(ctx.IFAllocationSale.connect(ctx.casher).cash())
 
@@ -488,7 +488,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     mineNext()
 
     // linear vesting: User makes a purchase and claim before vesting starts
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.reverted
     expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('0')
 
     // fast forward from current time to after end time
@@ -540,7 +540,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     )
     await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
     // cliff vesting: User makes a purchase and claim before cliff vesting starts
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_YET)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CLAIM_NOT_YET_STARTED)
 
     mineTimeDelta(ctx.endTime + withdrawDelay - (await getBlockTime()) + 1)
 
