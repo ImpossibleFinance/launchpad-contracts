@@ -5,6 +5,8 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
 contract IFVestable is Ownable {
+    // 8 digits timestamp * 100 percent
+    uint256 CLAIMABLE_PCT_DECIMAL = 10 ** 8 * 100;
     // seconds in 10 years
     uint64 private constant TEN_YEARS = 315569260;
 
@@ -23,10 +25,6 @@ contract IFVestable is Ownable {
     // withdraw/cash delay timestamp (inclusive)
     uint256 public withdrawTime;
 
-    // tracks amount of tokens owed to each address
-    mapping(address => uint256) public claimable;
-    // tracks amount of tokens purchased by each address
-    mapping(address => uint256) public totalPurchased;
     // the most recent time the user claimed the saleToken
     mapping(address => uint256) public latestClaimTime;
     // cliff vesting time and percentage
@@ -96,16 +94,17 @@ contract IFVestable is Ownable {
         vestingEndTime = 0;
     }
 
-    function getCurrentClaimableToken(address user) public view returns (uint256) {
+    function getCurrentClaimablePercentage(address user) public view returns (uint256) {
         // prevent returning a negative number
         require(block.timestamp > withdrawTime, 'claim not yet started');
         // linear vesting
         if (vestingEndTime > block.timestamp) {
             // current claimable = (now - last claimed time) / (total vesting time) * totalClaimable
-            return totalPurchased[user] * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (vestingEndTime - (withdrawTime));
+            return CLAIMABLE_PCT_DECIMAL * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (vestingEndTime - withdrawTime);
         }
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
+        // if cliff vesting is set  
         if (cliffPeriodLength != 0 && cliffPeriod[cliffPeriodLength - 1].claimTime > block.timestamp) {
             uint8 claimablePct;
             for (uint8 i; i < cliffPeriodLength; i++) {
@@ -119,22 +118,10 @@ contract IFVestable is Ownable {
             if (claimablePct == 0) {
                 return 0;
             }
-            return totalPurchased[user] * claimablePct / 100;
+            return CLAIMABLE_PCT_DECIMAL * claimablePct / 100;
         }
         // users can get all of the tokens after vestingEndTime
-        return claimable[user];
+        return CLAIMABLE_PCT_DECIMAL;
     }
 
-    function updateVestingOnPurchase(uint256 tokenPurchased, address user) internal {
-        totalPurchased[user] = tokenPurchased;
-        claimable[user] = totalPurchased[user];
-    }
-
-    function updateVestingOnWithdraw(uint256 tokenSent, address user) internal {
-        // update claimable
-        claimable[user] -= tokenSent;
-        // update last claimed time
-        latestClaimTime[user] = block.timestamp;
-        // transfer giveaway sale token to participant
-    }
 }

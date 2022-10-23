@@ -33,6 +33,12 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     mapping(address => uint256) public paymentReceived;
     // tracks whether user has already successfully withdrawn
     mapping(address => bool) public hasWithdrawn;
+    // tracks amount of tokens owed to each address
+    mapping(address => uint256) public claimable;
+    // tracks amount of tokens purchased by each address
+    mapping(address => uint256) public totalPurchased;
+
+
 
     // STAT
     // counter of unique purchasers

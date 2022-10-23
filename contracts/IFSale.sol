@@ -84,6 +84,15 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
     }
 
+    function getCurrentClaimableToken(address user) internal view returns (uint256) {
+        uint256 pct = getCurrentClaimablePercentage(user);
+        if (pct == CLAIMABLE_PCT_DECIMAL) {
+            return claimable[user];
+        } else {
+            return totalPurchased[user] * getCurrentClaimablePercentage(user) / CLAIMABLE_PCT_DECIMAL;
+        }
+    }
+
     // Returns true if user is on whitelist, otherwise false
     function checkWhitelist(address user, bytes32[] calldata merkleProof) virtual public view returns (bool)
     {
@@ -112,5 +121,18 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         }
         super._withdraw(tokenOwed);
         updateVestingOnWithdraw(tokenOwed, _msgSender());
+    }
+
+    function updateVestingOnPurchase(uint256 tokenPurchased, address user) internal {
+        totalPurchased[user] = tokenPurchased;
+        claimable[user] = tokenPurchased;
+    }
+
+    function updateVestingOnWithdraw(uint256 tokenSent, address user) internal {
+        // update claimable
+        claimable[user] -= tokenSent;
+        // update last claimed time
+        latestClaimTime[user] = block.timestamp;
+        // transfer giveaway sale token to participant
     }
 }
