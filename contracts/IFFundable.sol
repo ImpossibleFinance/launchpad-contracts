@@ -30,9 +30,9 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     // Sale Info
 
     // start timestamp when sale is active (inclusive)
-    uint256 private immutable startTime;
+    uint256 public immutable startTime;
     // end timestamp when sale is active (inclusive)
-    uint256 private immutable endTime;
+    uint256 public immutable endTime;
     // payment token
     ERC20 private immutable paymentToken;
     // sale token

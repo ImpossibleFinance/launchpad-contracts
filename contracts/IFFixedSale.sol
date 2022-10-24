@@ -58,6 +58,8 @@ contract IFFixedSale is IFSale {
 
     // Function for withdrawing purchased sale token after sale end
     function withdraw() override public nonReentrant {
+        console.log('bt', block.timestamp);
+        console.log('st', startTime);
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
 

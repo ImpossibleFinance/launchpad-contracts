@@ -21,15 +21,24 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         uint256 _endTime,
         uint256 _maxTotalPayment
     ) 
-        IFSaleAbstract(_paymentToken, _saleToken, _salePrice, _maxTotalPayment, _trackId) 
-        IFVestable(_startTime, _endTime)
+        IFSaleAbstract(_paymentToken, _saleToken, _salePrice, _maxTotalPayment, _trackId)
+        IFVestable(_endTime)
         IFFundable(_paymentToken, _saleToken, _startTime, _endTime, _funder)
     {}
 
     // FUNCTIONS
+
     function setWithdrawDelay(uint24 _withdrawDelay) override public onlyOwner onlyBeforeSale {
         setWithdrawTime(endTime + _withdrawDelay);
         super.setWithdrawDelay(_withdrawDelay);
+    }
+
+    function setVestingEndTime(uint256 _vestingEndTime) override public onlyOwner onlyBeforeSale {
+        super.setVestingEndTime(_vestingEndTime);
+    }
+
+    function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) override public onlyOwner onlyBeforeSale {
+        super.setCliffPeriod(claimTimes, pct);
     }
 
     function purchase(uint256 paymentAmount) virtual override public {

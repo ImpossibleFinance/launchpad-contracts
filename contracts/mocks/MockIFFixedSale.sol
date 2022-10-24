@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import 'hardhat/console.sol';
 import '../../contracts/IFFixedSale.sol';
+import '../interfaces/IIFRetrievableStakeWeight.sol';
 
 // Contract to set max allocation on all buyers
 contract MockIFFixedSale is IFFixedSale {
@@ -11,7 +12,9 @@ contract MockIFFixedSale is IFFixedSale {
         address _funder,
         ERC20 _paymentToken,
         ERC20 _saleToken,
+        IIFRetrievableStakeWeight _allocationMaster,
         uint24 _trackId,
+        uint80 _allocSnapshotTimestamp,
         uint256 _startTime,
         uint256 _endTime,
         uint256 _maxTotalPayment

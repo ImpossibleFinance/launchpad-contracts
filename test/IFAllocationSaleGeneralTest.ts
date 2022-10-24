@@ -39,7 +39,7 @@ export const _ctx ={
 
 export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
   // unset timeout from the test
-  _this.timeout(2000000)
+  _this.timeout(0)
 
   _this.beforeAll(async () => {
     await setAutomine(false)

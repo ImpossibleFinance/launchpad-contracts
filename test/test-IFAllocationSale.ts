@@ -5,10 +5,10 @@ import { ethers } from 'hardhat'
 import { computeMerkleProof, computeMerkleRoot, getAddressIndex } from '../library/merkleWhitelist'
 import { getBlockTime, mineNext, mineTimeDelta } from './helpers'
 import IFAllocationSaleGeneralTest, { _ctx } from './IFAllocationSaleGeneralTest'
-import { CANNOT_WITHDRAW_YET, EXCEED_MAX_PAYMENT, NOT_WHITELIST_SETTER_OR_OWNER, PROOF_INVALID, SALE_ALREADY_STARTED, USE_WITHDRAWGIVEAWAY } from './reverts/msg-IFAllocationSale'
+import { EXCEED_MAX_PAYMENT, NOT_WHITELIST_SETTER_OR_OWNER, PROOF_INVALID, SALE_ALREADY_STARTED, USE_WITHDRAWGIVEAWAY } from './reverts/msg-IFAllocationSale'
 
 export default describe('IF Allocation Sale', function () {
-  this.timeout(2000000)
+  this.timeout(0)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctx: any = _ctx
 

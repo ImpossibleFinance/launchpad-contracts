@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "hardhat/console.sol";
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
@@ -18,10 +19,6 @@ contract IFVestable is Ownable {
         uint8 pct;
     }
 
-    // start timestamp when sale is active (inclusive)
-    uint256 public immutable startTime;
-    // end timestamp when sale is active (inclusive)
-    uint256 public immutable endTime;
     // withdraw/cash delay timestamp (inclusive)
     uint256 public withdrawTime;
 
@@ -36,12 +33,10 @@ contract IFVestable is Ownable {
     event SetCliffVestingPeriod(Cliff[] indexed cliffPeriod);
 
     constructor(
-        uint256 _startTime,
-        uint256 _endTime
+        // withdrawTIme is endTime + withdrawal delay 
+        uint256 _withdrawTime
     ) {
-        startTime = _startTime;
-        endTime = _endTime;
-        withdrawTime = endTime;
+        withdrawTime = _withdrawTime;
     }
 
     function setWithdrawTime(uint256 _withdrawTime) internal {
@@ -49,9 +44,7 @@ contract IFVestable is Ownable {
     }
 
     // Function for owner to set a vesting end time
-    function setVestingEndTime(uint256 _vestingEndTime) public onlyOwner {
-    // function setVestingEndTime(uint256 _vestingEndTime) external onlyOwner onlyBeforeSale {
-        require(block.timestamp < startTime, 'sale already started');
+    function setVestingEndTime(uint256 _vestingEndTime) virtual public onlyOwner {
         require(_vestingEndTime > withdrawTime, "vesting end time has to be after withdrawal start time");
         require(withdrawTime > _vestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
         vestingEndTime = _vestingEndTime;
@@ -63,10 +56,7 @@ contract IFVestable is Ownable {
         emit SetVestingEndTime(_vestingEndTime);
     }
 
-    // function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) external onlyOwner {
-    function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) public onlyOwner {
-        // sale must not have started
-        require(block.timestamp < startTime, "can't be set after a sale is started");
+    function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) virtual public onlyOwner {
 
         // lengths of claimTimes and pct must be equal
         require(claimTimes.length == pct.length, "dates and pct doesn't match");
@@ -96,6 +86,7 @@ contract IFVestable is Ownable {
 
     function getCurrentClaimablePercentage(address user) public view returns (uint256) {
         // prevent returning a negative number
+        console.log('wt', withdrawTime);
         require(block.timestamp > withdrawTime, 'claim not yet started');
         // linear vesting
         if (vestingEndTime > block.timestamp) {
