@@ -159,7 +159,7 @@ contract IFAllocationSale is IFSale {
             claimable[user] = value;
             totalPurchased[user] = value;
         }
-        uint256 saleTokenOwed = getCurrentClaimableToken(user);
+        uint256 saleTokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
 
         // send token and update states
         _withdraw(saleTokenOwed);

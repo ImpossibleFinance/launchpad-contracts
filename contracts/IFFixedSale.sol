@@ -58,7 +58,7 @@ contract IFFixedSale is IFSale {
 
     // Function for withdrawing purchased sale token after sale end
     function withdraw() override public nonReentrant {
-        address user = _msgSender()
+        address user = _msgSender();
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
 
