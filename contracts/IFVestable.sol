@@ -6,7 +6,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 
 contract IFVestable is Ownable {
     // 8 digits timestamp * 100 percent
-    uint256 CLAIMABLE_PCT_DECIMAL = 10 ** 8 * 100;
+    uint256 CLAIMABLE_PCT_DECIMAL = 10 ** 10 * 100;
     // seconds in 10 years
     uint64 private constant TEN_YEARS = 315569260;
 
