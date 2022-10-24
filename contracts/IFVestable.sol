@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "hardhat/console.sol";
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
-contract IFVestable is Ownable {
+abstract contract IFVestable is Ownable {
     // 8 digits timestamp * 100 percent
     uint256 CLAIMABLE_PCT_DECIMAL = 10 ** 10 * 100;
     // seconds in 10 years
@@ -86,7 +85,6 @@ contract IFVestable is Ownable {
 
     function getCurrentClaimablePercentage(address user) public view returns (uint256) {
         // prevent returning a negative number
-        console.log('wt', withdrawTime);
         require(block.timestamp > withdrawTime, 'claim not yet started');
         // linear vesting
         if (vestingEndTime > block.timestamp) {
@@ -113,6 +111,15 @@ contract IFVestable is Ownable {
         }
         // users can get all of the tokens after vestingEndTime
         return CLAIMABLE_PCT_DECIMAL;
+    }
+
+    function getCurrentClaimableToken(uint256 claimable, uint256 totalPurchased, address user) internal view returns (uint256) {
+        uint256 pct = getCurrentClaimablePercentage(user);
+        if (pct == CLAIMABLE_PCT_DECIMAL) {
+            return claimable;
+        } else {
+            return totalPurchased * getCurrentClaimablePercentage(user) / CLAIMABLE_PCT_DECIMAL;
+        }
     }
 
 }

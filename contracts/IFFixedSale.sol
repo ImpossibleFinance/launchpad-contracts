@@ -58,13 +58,12 @@ contract IFFixedSale is IFSale {
 
     // Function for withdrawing purchased sale token after sale end
     function withdraw() override public nonReentrant {
-        console.log('bt', block.timestamp);
-        console.log('st', startTime);
+        address user = _msgSender()
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
 
         // send token and update states
-        uint256 tokenOwed = getCurrentClaimableToken(_msgSender());
+        uint256 tokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
         _withdraw(tokenOwed);
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'no token to be withdrawn');
@@ -90,7 +89,7 @@ contract IFFixedSale is IFSale {
         if (!hasWithdrawn[user]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
             // claimable[_msgSender()] = getUserStakeValue(_msgSender());
-            saleTokenOwed = getCurrentClaimableToken(user);
+            saleTokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
             claimable[user] = saleTokenOwed;
             totalPurchased[user] = saleTokenOwed;
         }

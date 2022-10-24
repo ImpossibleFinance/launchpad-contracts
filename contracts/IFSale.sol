@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "hardhat/console.sol";
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
@@ -47,10 +46,11 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
     }
 
     function withdraw() virtual override public nonReentrant {
+        address user = _msgSender();
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
         // send token and update states
-        uint256 tokenOwed = getCurrentClaimableToken(_msgSender());
+        uint256 tokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
         _withdraw(tokenOwed);
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'no token to be withdrawn');
@@ -78,7 +78,7 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
             'proof invalid'
         );
 
-        uint256 saleTokenOwed = getCurrentClaimableToken(user);
+        uint256 saleTokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[user]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
@@ -91,15 +91,6 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         _withdraw(saleTokenOwed);
         // sale token owed must be greater than 0
         require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
-    }
-
-    function getCurrentClaimableToken(address user) internal view returns (uint256) {
-        uint256 pct = getCurrentClaimablePercentage(user);
-        if (pct == CLAIMABLE_PCT_DECIMAL) {
-            return claimable[user];
-        } else {
-            return totalPurchased[user] * getCurrentClaimablePercentage(user) / CLAIMABLE_PCT_DECIMAL;
-        }
     }
 
     // Returns true if user is on whitelist, otherwise false
