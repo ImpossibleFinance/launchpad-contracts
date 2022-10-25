@@ -81,8 +81,6 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         uint256 saleTokenOwed = getCurrentClaimableToken(user);
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[user]) {
-            // each participant in the zero cost "giveaway" gets a flat amount of sale token
-            // claimable[_msgSender()] = getUserStakeValue(_msgSender());
             claimable[user] = saleTokenOwed;
             totalPurchased[user] = saleTokenOwed;
         }

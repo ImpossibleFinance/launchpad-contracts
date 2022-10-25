@@ -88,7 +88,6 @@ contract IFFixedSale is IFSale {
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[user]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
-            // claimable[_msgSender()] = getUserStakeValue(_msgSender());
             saleTokenOwed = getCurrentClaimableToken(user);
             claimable[user] = saleTokenOwed;
             totalPurchased[user] = saleTokenOwed;
@@ -112,7 +111,6 @@ contract IFFixedSale is IFSale {
         // verify merkle proof
         return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
     }
-
 
     function getMaxPayment(address user, uint256 allocation) public view returns (uint256) {
         // get the maximum total payment for a user
