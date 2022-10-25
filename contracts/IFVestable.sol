@@ -5,8 +5,6 @@ import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
 abstract contract IFVestable is Ownable {
-    // 8 digits timestamp * 100 percent
-    uint256 CLAIMABLE_PCT_DECIMAL = 10 ** 10 * 100;
     // seconds in 10 years
     uint64 private constant TEN_YEARS = 315569260;
 
@@ -83,13 +81,13 @@ abstract contract IFVestable is Ownable {
         vestingEndTime = 0;
     }
 
-    function getCurrentClaimablePercentage(address user) public view returns (uint256) {
+    function getCurrentClaimableToken(uint256 claimable, uint256 totalPurchased, address user) virtual public view returns (uint256) {
         // prevent returning a negative number
         require(block.timestamp > withdrawTime, 'claim not yet started');
         // linear vesting
         if (vestingEndTime > block.timestamp) {
             // current claimable = (now - last claimed time) / (total vesting time) * totalClaimable
-            return CLAIMABLE_PCT_DECIMAL * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (vestingEndTime - withdrawTime);
+            return totalPurchased * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (vestingEndTime - withdrawTime);
         }
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
@@ -107,19 +105,9 @@ abstract contract IFVestable is Ownable {
             if (claimablePct == 0) {
                 return 0;
             }
-            return CLAIMABLE_PCT_DECIMAL * claimablePct / 100;
+            return totalPurchased * claimablePct / 100;
         }
         // users can get all of the tokens after vestingEndTime
-        return CLAIMABLE_PCT_DECIMAL;
+        return claimable;
     }
-
-    function getCurrentClaimableToken(uint256 claimable, uint256 totalPurchased, address user) internal view returns (uint256) {
-        uint256 pct = getCurrentClaimablePercentage(user);
-        if (pct == CLAIMABLE_PCT_DECIMAL) {
-            return claimable;
-        } else {
-            return totalPurchased * getCurrentClaimablePercentage(user) / CLAIMABLE_PCT_DECIMAL;
-        }
-    }
-
 }

@@ -135,4 +135,8 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         latestClaimTime[user] = block.timestamp;
         // transfer giveaway sale token to participant
     }
+
+    function getCurrentClaimableToken (address user) public view returns (uint256) {
+        return super.getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
+    }
 }

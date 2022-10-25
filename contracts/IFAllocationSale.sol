@@ -65,9 +65,7 @@ contract IFAllocationSale is IFSale {
 
     // Function to get the MAX REMAINING amount of allocation for a user (in terms of payment token)
     // it is whichever is smaller:
-    //      1. user's payment allocation, which is determined by
-    //          a. the allocation master
-    //          b. the allocation override
+    //      1. user's payment allocation
     //      2. maxTotalPayment
     function getMaxPayment(address user) public view returns (uint256) {
         // get the maximum total payment for a user
@@ -159,7 +157,7 @@ contract IFAllocationSale is IFSale {
             claimable[user] = value;
             totalPurchased[user] = value;
         }
-        uint256 saleTokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
+        uint256 saleTokenOwed = getClaimableToken(claimable[user], totalPurchased[user], user);
 
         // send token and update states
         _withdraw(saleTokenOwed);
