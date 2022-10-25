@@ -35,11 +35,11 @@ contract IFFixedSale is IFSale {
         revert("Use purchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
     }
 
-    function whitelistedPurchase(uint256, bytes32[] calldata) override public {
+    function whitelistedPurchase(uint256, bytes32[] calldata) override public pure {
         revert("Use purchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
     }
 
-    function withdrawGiveaway(bytes32[] calldata) override public {
+    function withdrawGiveaway(bytes32[] calldata) override public pure {
         revert("Use withdrawGiveaway(bytes32[] calldata merkleProof, uint256 allocation)");
     }
 
@@ -63,7 +63,7 @@ contract IFFixedSale is IFSale {
         require(salePrice != 0, 'use withdrawGiveaway');
 
         // send token and update states
-        uint256 tokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
+        uint256 tokenOwed = getCurrentClaimableToken(user);
         _withdraw(tokenOwed);
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'no token to be withdrawn');
@@ -89,7 +89,7 @@ contract IFFixedSale is IFSale {
         if (!hasWithdrawn[user]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
             // claimable[_msgSender()] = getUserStakeValue(_msgSender());
-            saleTokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
+            saleTokenOwed = getCurrentClaimableToken(user);
             claimable[user] = saleTokenOwed;
             totalPurchased[user] = saleTokenOwed;
         }

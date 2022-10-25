@@ -50,7 +50,7 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
         // send token and update states
-        uint256 tokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
+        uint256 tokenOwed = getCurrentClaimableToken(user);
         _withdraw(tokenOwed);
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'no token to be withdrawn');
@@ -78,7 +78,7 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
             'proof invalid'
         );
 
-        uint256 saleTokenOwed = getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
+        uint256 saleTokenOwed = getCurrentClaimableToken(user);
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[user]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
@@ -114,11 +114,7 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         updateVestingOnPurchase((paymentReceived[_msgSender()] * SALE_PRICE_DECIMALS) / salePrice, _msgSender());
     }
 
-    function _withdraw(uint256 tokenOwed) override internal onlyDuringClaim {
-        require(endTime + withdrawDelay < block.timestamp, 'cannot withdraw yet');
-        if (cliffPeriod.length != 0) {
-            require(cliffPeriod[0].claimTime < block.timestamp, 'cannot withdraw yet');
-        }
+    function _withdraw(uint256 tokenOwed) override internal onlyDuringClaim canClaimVested {
         super._withdraw(tokenOwed);
         updateVestingOnWithdraw(tokenOwed, _msgSender());
     }
@@ -133,7 +129,6 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         claimable[user] -= tokenSent;
         // update last claimed time
         latestClaimTime[user] = block.timestamp;
-        // transfer giveaway sale token to participant
     }
 
     function getCurrentClaimableToken (address user) public view returns (uint256) {

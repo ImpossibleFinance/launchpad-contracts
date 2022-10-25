@@ -36,6 +36,14 @@ abstract contract IFVestable is Ownable {
         withdrawTime = _withdrawTime;
     }
 
+
+    modifier canClaimVested() {
+        if (cliffPeriod.length != 0) {
+            require(cliffPeriod[0].claimTime < block.timestamp, 'cannot withdraw yet');
+        }
+        _;
+    }
+
     function setWithdrawTime(uint256 _withdrawTime) internal {
         withdrawTime = _withdrawTime;
     }
