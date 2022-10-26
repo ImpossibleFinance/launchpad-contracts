@@ -340,6 +340,10 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         vestingEndTime = 0;
     }
 
+    function getCliffPeriod() public view returns (Cliff[] memory){
+        return cliffPeriod;
+    }
+
     // Returns true if user is on whitelist, otherwise false
     function checkWhitelist(address user, bytes32[] calldata merkleProof)
         public
