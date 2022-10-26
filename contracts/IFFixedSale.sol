@@ -4,8 +4,15 @@ pragma solidity ^0.8.9;
 import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import './IFSale.sol';
 
+
+/**
+  @title Sale contract with user's allocation stored in merkle root
+  @notice Regular purchase from IFSale is disabled here
+  @notice Apart from merkle proof, users or the frontend has to supply allocation amount for verification
+  @notice That means functions having `merkleProof` as param will also need `allocation`
+ */
 contract IFFixedSale is IFSale {
-    // CONSTRUCTOR
+    // --- CONSTRUCTOR
 
     constructor(
         uint256 _salePrice,
@@ -29,7 +36,7 @@ contract IFFixedSale is IFSale {
         )
     {}
 
-    // FUNCTIONS
+    // --- DISABLED FUNCTIONS
 
     function purchase(uint256) virtual override public {
         revert("Use purchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
@@ -43,6 +50,8 @@ contract IFFixedSale is IFSale {
         revert("Use withdrawGiveaway(bytes32[] calldata merkleProof, uint256 allocation)");
     }
 
+    // --- WHITELISTED ACTIONS
+
     // purchase function when there is a whitelist
     function whitelistedPurchase(
         uint256 paymentAmount,
@@ -55,20 +64,6 @@ contract IFFixedSale is IFSale {
         uint256 remaining = getMaxPayment(_msgSender(), allocation);
         _purchase(paymentAmount, remaining);
     }
-
-    // Function for withdrawing purchased sale token after sale end
-    function withdraw() override public nonReentrant {
-        address user = _msgSender();
-        // must not be a zero price sale
-        require(salePrice != 0, 'use withdrawGiveaway');
-
-        // send token and update states
-        uint256 tokenOwed = getCurrentClaimableToken(user);
-        _withdraw(tokenOwed);
-        // sale token owed must be greater than 0
-        require(tokenOwed != 0, 'no token to be withdrawn');
-    }   
-
 
     // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
     function withdrawGiveaway(bytes32[] calldata merkleProof, uint256 allocation)
@@ -88,9 +83,9 @@ contract IFFixedSale is IFSale {
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[user]) {
             // each participant in the zero cost "giveaway" gets a flat amount of sale token
-            saleTokenOwed = getCurrentClaimableToken(user);
-            claimable[user] = saleTokenOwed;
-            totalPurchased[user] = saleTokenOwed;
+            saleTokenOwed = allocation;
+            claimable[user] = allocation;
+            totalPurchased[user] = allocation;
         }
 
         // send token and update states
@@ -98,6 +93,8 @@ contract IFFixedSale is IFSale {
         // sale token owed must be greater than 0
         require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
     }
+
+    // --- HELPER FUNCTIONS
 
     // Returns true if user's allocation matches the one in merkle root, otherwise false
     function checkWhitelist(address user, bytes32[] calldata merkleProof, uint256 allocation)
@@ -112,6 +109,7 @@ contract IFFixedSale is IFSale {
         return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
     }
 
+    // @dev get max payment from allocation
     function getMaxPayment(address user, uint256 allocation) public view returns (uint256) {
         // get the maximum total payment for a user
         uint256 max = (salePrice * allocation) / SALE_PRICE_DECIMALS;

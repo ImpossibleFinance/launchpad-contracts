@@ -7,13 +7,15 @@ import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import './interfaces/IIFRetrievableStakeWeight.sol';
 import './IFSale.sol';
 
+
+/**
+  @title Sale contract with user's allocation determined by staked weight
+ */
 contract IFAllocationSale is IFSale {
-    // allocation master
     IIFRetrievableStakeWeight public allocationMaster;
-    // allocation snapshot block
     uint80 public allocSnapshotTimestamp;
 
-    // CONSTRUCTOR
+    // --- CONSTRUCTOR
 
     constructor(
         uint256 _salePrice,
@@ -53,7 +55,37 @@ contract IFAllocationSale is IFSale {
         allocSnapshotTimestamp = _allocSnapshotTimestamp; // can be 0 (with allocation override)
     }
 
-    // FUNCTIONS
+    // --- SALE FUNCTIONS
+
+    // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
+    function withdrawGiveaway(bytes32[] calldata merkleProof)
+        override
+        public
+        nonReentrant
+    {
+        address user = _msgSender();
+        // must be a zero price sale
+        require(salePrice == 0, 'not a giveaway');
+        // if there is whitelist, require that user is whitelisted by checking proof
+        require(
+            whitelistRootHash == 0 || checkWhitelist(user, merkleProof),
+            'proof invalid'
+        );
+
+        // initialize claimable before the first time of withdrawal
+        if (!hasWithdrawn[user]) {
+            // each participant in the zero cost "giveaway" gets a flat amount of sale token
+            uint256 value = getUserStakeValue(user);
+            claimable[user] = value;
+            totalPurchased[user] = value;
+        }
+        uint256 saleTokenOwed = getCurrentClaimableToken(user);
+
+        // send token and update states
+        _withdraw(saleTokenOwed);
+        // sale token owed must be greater than 0
+        require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
+    }
 
     // purchase function when there is no whitelist
     function purchase(uint256 paymentAmount) override public {
@@ -63,19 +95,23 @@ contract IFAllocationSale is IFSale {
         _purchase(paymentAmount, remaining);
     }
 
-    // Function to get the MAX REMAINING amount of allocation for a user (in terms of payment token)
-    // it is whichever is smaller:
-    //      1. user's payment allocation
-    //      2. maxTotalPayment
-    function getMaxPayment(address user) public view returns (uint256) {
-        // get the maximum total payment for a user
-        uint256 max = getTotalPaymentAllocation(user);
-        if (maxTotalPayment < max) {
-            max = maxTotalPayment;
-        }
+    // --- CALCULATE ALLOCATION FROM STAKEWEIGHT
 
-        // calculate and return remaining
-        return max - paymentReceived[user];
+    function getUserStakeValue(address user) public view returns (uint256) {
+        uint256 userWeight = allocationMaster.getUserStakeWeight(
+            trackId,
+            user,
+            allocSnapshotTimestamp
+        );
+        uint256 totalWeight = allocationMaster.getTotalStakeWeight(
+            trackId,
+            allocSnapshotTimestamp
+        );
+        // total weight must be greater than 0
+        require(totalWeight > 0, 'total weight is 0');
+
+        // calculate max amount of obtainable sale token by user
+        return (saleAmount * userWeight) / (totalWeight);
     }
 
     // Function to get the total allocation of a user in allocation sale
@@ -118,50 +154,19 @@ contract IFAllocationSale is IFSale {
         return paymentTokenAllocation;
     }
 
-    function getUserStakeValue(address user) public view returns (uint256) {
-        uint256 userWeight = allocationMaster.getUserStakeWeight(
-            trackId,
-            user,
-            allocSnapshotTimestamp
-        );
-        uint256 totalWeight = allocationMaster.getTotalStakeWeight(
-            trackId,
-            allocSnapshotTimestamp
-        );
-        // total weight must be greater than 0
-        require(totalWeight > 0, 'total weight is 0');
-
-        // calculate max amount of obtainable sale token by user
-        return (saleAmount * userWeight) / (totalWeight);
-    }
-
-    // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
-    function withdrawGiveaway(bytes32[] calldata merkleProof)
-        override
-        public
-        nonReentrant
-    {
-        address user = _msgSender();
-        // must be a zero price sale
-        require(salePrice == 0, 'not a giveaway');
-        // if there is whitelist, require that user is whitelisted by checking proof
-        require(
-            whitelistRootHash == 0 || checkWhitelist(user, merkleProof),
-            'proof invalid'
-        );
-
-        // initialize claimable before the first time of withdrawal
-        if (!hasWithdrawn[user]) {
-            // each participant in the zero cost "giveaway" gets a flat amount of sale token
-            uint256 value = getUserStakeValue(user);
-            claimable[user] = value;
-            totalPurchased[user] = value;
+    // Function to get the MAX REMAINING amount of allocation for a user (in terms of payment token)
+    // it is whichever is smaller:
+    //      1. user's payment allocation
+    //      2. maxTotalPayment
+    function getMaxPayment(address user) public view returns (uint256) {
+        // get the maximum total payment for a user
+        uint256 max = getTotalPaymentAllocation(user);
+        if (maxTotalPayment < max) {
+            max = maxTotalPayment;
         }
-        uint256 saleTokenOwed = getCurrentClaimableToken(user);
 
-        // send token and update states
-        _withdraw(saleTokenOwed);
-        // sale token owed must be greater than 0
-        require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
+        // calculate and return remaining
+        return max - paymentReceived[user];
     }
+
 }

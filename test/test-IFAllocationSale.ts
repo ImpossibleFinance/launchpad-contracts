@@ -285,7 +285,7 @@ export default describe('IF Allocation Sale', function () {
     await ctx.IFAllocationSale.connect(ctx.seller).fund(ctx.fundAmount) // fund
     await ctx.IFAllocationSale.connect(ctx.owner).setWithdrawDelay(withdrawDelay)
 
-    ctx.IFAllocationSale.connect(ctx.owner).setVestingEndTime(ctx.vestingEndTime)
+    ctx.IFAllocationSale.connect(ctx.owner).setLinearVestingEndTime(ctx.linearVestingEndTime)
 
     // fast forward from current time to after end time
     mineTimeDelta(ctx.endTime - (await getBlockTime()))
@@ -299,7 +299,7 @@ export default describe('IF Allocation Sale', function () {
     const value: number = await ctx.IFAllocationSale.getUserStakeValue(ctx.buyer.address)
     expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal(value / 20000)
 
-    mineTimeDelta(ctx.vestingEndTime - ctx.endTime)
+    mineTimeDelta(ctx.linearVestingEndTime - ctx.endTime)
     await ctx.IFAllocationSale.connect(ctx.buyer).withdrawGiveaway([])
     expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal(value)
   })

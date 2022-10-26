@@ -6,28 +6,29 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
+/**
+  @title Abstract contract providing funder related functions in a sale
+  @notice To be implemented by IFSale.
+ */
 abstract contract IFFundable is Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
-    // CONSTANTS
+
+    // --- CONSTANTS
 
     // number of decimals of sale price
     uint64 constant SALE_PRICE_DECIMALS = 10**18;
-    // seconds in 1 hours
     uint64 private constant ONE_HOUR = 3600;
-    //  seconds in 1 year
     uint64 private constant ONE_YEAR = 31556926;
-    //  seconds in 5 years
     uint64 private constant FIVE_YEARS = 157784630;
-    //  seconds in 10 years
     uint64 private constant TEN_YEARS = 315569260;
 
-    // Operators Info
-    // funder
+    // --- OPERATOR ADDRESSES
+
     address public funder;
     // optional casher (settable by owner)
     address public casher;
 
-    // Sale Info
+    // --- SALE INFO
 
     // start timestamp when sale is active (inclusive)
     uint256 public immutable startTime;
@@ -40,13 +41,16 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     // withdraw/cash delay timestamp (inclusive)
     uint24 public withdrawDelay;
 
-    // STAT
+    // --- STATS
+
     // amount of sale token to sell
     uint256 public saleAmount;
     // tracks whether sale has been cashed
     bool public hasCashed;
     // total payment received for sale
     uint256 public totalPaymentReceived;
+
+    // --- CONSTRUCTOR
 
     constructor(
         ERC20 _paymentToken,
@@ -76,7 +80,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         endTime = _endTime;
     }
 
-    // MODIFIERS
+    // --- MODIFIERS
 
     // Throws if called by any account other than the funder.
     modifier onlyFunder() {
@@ -93,29 +97,26 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         _;
     }
 
-    // Function for owner to set an optional, separate casher
-    function setCasher(address _casher) public onlyOwner {
-        casher = _casher;
-
-        // emit
-        emit SetCasher(_casher);
-    }
-
+    // Throws if called during or after sale
     modifier onlyBeforeSale() {
         require(block.timestamp < startTime, 'sale already started');
         _;
     }
 
+    // Throws if called outside of claim period
     modifier onlyDuringClaim {
         require(block.timestamp > endTime + withdrawDelay, "can't withdraw before claim is started");
         _;
     }
 
+    // Throws if called outside of sale period
     modifier onlyDuringSale {
         require(startTime <= block.timestamp, 'sale has not begun');
         require(block.timestamp <= endTime, 'sale over');
         _;
     }
+
+    // --- EVENTS
 
     event SetCasher(address indexed casher);
     event Fund(address indexed sender, uint256 amount);
@@ -127,6 +128,27 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     );
     event EmergencyTokenRetrieve(address indexed sender, uint256 amount);
 
+    // --- SETTER
+
+    // Function for owner to set an optional, separate casher
+    function setCasher(address _casher) public onlyOwner {
+        casher = _casher;
+
+        emit SetCasher(_casher);
+    }
+
+    // Function for owner to set a withdraw delay
+    function setWithdrawDelay(uint24 _withdrawDelay) virtual public onlyOwner onlyBeforeSale{
+        require(_withdrawDelay < FIVE_YEARS, "withdrawDelay has to be within 5 years");
+        withdrawDelay = _withdrawDelay;
+
+        emit SetWithdrawDelay(_withdrawDelay);
+    }
+
+    // --- FUNDER'S LOGIC
+
+    // Virtual function to be implemented by IFSale.
+    //   To calculate the amount of cashable tokens.
     function getSaleTokensSold() internal virtual returns (uint256 amount);
 
     // Function for funding sale with sale token (called by project team)
@@ -137,18 +159,9 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         // increase tracked sale amount
         saleAmount += amount;
 
-        // emit
         emit Fund(_msgSender(), amount);
     }
 
-    // Function for owner to set a withdraw delay
-    function setWithdrawDelay(uint24 _withdrawDelay) virtual public onlyOwner onlyBeforeSale{
-        require(_withdrawDelay < FIVE_YEARS, "withdrawDelay has to be within 5 years");
-        withdrawDelay = _withdrawDelay;
-
-        // emit
-        emit SetWithdrawDelay(_withdrawDelay);
-    }
 
     // Function for funder to cash in payment token and unsold sale token
     function cash() external onlyCasherOrOwner {
@@ -160,7 +173,6 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         // prevent repeat cash
         require(!hasCashed, 'already cashed');
 
-        // set hasCashed to true
         hasCashed = true;
 
         // get amount of payment token received
@@ -186,11 +198,10 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         // transfer unsold
         saleToken.safeTransfer(_msgSender(), amountUnsold);
 
-        // emit
         emit Cash(_msgSender(), paymentTokenBal, amountUnsold);
     }
 
-    // retrieve tokens erroneously sent in to this address
+    // Retrieve tokens erroneously sent in to this address
     function emergencyTokenRetrieve(address token) public onlyOwner onlyDuringClaim {
         // cannot be sale tokens
         require(token != address(saleToken));
@@ -200,7 +211,6 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         // transfer all
         ERC20(token).safeTransfer(_msgSender(), tokenBalance);
 
-        // emit
         emit EmergencyTokenRetrieve(_msgSender(), tokenBalance);
     }
 }

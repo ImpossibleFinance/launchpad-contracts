@@ -10,6 +10,7 @@ import './IFVestable.sol';
 
 contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
     // CONSTRUCTOR
+
     constructor(
         address _funder,
         uint256 _salePrice,
@@ -25,25 +26,39 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         IFFundable(_paymentToken, _saleToken, _startTime, _endTime, _funder)
     {}
 
-    // FUNCTIONS
+    // SETTERS
 
     function setWithdrawDelay(uint24 _withdrawDelay) override public onlyOwner onlyBeforeSale {
         setWithdrawTime(endTime + _withdrawDelay);
         super.setWithdrawDelay(_withdrawDelay);
     }
 
-    function setVestingEndTime(uint256 _vestingEndTime) override public onlyOwner onlyBeforeSale {
-        super.setVestingEndTime(_vestingEndTime);
+    function setLinearVestingEndTime(uint256 _vestingEndTime) override public onlyOwner onlyBeforeSale {
+        super.setLinearVestingEndTime(_vestingEndTime);
     }
 
     function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) override public onlyOwner onlyBeforeSale {
         super.setCliffPeriod(claimTimes, pct);
     }
 
+    // PURCHASE
+
     function purchase(uint256 paymentAmount) virtual override public {
         require(whitelistRootHash == 0, 'use whitelistedPurchase');
         _purchase(paymentAmount, type(uint256).max);
     }
+
+    // purchase function when there is a whitelist
+    function whitelistedPurchase(
+        uint256 paymentAmount,
+        bytes32[] calldata merkleProof
+    ) virtual override public {
+        // require that user is whitelisted by checking proof
+        require(checkWhitelist(_msgSender(), merkleProof), 'proof invalid');
+        _purchase(paymentAmount, type(uint256).max);
+    }
+
+    // WITHDRAW
 
     function withdraw() virtual override public nonReentrant {
         address user = _msgSender();
@@ -55,16 +70,6 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'no token to be withdrawn');
     }   
-
-    // purchase function when there is a whitelist
-    function whitelistedPurchase(
-        uint256 paymentAmount,
-        bytes32[] calldata merkleProof
-    ) virtual override public {
-        // require that user is whitelisted by checking proof
-        require(checkWhitelist(_msgSender(), merkleProof), 'proof invalid');
-        _purchase(paymentAmount, type(uint256).max);
-    }
 
     // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
     function withdrawGiveaway(bytes32[] calldata merkleProof) virtual override public nonReentrant
@@ -100,6 +105,8 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         // verify merkle proof
         return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
     }
+
+    // --- HELPER FUNCTIONS
 
     function getSaleTokensSold() override internal view returns (uint256 amount) {
         return (totalPaymentReceived * SALE_PRICE_DECIMALS) /

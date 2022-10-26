@@ -27,7 +27,8 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     // track id
     uint24 public trackId;
 
-    // USER INFO
+    // --- USER INFO
+
     // tracks amount purchased by each address
     mapping(address => uint256) public paymentReceived;
     // tracks whether user has already successfully withdrawn
@@ -37,9 +38,8 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     // tracks amount of tokens purchased by each address
     mapping(address => uint256) public totalPurchased;
 
+    // --- STAT
 
-
-    // STAT
     // counter of unique purchasers
     uint32 public purchaserCount;
     // counter of unique withdrawers (doesn't count "cash"ing)
@@ -96,7 +96,6 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     function setWhitelistSetter(address _whitelistSetter) public onlyOwner {
         whitelistSetter = _whitelistSetter;
 
-        // emit
         emit SetWhitelistSetter(_whitelistSetter);
     }
 
@@ -107,7 +106,6 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     {
         whitelistRootHash = _whitelistRootHash;
 
-        // emit
         emit SetWhitelist(_whitelistRootHash);
     }
 
@@ -118,7 +116,6 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
 
         minTotalPayment = _minTotalPayment;
 
-        // emit
         emit SetMinTotalPayment(_minTotalPayment);
     }
 
@@ -145,17 +142,11 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
         // increase payment received amount
         paymentReceived[_msgSender()] += paymentAmount;
 
-        // emit
         emit Purchase(_msgSender(), paymentAmount);
     }
 
-    // function _withdraw(uint256 saleTokenOwed) internal onlyDuringClaim {
     function _withdraw(uint256 saleTokenOwed) virtual internal {
         require(saleTokenOwed != 0, 'no token to be withdrawn');
-        // must pass the first cliff date if there's a cliff period
-        // if (cliffPeriod.length != 0) {
-        //     require(cliffPeriod[0].claimTime < block.timestamp, 'cannot withdraw yet');
-        // }
 
         // increment withdrawer count
         if (!hasWithdrawn[_msgSender()]) {

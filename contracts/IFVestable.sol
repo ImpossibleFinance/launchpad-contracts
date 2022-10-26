@@ -4,9 +4,32 @@ pragma solidity ^0.8.9;
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
+/**
+  @dev Abstract contract containing vesting logics.
+        To be implemented by IFSale.
+  @notice There are two vesting types: linear and cliff
+  @notice Can only set one vesting type
+  @notice Once one of the vesting type is set, another one will be reset
+  @notice Linear vesting unlocks tokens at a linear scale. Calculated by vesting end time
+  @notice Cliff vesting unlocks tokens at a series of specific time. According to cliff period
+ */
 abstract contract IFVestable is Ownable {
-    // seconds in 10 years
     uint64 private constant TEN_YEARS = 315569260;
+
+    // --- VESTING
+
+    // withdraw/cash delay timestamp (inclusive)
+    uint256 public withdrawTime;
+    // the most recent time the user claimed the saleToken
+    mapping(address => uint256) public latestClaimTime;
+
+    // --- LINEAR VESTING
+
+    // the time where the user can take all of the vested saleToken
+    uint256 public linearVestingEndTime;
+    event SetLinearVestingEndTime(uint256 indexed linearVestingEndTime);
+
+    // --- CLIFF VESTING
 
     // store how many percentage of the token can be claimed at a certain cliff date
     struct Cliff {
@@ -15,19 +38,11 @@ abstract contract IFVestable is Ownable {
         // the percentage token that can be claimed
         uint8 pct;
     }
-
-    // withdraw/cash delay timestamp (inclusive)
-    uint256 public withdrawTime;
-
-    // the most recent time the user claimed the saleToken
-    mapping(address => uint256) public latestClaimTime;
     // cliff vesting time and percentage
     Cliff[] public cliffPeriod;
-    // the time where the user can take all of the vested saleToken
-    uint256 public vestingEndTime;
-
-    event SetVestingEndTime(uint256 indexed vestingEndTime);
     event SetCliffVestingPeriod(Cliff[] indexed cliffPeriod);
+
+    // --- CONSTRUCTOR
 
     constructor(
         // withdrawTIme is endTime + withdrawal delay 
@@ -36,7 +51,9 @@ abstract contract IFVestable is Ownable {
         withdrawTime = _withdrawTime;
     }
 
+    // --- MODIFIERS
 
+    // Throw if cliff vesting is set and cannot withdraw cliff vested tokens yet
     modifier canClaimVested() {
         if (cliffPeriod.length != 0) {
             require(cliffPeriod[0].claimTime < block.timestamp, 'cannot withdraw yet');
@@ -44,28 +61,25 @@ abstract contract IFVestable is Ownable {
         _;
     }
 
+    // --- SETTER
+
     function setWithdrawTime(uint256 _withdrawTime) internal {
         withdrawTime = _withdrawTime;
     }
 
     // Function for owner to set a vesting end time
-    function setVestingEndTime(uint256 _vestingEndTime) virtual public onlyOwner {
-        require(_vestingEndTime > withdrawTime, "vesting end time has to be after withdrawal start time");
-        require(withdrawTime > _vestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
-        vestingEndTime = _vestingEndTime;
+    function setLinearVestingEndTime(uint256 _linearVestingEndTime) virtual public onlyOwner {
+        require(_linearVestingEndTime > withdrawTime, "vesting end time has to be after withdrawal start time");
+        require(withdrawTime > _linearVestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
+        linearVestingEndTime = _linearVestingEndTime;
 
         // unset cliff vesting
         delete cliffPeriod;
-
-        // emit
-        emit SetVestingEndTime(_vestingEndTime);
+        emit SetLinearVestingEndTime(_linearVestingEndTime);
     }
 
     function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) virtual public onlyOwner {
-
-        // lengths of claimTimes and pct must be equal
         require(claimTimes.length == pct.length, "dates and pct doesn't match");
-
         require(claimTimes.length > 0, "input is empty");
         require(claimTimes.length <= 100, "input length cannot exceed 100");
 
@@ -86,17 +100,20 @@ abstract contract IFVestable is Ownable {
         require(totalPct == 100, "total input percentage doesn't equal to 100");
 
         // unset linear vesting
-        vestingEndTime = 0;
+        linearVestingEndTime = 0;
     }
 
+    // --- VESTING LOGIC
+
+    /**
+      @notice Get the amount of token unlocked
+      @param claimable The remaining claimable amount
+      @param totalPurchased Total tokens purchased
+      @param user Address of the user claiming the tokens
+     */
     function getCurrentClaimableToken(uint256 claimable, uint256 totalPurchased, address user) virtual public view returns (uint256) {
-        // prevent returning a negative number
         require(block.timestamp > withdrawTime, 'claim not yet started');
-        // linear vesting
-        if (vestingEndTime > block.timestamp) {
-            // current claimable = (now - last claimed time) / (total vesting time) * totalClaimable
-            return totalPurchased * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (vestingEndTime - withdrawTime);
-        }
+
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
         // if cliff vesting is set  
@@ -115,7 +132,13 @@ abstract contract IFVestable is Ownable {
             }
             return totalPurchased * claimablePct / 100;
         }
-        // users can get all of the tokens after vestingEndTime
+        // linear vesting
+        if (linearVestingEndTime > block.timestamp) {
+            // current claimable = (now - last claimed time) / (total vesting time) * totalClaimable
+            return totalPurchased * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (linearVestingEndTime - withdrawTime);
+        }
+        // users can get all of the tokens after linearVestingEndTime
+        // if no vesting mode is set, return claimable
         return claimable;
     }
 }

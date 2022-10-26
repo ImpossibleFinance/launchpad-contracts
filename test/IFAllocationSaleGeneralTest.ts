@@ -29,7 +29,7 @@ export const _ctx ={
   snapshotTimestamp: 0,// block at which to take allocation snapshot
   startTime: 0, // start timestamp of sale (inclusive)
   endTime: 0, // end timestamp of sale (inclusive)
-  vestingEndTime: 0, // end timestamp of vesting
+  linearVestingEndTime: 0, // end timestamp of vesting
   salePrice: '10000000000000000000', // 10 PAY per SALE
   maxTotalDeposit: '25000000000000000000000000', // max deposit
   // other vars
@@ -57,7 +57,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     ctx.snapshotTimestamp = currTime + 5000
     ctx.startTime = currTime + 10000
     ctx.endTime = currTime + 20000
-    ctx.vestingEndTime = currTime + 50000
+    ctx.linearVestingEndTime = currTime + 50000
 
     // get test accounts
     ctx.owner = (await ethers.getSigners())[0]
@@ -462,7 +462,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
   })
 
   it('can set linear vesting', async function () {
-    await ctx.IFAllocationSale.connect(ctx.owner).setVestingEndTime(ctx.vestingEndTime)
+    await ctx.IFAllocationSale.connect(ctx.owner).setLinearVestingEndTime(ctx.linearVestingEndTime)
     mineNext()
 
     // amount to pay
@@ -501,11 +501,11 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     mineNext()
     expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('1')
 
-    mineTimeDelta((ctx.vestingEndTime - ctx.endTime) / 3)
+    mineTimeDelta((ctx.linearVestingEndTime - ctx.endTime) / 3)
     await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
     expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('11113')
 
-    mineTimeDelta((ctx.vestingEndTime - ctx.endTime) / 3 * 2)
+    mineTimeDelta((ctx.linearVestingEndTime - ctx.endTime) / 3 * 2)
     await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
     expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('33333')
 
@@ -519,7 +519,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     const paymentAmount = 333330
     const withdrawDelay = 10000
 
-    const cliffInterval = Math.floor((ctx.vestingEndTime - ctx.endTime) / 3)
+    const cliffInterval = Math.floor((ctx.linearVestingEndTime - ctx.endTime) / 3)
     const cliffPeriod = [
       ctx.endTime + withdrawDelay + 1,
       ctx.endTime + withdrawDelay + cliffInterval * 1,
@@ -566,14 +566,14 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
   it('can limit access', async function () {
     const notOwner = [ctx.casher, ctx.seller, ctx.buyer, ctx.buyer2]
     const withdrawDelay = 10000
-    const cliffInterval = Math.floor(ctx.vestingEndTime / 3)
+    const cliffInterval = Math.floor(ctx.linearVestingEndTime / 3)
 
     for (const user of notOwner) {
       await expect(ctx.IFAllocationSale.connect(user).setMinTotalPayment(0)).to.be.revertedWith(NOT_OWNER)
       await expect(ctx.IFAllocationSale.connect(user).setCasher(ctx.owner.address)).to.be.revertedWith(NOT_OWNER)
       await expect(ctx.IFAllocationSale.connect(user).setWhitelistSetter(ctx.owner.address)).to.be.revertedWith(NOT_OWNER)
       await expect(ctx.IFAllocationSale.connect(user).setWithdrawDelay(3600)).to.be.revertedWith(NOT_OWNER)
-      await expect(ctx.IFAllocationSale.connect(user).setVestingEndTime(ctx.vestingEndTime)).to.be.revertedWith(NOT_OWNER)
+      await expect(ctx.IFAllocationSale.connect(user).setLinearVestingEndTime(ctx.linearVestingEndTime)).to.be.revertedWith(NOT_OWNER)
       await expect(ctx.IFAllocationSale.connect(user).setCliffPeriod(
         [
           ctx.endTime + withdrawDelay + 1,
