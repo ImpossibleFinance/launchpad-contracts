@@ -14,3 +14,4 @@ export const INPUT_SHOULD_NOT_BE_0_WHEN_SALE_PRIVE_IS_0 = 'paymentToken or maxTo
 export const END_TIMESTAMP_TOO_EARLY = 'end timestamp before start should be least 1 hour'
 export const CLAIM_NOT_YET_STARTED = 'claim not yet started'
 export const SALE_ALREADY_STARTED = 'sale already started'
+export const CANNOT_WITHDRAW_BEFORE_CLAIM = 'can\'t withdraw before claim is started'

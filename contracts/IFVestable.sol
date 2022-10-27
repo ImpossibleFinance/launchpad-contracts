@@ -107,16 +107,14 @@ abstract contract IFVestable is Ownable {
 
     /**
       @notice Get the amount of token unlocked
-      @param claimable The remaining claimable amount
       @param totalPurchased Total tokens purchased
       @param user Address of the user claiming the tokens
      */
-    function getCurrentClaimableToken(uint256 claimable, uint256 totalPurchased, address user) virtual public view returns (uint256) {
+    function getUnlockedToken(uint256 totalPurchased, uint256 claimable, address user) virtual public view returns (uint256) {
         require(block.timestamp > withdrawTime, 'claim not yet started');
 
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
-        // if cliff vesting is set  
         if (cliffPeriodLength != 0 && cliffPeriod[cliffPeriodLength - 1].claimTime > block.timestamp) {
             uint8 claimablePct;
             for (uint8 i; i < cliffPeriodLength; i++) {
@@ -132,13 +130,24 @@ abstract contract IFVestable is Ownable {
             }
             return totalPurchased * claimablePct / 100;
         }
+
         // linear vesting
         if (linearVestingEndTime > block.timestamp) {
-            // current claimable = (now - last claimed time) / (total vesting time) * totalClaimable
+            // current claimable = total purchased * (now - last claimed time) / (total vesting time)
             return totalPurchased * (block.timestamp - Math.max(latestClaimTime[user], withdrawTime)) / (linearVestingEndTime - withdrawTime);
         }
-        // users can get all of the tokens after linearVestingEndTime
-        // if no vesting mode is set, return claimable
+
+        // When vesting end, claim all of the remaining tokens.
+        // Since all of the above calculations return a lower rounded number,
+        // users will get a little bit less tokens.
+        // Keeping track and returning the total remaining claimable at the end solves the issue.
         return claimable;
     }
+
+    // --- HELPER FUNCTION
+
+    function isVestingSet() public view returns (bool) {
+        return (linearVestingEndTime > 0 || cliffPeriod.length > 0);
+    }
+
 }

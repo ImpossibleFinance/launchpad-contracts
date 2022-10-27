@@ -130,13 +130,12 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
     }
 
     function updateVestingOnWithdraw(uint256 tokenSent, address user) internal {
-        // update claimable
-        claimable[user] -= tokenSent;
-        // update last claimed time
         latestClaimTime[user] = block.timestamp;
+        claimable[user] -= tokenSent;
     }
 
+    // A helper function to get the amount of unlocked token just by providing user's address
     function getCurrentClaimableToken (address user) public view returns (uint256) {
-        return super.getCurrentClaimableToken(claimable[user], totalPurchased[user], user);
+        return getUnlockedToken(totalPurchased[user], claimable[user], user);
     }
 }

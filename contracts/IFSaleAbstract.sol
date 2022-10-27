@@ -12,6 +12,8 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     // optional whitelist setter (settable by owner)
     address public whitelistSetter;
 
+    // --- SALE INFO
+
     // payment token
     ERC20 public immutable paymentToken;
     // sale token
@@ -81,16 +83,7 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
         _;
     }
 
-    function purchase(uint256 paymentAmount) virtual public {}
-
-    // Function for withdrawing purchased sale token after sale end
-    function withdraw() virtual public nonReentrant {}   
-
-    // purchase function when there is a whitelist
-    function whitelistedPurchase(uint256 paymentAmount, bytes32[] calldata merkleProof) virtual public {}
-
-    function withdrawGiveaway(bytes32[] calldata merkleProof) virtual public nonReentrant {}
-
+    // --- SETTER
 
     // Function for owner to set an optional, separate whitelist setter
     function setWhitelistSetter(address _whitelistSetter) public onlyOwner {
@@ -118,6 +111,20 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
 
         emit SetMinTotalPayment(_minTotalPayment);
     }
+
+    // --- SALE FUNCTIONS
+
+    function purchase(uint256 paymentAmount) virtual public {}
+
+    // Function for withdrawing purchased sale token after sale end
+    function withdraw() virtual public nonReentrant {}   
+
+    // purchase function when there is a whitelist
+    function whitelistedPurchase(uint256 paymentAmount, bytes32[] calldata merkleProof) virtual public {}
+
+    function withdrawGiveaway(bytes32[] calldata merkleProof) virtual public nonReentrant {}
+
+    // --- INTENAL HELPER FUNCTIONS
 
     // Internal function for making purchase
     // Used by public functions `purchase`
@@ -157,7 +164,6 @@ abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
 
         saleToken.safeTransfer(_msgSender(), saleTokenOwed);
 
-        // emit
         emit Withdraw(_msgSender(), saleTokenOwed);
     }
 }
