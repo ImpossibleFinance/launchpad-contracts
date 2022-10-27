@@ -6,6 +6,15 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
+
+/**
+  @dev Abstract contract containing sale logics.
+        To be implemented by IFSale.
+  @notice Include virtual functions for regular and whitelisted purchase
+  @notice Include virtual functions for whitelisted free token giveaway
+  @notice Include sale state variables
+  @notice Implemneted sale state variables changes on purchase and withdraw
+ */
 abstract contract IFSaleAbstract is Ownable, ReentrancyGuard {
     using SafeERC20 for ERC20;
 

@@ -8,8 +8,16 @@ import './IFFundable.sol';
 import './IFSaleAbstract.sol';
 import './IFVestable.sol';
 
+/**
+  @dev Vanilla Sale contract compositing vesting, funding, and whitelisting functions.
+  @notice What can it do:
+  @notice 1. Funder's actions like fund and cash
+  @notice 2. Regular and whitelisted purchase
+  @notice 3. Whitelisted free token giveaway
+  @notice 4. Vest tokens in linear or cliff mode
+ */
 contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
-    // CONSTRUCTOR
+    // --- CONSTRUCTOR
 
     constructor(
         address _funder,
@@ -26,7 +34,7 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         IFFundable(_paymentToken, _saleToken, _startTime, _endTime, _funder)
     {}
 
-    // SETTERS
+    // --- SETTERS
 
     function setWithdrawDelay(uint24 _withdrawDelay) override public onlyOwner onlyBeforeSale {
         setWithdrawTime(endTime + _withdrawDelay);
@@ -41,11 +49,11 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         super.setCliffPeriod(claimTimes, pct);
     }
 
-    // PURCHASE
+    // --- PURCHASE
 
     function purchase(uint256 paymentAmount) virtual override public {
         require(whitelistRootHash == 0, 'use whitelistedPurchase');
-        _purchase(paymentAmount, type(uint256).max);
+        _purchase(paymentAmount, maxTotalPayment);
     }
 
     // purchase function when there is a whitelist
@@ -53,21 +61,21 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         uint256 paymentAmount,
         bytes32[] calldata merkleProof
     ) virtual override public {
-        // require that user is whitelisted by checking proof
+        // the user has to be whitelisted
         require(checkWhitelist(_msgSender(), merkleProof), 'proof invalid');
-        _purchase(paymentAmount, type(uint256).max);
+        _purchase(paymentAmount, maxTotalPayment);
     }
 
-    // WITHDRAW
+    // --- WITHDRAW
 
     function withdraw() virtual override public nonReentrant {
         address user = _msgSender();
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
-        // send token and update states
+
         uint256 tokenOwed = getCurrentClaimableToken(user);
+        // send token and update states
         _withdraw(tokenOwed);
-        // sale token owed must be greater than 0
         require(tokenOwed != 0, 'no token to be withdrawn');
     }   
 
@@ -78,22 +86,52 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
         // if there is whitelist, require that user is whitelisted by checking proof
-        require(
-            whitelistRootHash == 0 || checkWhitelist(user, merkleProof),
-            'proof invalid'
-        );
+        require(whitelistRootHash == 0 || checkWhitelist(user, merkleProof), 'proof invalid');
 
-        uint256 saleTokenOwed = getCurrentClaimableToken(user);
+        uint256 tokenOwed = getCurrentClaimableToken(user);
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[user]) {
-            claimable[user] = saleTokenOwed;
-            totalPurchased[user] = saleTokenOwed;
+            claimable[user] = tokenOwed;
+            totalPurchased[user] = tokenOwed;
         }
-
         // send token and update states
-        _withdraw(saleTokenOwed);
-        // sale token owed must be greater than 0
-        require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
+        _withdraw(tokenOwed);
+        require(tokenOwed != 0, 'withdraw giveaway amount 0');
+    }
+
+    // --- UPDATE SALE STATES
+
+    function _purchase(uint256 paymentAmount, uint256 remaining) override internal onlyDuringSale {
+        totalPaymentReceived += paymentAmount;
+        super._purchase(paymentAmount, remaining);
+        _updateVestingOnPurchase((paymentReceived[_msgSender()] * SALE_PRICE_DECIMALS) / salePrice, _msgSender());
+    }
+
+    function _withdraw(uint256 tokenOwed) override internal onlyDuringClaim {
+        super._withdraw(tokenOwed);
+        _updateVestingOnWithdraw(tokenOwed, _msgSender());
+    }
+
+    function _updateVestingOnPurchase(uint256 tokenPurchased, address user) internal {
+        totalPurchased[user] = tokenPurchased;
+        claimable[user] = tokenPurchased;
+    }
+
+    function _updateVestingOnWithdraw(uint256 tokenSent, address user) internal {
+        latestClaimTime[user] = block.timestamp;
+        claimable[user] -= tokenSent;
+    }
+
+    // --- HELPER FUNCTIONS
+
+    function getSaleTokensSold() override internal view returns (uint256 amount) {
+        return (totalPaymentReceived * SALE_PRICE_DECIMALS) /
+            salePrice;
+    }
+
+    // A helper function to get the amount of unlocked token by providing user's address
+    function getCurrentClaimableToken (address user) public view returns (uint256) {
+        return getUnlockedToken(totalPurchased[user], claimable[user], user);
     }
 
     // Returns true if user is on whitelist, otherwise false
@@ -104,38 +142,5 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
 
         // verify merkle proof
         return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
-    }
-
-    // --- HELPER FUNCTIONS
-
-    function getSaleTokensSold() override internal view returns (uint256 amount) {
-        return (totalPaymentReceived * SALE_PRICE_DECIMALS) /
-            salePrice;
-    }
-
-    function _purchase(uint256 paymentAmount, uint256 remaining) override internal onlyDuringSale {
-        totalPaymentReceived += paymentAmount;
-        super._purchase(paymentAmount, remaining);
-        updateVestingOnPurchase((paymentReceived[_msgSender()] * SALE_PRICE_DECIMALS) / salePrice, _msgSender());
-    }
-
-    function _withdraw(uint256 tokenOwed) override internal onlyDuringClaim canClaimVested {
-        super._withdraw(tokenOwed);
-        updateVestingOnWithdraw(tokenOwed, _msgSender());
-    }
-
-    function updateVestingOnPurchase(uint256 tokenPurchased, address user) internal {
-        totalPurchased[user] = tokenPurchased;
-        claimable[user] = tokenPurchased;
-    }
-
-    function updateVestingOnWithdraw(uint256 tokenSent, address user) internal {
-        latestClaimTime[user] = block.timestamp;
-        claimable[user] -= tokenSent;
-    }
-
-    // A helper function to get the amount of unlocked token just by providing user's address
-    function getCurrentClaimableToken (address user) public view returns (uint256) {
-        return getUnlockedToken(totalPurchased[user], claimable[user], user);
     }
 }
