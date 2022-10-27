@@ -499,14 +499,14 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         require(tokenOwed != 0, 'no token to be withdrawn');
     }   
 
-    function getCurrentClaimableToken() public view returns (uint256) {
+    function getCurrentClaimableToken(address user) public view returns (uint256) {
         uint256 endTimePlusDelay = endTime + withdrawDelay;
         // prevent returning a negative number
         require(block.timestamp > endTimePlusDelay, 'claim not yet started');
         // linear vesting
         if (vestingEndTime > block.timestamp) {
             // current claimable = (now - last claimed time) / (total vesting time) * totalClaimable
-            return totalPurchased[_msgSender()] * (block.timestamp - Math.max(latestClaimTime[_msgSender()], endTimePlusDelay)) / (vestingEndTime - (endTimePlusDelay));
+            return totalPurchased[user] * (block.timestamp - Math.max(latestClaimTime[user], endTimePlusDelay)) / (vestingEndTime - (endTimePlusDelay));
         }
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
@@ -515,7 +515,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
             for (uint8 i; i < cliffPeriodLength; i++) {
                 // if the cliff timestamp has been passed, add the claimable percentage
                 if (cliffPeriod[i].claimTime > block.timestamp) { break; }
-                if (latestClaimTime[_msgSender()] < cliffPeriod[i].claimTime) {
+                if (latestClaimTime[user] < cliffPeriod[i].claimTime) {
                     claimablePct += cliffPeriod[i].pct;
                 }
             }
@@ -523,10 +523,10 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
             if (claimablePct == 0) {
                 return 0;
             }
-            return totalPurchased[_msgSender()] * claimablePct / 100;
+            return totalPurchased[user] * claimablePct / 100;
         }
         // users can get all of the tokens after vestingEndTime
-        return claimable[_msgSender()];
+        return claimable[user];
     }
 
     function getUserStakeValue(address user) public view returns (uint256) {
@@ -649,7 +649,7 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
             hasWithdrawn[_msgSender()] = true;
         }
 
-        uint256 saleTokenOwed = getCurrentClaimableToken();
+        uint256 saleTokenOwed = getCurrentClaimableToken(_msgSender());
 
         // update claimable
         claimable[_msgSender()] -= saleTokenOwed;
