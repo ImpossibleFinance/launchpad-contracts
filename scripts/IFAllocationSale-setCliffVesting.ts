@@ -18,6 +18,7 @@ async function setCliff(
     step: number,
     pct: number,
 ) {
+  const start = withdrawTime
 
   const cliffCount = duration / step
   const cliffPct = Array(cliffCount).fill(pct)
@@ -28,8 +29,12 @@ async function setCliff(
   }
 
   assert(cliffTimes.length === cliffPct.length)
+  const cliffTimesHuman = cliffTimes.map((t) => {
+    return new Date(t * 1000)
+  })
+  console.log('start at:', start)
   console.log('cliffTime:', cliffTimes)
-  console.log('cliffPct:', cliffPct)
+  console.log('cliffTimesHuman:', cliffTimesHuman)
   console.log('Number of cliffs:', cliffTimes.length)
 
   // set sale token allocation override
@@ -49,8 +54,9 @@ async function setCliff(
 }
 
 export default async function main(): Promise<void> {
-  // when to start withdraw
-  const WITHDRAW_TIME = new Date(parseInt(process.env.WITHDRAW_DATE || '0') * 1000)
+  // when to start withdraw in unix timestamp
+  // https://www.unixtimestamp.com/
+  const WITHDRAW_TIME = new Date((parseInt(process.env.WITHDRAW_TIME || '0') * 1000))
   // how many days will it last
   const DURATION = parseInt(process.env.DURATION || '0')
   // how many days to start a each withdraw
