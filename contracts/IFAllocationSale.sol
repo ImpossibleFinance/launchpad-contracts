@@ -95,7 +95,7 @@ contract IFAllocationSale is IFSale {
         _purchase(paymentAmount, remaining);
     }
 
-    // --- CALCULATE ALLOCATION FROM STAKEWEIGHT
+    // --- CALCULATE ALLOCATION FROM STAKE WEIGHT
 
     function getUserStakeValue(address user) public view returns (uint256) {
         uint256 userWeight = allocationMaster.getUserStakeWeight(
