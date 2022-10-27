@@ -8,6 +8,7 @@ import IFAllocationSale from '../artifacts/contracts/IFAllocationSale.sol/IFAllo
 // Runtime Environment's members available in the global scope.
 import hre from 'hardhat'
 import { Contract } from 'ethers'
+import assert from 'assert'
 
 
 async function setCliff(
@@ -20,19 +21,22 @@ async function setCliff(
 
   const cliffCount = duration / step
   const cliffPct = Array(cliffCount).fill(pct)
-  const cliffTime = []
+  const cliffTimes = []
   for (let i = 0; i < cliffCount; i++) {
     withdrawTime.setDate(withdrawTime.getDate() + step)
-    cliffTime.push(withdrawTime.getTime() / 1000)
+    cliffTimes.push(withdrawTime.getTime() / 1000)
   }
-  console.log(cliffTime)
-  console.log(cliffPct)
+
+  assert(cliffTimes.length === cliffPct.length)
+  console.log('cliffTime:', cliffTimes)
+  console.log('cliffPct:', cliffPct)
+  console.log('Number of cliffs:', cliffTimes.length)
 
   // set sale token allocation override
   const result = await allocationSaleContract
     .connect((await hre.ethers.getSigners())[0])
     .setCliffPeriod(
-        cliffTime,
+        cliffTimes,
         cliffPct,
     )
 
@@ -51,9 +55,8 @@ export default async function main(): Promise<void> {
   const DURATION = parseInt(process.env.DURATION || '0')
   // how many days to start a each withdraw
   const STEP = parseInt(process.env.STEP || '0')
-  // how many percent to be withdrawn in each step
+  // how many percent to unlock in each step
   const PCT = parseInt(process.env.PCT || '0')
-
   // sale contract address
   const allocationSale: string = process.env.SALE || '' // address
 
