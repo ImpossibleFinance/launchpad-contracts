@@ -5,8 +5,9 @@ import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import './IFFundable.sol';
-import './IFSaleAbstract.sol';
+import './IFPurchasable.sol';
 import './IFVestable.sol';
+import './IFWhitelistable.sol';
 
 /**
   @dev Vanilla Sale contract compositing vesting, funding, and whitelisting functions.
@@ -16,7 +17,12 @@ import './IFVestable.sol';
   @notice 3. Whitelisted free token giveaway
   @notice 4. Vest tokens in linear or cliff mode
  */
-contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
+contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
+    // tracks amount of tokens owed to each address
+    mapping(address => uint256) public claimable;
+    // tracks amount of tokens purchased by each address
+    mapping(address => uint256) public totalPurchased;
+
     // --- CONSTRUCTOR
 
     constructor(
@@ -29,9 +35,10 @@ contract IFSale is IFSaleAbstract, IFVestable, IFFundable {
         uint256 _endTime,
         uint256 _maxTotalPayment
     ) 
-        IFSaleAbstract(_paymentToken, _saleToken, _salePrice, _maxTotalPayment, _trackId)
+        IFPurchasable(_paymentToken, _salePrice, _maxTotalPayment)
         IFVestable(_endTime)
         IFFundable(_paymentToken, _saleToken, _startTime, _endTime, _funder)
+        IFWhitelistable()
     {}
 
     // --- SETTERS

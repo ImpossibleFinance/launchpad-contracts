@@ -14,6 +14,7 @@ import './IFSale.sol';
 contract IFAllocationSale is IFSale {
     IIFRetrievableStakeWeight public allocationMaster;
     uint80 public allocSnapshotTimestamp;
+    uint24 public trackId;
 
     // --- CONSTRUCTOR
 

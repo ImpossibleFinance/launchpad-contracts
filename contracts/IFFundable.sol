@@ -40,6 +40,8 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     ERC20 private immutable saleToken;
     // withdraw/cash delay timestamp (inclusive)
     uint24 public withdrawDelay;
+    // tracks whether user has already successfully withdrawn
+    mapping(address => bool) public hasWithdrawn;
 
     // --- STATS
 
@@ -49,6 +51,8 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     bool public hasCashed;
     // total payment received for sale
     uint256 public totalPaymentReceived;
+    // counter of unique withdrawers (doesn't count "cash"ing)
+    uint32 public withdrawerCount;
 
     // --- CONSTRUCTOR
 
@@ -127,6 +131,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         uint256 saleTokenBalance
     );
     event EmergencyTokenRetrieve(address indexed sender, uint256 amount);
+    event Withdraw(address indexed sender, uint256 amount);
 
     // --- SETTER
 
@@ -212,5 +217,23 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         ERC20(token).safeTransfer(_msgSender(), tokenBalance);
 
         emit EmergencyTokenRetrieve(_msgSender(), tokenBalance);
+    }
+
+    // Function for withdrawing purchased sale token after sale end
+    function withdraw() virtual public nonReentrant {}   
+
+    function _withdraw(uint256 saleTokenOwed) virtual internal {
+        require(saleTokenOwed != 0, 'no token to be withdrawn');
+
+        // increment withdrawer count
+        if (!hasWithdrawn[_msgSender()]) {
+            withdrawerCount += 1;
+            // set withdrawn to true
+            hasWithdrawn[_msgSender()] = true;
+        }
+
+        saleToken.safeTransfer(_msgSender(), saleTokenOwed);
+
+        emit Withdraw(_msgSender(), saleTokenOwed);
     }
 }
