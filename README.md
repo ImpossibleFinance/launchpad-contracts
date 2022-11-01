@@ -188,6 +188,13 @@ SALE=0xABCD NEW_OWNER=0xABCD npx hardhat run ./scripts/IFAllocationSale-transfer
 SALE=0xABCD npx hardhat run ./scripts/IFAllocationSale-cash.ts --network bsc_test
 ```
 
+### Setting cliff periods
+
+```
+// To set cliff starting at 2022-OCT-27, lasting for 270 days, unlock every 3 days with 1 percent
+SALE=0xABCD WITHDRAW_TIME=1666843153 DURATION=270 STEP=3 PCT=1 npx hardhat run scripts/IFAllocationSale-setCliffVesting.ts                            
+```
+
 ## Local Development
 
 ### Init Loyalty Program contracts
