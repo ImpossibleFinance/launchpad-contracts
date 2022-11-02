@@ -218,7 +218,7 @@ npx hardhat run --network localhost ./scripts/loyalty-dev-setup.ts
 
 ## Setup local contracts
 
-Start a hardhat node. It will fork from bsc mainnet
+Start a hardhat node. It will fork from bsc mainnet and start a JSON-RPC server at http://127.0.0.1:8545/
 ```bash
 npx hardhat node
 ```
