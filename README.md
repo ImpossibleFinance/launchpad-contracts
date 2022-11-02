@@ -223,6 +223,11 @@ Start a hardhat node. It will fork from bsc mainnet and start a JSON-RPC server 
 npx hardhat node
 ```
 
+Specify rpc url and block number to fork from bsc testnet.
+```bash
+npx hardhat node --fork https://data-seed-prebsc-1-s3.binance.org:8545 --fork-block-height <BLOCK_NUMBER>
+```
+
 Deploy allocation master. We'll need celer message bus address. It can be found here: https://im-docs.celer.network/developer/contract-addresses-and-rpc-info
 ```bash
 MESSAGE_BUS=0x95714818fdd7a5454F73Da9c777B3ee6EbAEEa6B npx hardhat run scripts/IFAllocationMaster-deploy.ts --network localhost
