@@ -220,12 +220,12 @@ npx hardhat run --network localhost ./scripts/loyalty-dev-setup.ts
 
 Start a hardhat node. It will fork from bsc mainnet
 ```bash
-hh node
+npx hardhat node
 ```
 
 Deploy allocation master. We'll need celer message bus address. It can be found here: https://im-docs.celer.network/developer/contract-addresses-and-rpc-info
 ```bash
-MESSAGE_BUS=0x95714818fdd7a5454F73Da9c777B3ee6EbAEEa6B hh run scripts/IFAllocationMaster-deploy.ts --network localhost
+MESSAGE_BUS=0x95714818fdd7a5454F73Da9c777B3ee6EbAEEa6B npx hardhat run scripts/IFAllocationMaster-deploy.ts --network localhost
 ```
 
 Deploy sale contract. Get the allocation master address from the previous deployment. Put it to ALLOCATION_MASTER.
