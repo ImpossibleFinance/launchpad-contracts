@@ -33,6 +33,9 @@ module.exports = {
     hardhat: {
       forking: {
         url: 'https://bsc-dataseed.binance.org/',
+        accounts: {
+          mnemonic: process.env.MAINNET_MNEMONIC || '',
+        },
       },
     },
     bsc_test: {

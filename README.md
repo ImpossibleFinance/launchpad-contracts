@@ -221,3 +221,26 @@ ganache-cli --deterministic
 # terminal 2 - loyalty setup output
 npx hardhat run --network localhost ./scripts/loyalty-dev-setup.ts
 ```
+
+
+## Setup local contracts
+
+Start a hardhat node. It will fork from bsc mainnet and start a JSON-RPC server at http://127.0.0.1:8545/
+```bash
+npx hardhat node
+```
+
+Specify rpc url and block number to fork from bsc testnet.
+```bash
+npx hardhat node --fork https://data-seed-prebsc-1-s3.binance.org:8545 --fork-block-height <BLOCK_NUMBER>
+```
+
+Deploy allocation master. We'll need celer message bus address. It can be found here: https://im-docs.celer.network/developer/contract-addresses-and-rpc-info
+```bash
+MESSAGE_BUS=0x95714818fdd7a5454F73Da9c777B3ee6EbAEEa6B npx hardhat run scripts/IFAllocationMaster-deploy.ts --network localhost
+```
+
+Deploy sale contract. Get the allocation master address from the previous deployment. Put it to ALLOCATION_MASTER.
+```bash
+SELLER=0x54F5A04417E29FF5D7141a6d33cb286F50d5d50e PAY_TOKEN=0x0b15Ddf19D47E6a86A56148fb4aFFFc6929BcB89 SALE_TOKEN=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82 ALLOCATION_MASTER=<ALLOCATION_MASTER_ADDRESS> TRACK_ID=1 SNAP_BLOCK=1667377037 START_BLOCK=1667377037 END_BLOCK=1767377037 SALE_PRICE=100000000000000000000 MAX_TOTAL_PAYMENT=10000000000000000000000 npx hardhat run ./scripts/IFAllocationSale-deploy.ts --network localhost
+```
