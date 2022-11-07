@@ -76,7 +76,6 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
 
     // Internal function for making purchase
     // Used by public functions `purchase`
-    // function _purchase(uint256 paymentAmount, uint256 remaining) internal nonReentrant onlyDuringSale {
     function _purchase(uint256 paymentAmount, uint256 remaining) virtual internal nonReentrant {
         // amount must be greater than minTotalPayment
         // by default, minTotalPayment is 0 unless otherwise set

@@ -62,6 +62,7 @@ contract IFAllocationSale is IFSale {
     function withdrawGiveaway(bytes32[] calldata merkleProof)
         override
         public
+        onlyAfterSale
         nonReentrant
     {
         address user = _msgSender();
@@ -89,7 +90,7 @@ contract IFAllocationSale is IFSale {
     }
 
     // purchase function when there is no whitelist
-    function purchase(uint256 paymentAmount) override public {
+    function purchase(uint256 paymentAmount) override onlyDuringSale public {
         // there must not be a whitelist set (sales that use whitelist must be used with whitelistedPurchase)
         require(whitelistRootHash == 0, 'use whitelistedPurchase');
         uint256 remaining = getMaxPayment(_msgSender());

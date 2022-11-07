@@ -108,7 +108,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     }
 
     // Throws if called outside of claim period
-    modifier onlyDuringClaim {
+    modifier onlyAfterSale {
         require(block.timestamp > endTime + withdrawDelay, "can't withdraw before claim is started");
         _;
     }
@@ -207,7 +207,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     }
 
     // Retrieve tokens erroneously sent in to this address
-    function emergencyTokenRetrieve(address token) public onlyOwner onlyDuringClaim {
+    function emergencyTokenRetrieve(address token) public onlyOwner onlyAfterSale {
         // cannot be sale tokens
         require(token != address(saleToken));
 

@@ -51,17 +51,6 @@ abstract contract IFVestable is Ownable {
         withdrawTime = _withdrawTime;
     }
 
-    // --- MODIFIERS
-
-    // Throw if cliff vesting is set and cannot withdraw cliff vested tokens yet
-    modifier canClaimVested() {
-        require(block.timestamp > withdrawTime, 'claim not yet started');
-        if (cliffPeriod.length != 0) {
-            require(cliffPeriod[0].claimTime < block.timestamp, 'claim not yet started');
-        }
-        _;
-    }
-
     // --- SETTER
 
     function setWithdrawTime(uint256 _withdrawTime) internal {
@@ -111,7 +100,7 @@ abstract contract IFVestable is Ownable {
       @param totalPurchased Total tokens purchased
       @param user Address of the user claiming the tokens
      */
-    function getUnlockedToken(uint256 totalPurchased, uint256 claimable, address user) virtual public view canClaimVested returns (uint256) {
+    function getUnlockedToken(uint256 totalPurchased, uint256 claimable, address user) virtual public view returns (uint256) {
         // linear vesting
         if (linearVestingEndTime > block.timestamp) {
             // current claimable = total purchased * (now - last claimed time) / (total vesting time)
@@ -142,11 +131,4 @@ abstract contract IFVestable is Ownable {
         // Keeping track and returning the total remaining claimable makes sure the users will get the exact amount.
         return claimable;
     }
-
-    // --- HELPER FUNCTION
-
-    function isVestingSet() public view returns (bool) {
-        return (linearVestingEndTime > 0 || cliffPeriod.length > 0);
-    }
-
 }

@@ -57,7 +57,7 @@ contract IFFixedSale is IFSale {
         uint256 paymentAmount,
         bytes32[] calldata merkleProof,
         uint256 allocation
-    ) public {
+    ) public onlyDuringSale {
         // require that user is whitelisted by checking proof
         require(checkWhitelist(_msgSender(), merkleProof, allocation), 'proof invalid');
 
@@ -69,6 +69,7 @@ contract IFFixedSale is IFSale {
     function withdrawGiveaway(bytes32[] calldata merkleProof, uint256 allocation)
         external
         nonReentrant
+        onlyAfterSale
     {
         address user = _msgSender();
         // must be a zero price sale

@@ -11,8 +11,8 @@ import './IFWhitelistable.sol';
 
 /**
   @dev Vanilla Sale contract compositing vesting, funding, and whitelisting functions.
-  @notice What can it do:
-  @notice 1. Funder's actions like fund and cash
+  @notice Features:
+  @notice 1. Funder related actions like fund and cash
   @notice 2. Regular and whitelisted purchase
   @notice 3. Whitelisted free token giveaway
   @notice 4. Vest tokens in linear or cliff mode
@@ -58,7 +58,7 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
 
     // --- PURCHASE
 
-    function purchase(uint256 paymentAmount) virtual override public {
+    function purchase(uint256 paymentAmount) virtual override public onlyDuringSale {
         require(whitelistRootHash == 0, 'use whitelistedPurchase');
         _purchase(paymentAmount, maxTotalPayment);
     }
@@ -67,7 +67,7 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     function whitelistedPurchase(
         uint256 paymentAmount,
         bytes32[] calldata merkleProof
-    ) virtual override public {
+    ) virtual override public onlyDuringSale {
         // the user has to be whitelisted
         require(checkWhitelist(_msgSender(), merkleProof), 'proof invalid');
         _purchase(paymentAmount, maxTotalPayment);
@@ -75,7 +75,7 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
 
     // --- WITHDRAW
 
-    function withdraw() virtual override public nonReentrant {
+    function withdraw() virtual override public onlyAfterSale nonReentrant {
         address user = _msgSender();
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
@@ -87,7 +87,7 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     }   
 
     // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
-    function withdrawGiveaway(bytes32[] calldata merkleProof) virtual override public nonReentrant
+    function withdrawGiveaway(bytes32[] calldata merkleProof) virtual override public onlyAfterSale nonReentrant
     {
         address user = _msgSender();
         // must be a zero price sale
@@ -108,25 +108,20 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
 
     // --- UPDATE SALE STATES
 
-    function _purchase(uint256 paymentAmount, uint256 remaining) override internal onlyDuringSale {
+    function _purchase(uint256 paymentAmount, uint256 remaining) override internal {
         totalPaymentReceived += paymentAmount;
         super._purchase(paymentAmount, remaining);
-        _updateVestingOnPurchase((paymentReceived[_msgSender()] * SALE_PRICE_DECIMALS) / salePrice, _msgSender());
+        // Update vesting variables
+        uint256 tokenPurchased = (paymentReceived[_msgSender()] * SALE_PRICE_DECIMALS) / salePrice;
+        totalPurchased[_msgSender()] = tokenPurchased;
+        claimable[_msgSender()] = tokenPurchased;
     }
 
-    function _withdraw(uint256 tokenOwed) override internal onlyDuringClaim {
+    function _withdraw(uint256 tokenOwed) override internal {
         super._withdraw(tokenOwed);
-        _updateVestingOnWithdraw(tokenOwed, _msgSender());
-    }
-
-    function _updateVestingOnPurchase(uint256 tokenPurchased, address user) internal {
-        totalPurchased[user] = tokenPurchased;
-        claimable[user] = tokenPurchased;
-    }
-
-    function _updateVestingOnWithdraw(uint256 tokenSent, address user) internal {
-        latestClaimTime[user] = block.timestamp;
-        claimable[user] -= tokenSent;
+        // Update vesting variables
+        latestClaimTime[_msgSender()] = block.timestamp;
+        claimable[_msgSender()] -= tokenOwed;
     }
 
     // --- HELPER FUNCTIONS
