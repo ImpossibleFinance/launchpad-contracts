@@ -41,6 +41,14 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
     bytes32 public whitelistRootHash;
     // amount of sale token to sell
     uint256 public saleAmount;
+
+    // tracks amount purchase token deposited by each address
+    mapping(address => uint256) public paymentDepositReceived;
+
+    // tracks if autobuy is confirmed
+    mapping(address => bool) public autoBuyConfirmed;
+
+    
     // tracks amount purchased by each address
     mapping(address => uint256) public paymentReceived;
     // tracks amount of tokens owed to each address
@@ -482,6 +490,87 @@ contract IFAllocationSale is Ownable, ReentrancyGuard {
         require(checkWhitelist(_msgSender(), merkleProof), 'proof invalid');
 
         _purchase(paymentAmount);
+    }
+
+
+    // claim autobuy tokens
+    function confirmAutoBuy(bytes32[] calldata merkleProof) external {
+        // require that user is whitelisted by checking proof
+        require(checkWhitelist(_msgSender(), merkleProof), 'proof invalid');
+
+        _confirmAutoBuy();
+    }
+
+    // Deposit purchase token for auto buy when it starts
+    function withdrawDeposit(uint256 depositAmount) internal nonReentrant {
+        // sale must be active
+        require(startTime < block.timestamp, 'sale has begun');
+        require(block.timestamp > endTime, 'sale is still ongoing');
+
+        // amount must be greater than minTotalPayment
+        // by default, minTotalPayment is 0 unless otherwise set
+        require(depositAmount >= minTotalPayment, 'amount below min');
+
+        // transfer specified amount from user to this contract
+        paymentToken.safeTransferFrom(
+            _msgSender(),
+            address(this),
+            depositAmount
+        );
+
+        // increase payment received amount
+        paymentDepositReceived[_msgSender()] -= depositAmount;
+    }
+
+    // Deposit purchase token for auto buy when it starts
+    function deposit(uint256 depositAmount) internal nonReentrant {
+        // sale must be active
+        require(startTime > block.timestamp, 'sale has begun');
+
+        // sale price must not be 0, which is a giveaway sale
+        require(salePrice != 0, 'cannot purchase - giveaway sale');
+
+        // amount must be greater than minTotalPayment
+        // by default, minTotalPayment is 0 unless otherwise set
+        require(depositAmount >= minTotalPayment, 'amount below min');
+
+        // transfer specified amount from user to this contract
+        paymentToken.safeTransferFrom(
+            _msgSender(),
+            address(this),
+            depositAmount
+        );
+
+        // increase payment received amount
+        paymentDepositReceived[_msgSender()] += paymentAmount;
+    }
+
+    // Tokin is already bought, and cannot be cancelled, just need to confirm to move this to claiamable
+    function _confirmAutoBuy() internal nonReentrant {
+        // sale must be active
+        require(startTime <= block.timestamp, 'sale has not begun');
+
+        // sale price must not be 0, which is a giveaway sale
+        require(salePrice != 0, 'cannot purchase - giveaway sale');
+
+        // get max payment of user
+        uint256 remaining = getMaxPayment(_msgSender());
+
+        // payment must not exceed remaining
+        require(remaining > 0, 'no more payment can be done');
+
+        depositAmount = paymentDepositReceived[_msgSender()];
+
+        // TODO, find the min func
+        purchasableDeposit = min(depositAmount, remaining);
+
+        // increase total payment received amount
+        // totalPaymentReceived += depositAmount;
+
+        toBeClaimed = (purchasableDeposit * SALE_PRICE_DECIMALS) / salePrice;
+        paymentDepositReceived[_msgSender()] -= purchasableDeposit;
+        autoBuyConfirmed[_msgSender()] = true;
+        claimable[_msgSender()] = toBeClaimed;
     }
 
     // Function for withdrawing purchased sale token after sale end
