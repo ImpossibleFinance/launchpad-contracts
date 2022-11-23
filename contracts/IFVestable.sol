@@ -66,7 +66,7 @@ abstract contract IFVestable is Ownable {
 
     // Function for owner to set a vesting end time
     function setLinearVestingEndTime(uint256 _linearVestingEndTime) virtual public onlyOwner {
-        require(vestingEditableOverride || block.timestamp > withdrawTime, "Can't edit vesting after sale");
+        require(vestingEditableOverride || block.timestamp < withdrawTime, "Can't edit vesting after sale");
         require(_linearVestingEndTime > withdrawTime, "vesting end time has to be after withdrawal start time");
         require(withdrawTime > _linearVestingEndTime - TEN_YEARS, "vesting end time has to be within 10 years");
         linearVestingEndTime = _linearVestingEndTime;
@@ -77,7 +77,7 @@ abstract contract IFVestable is Ownable {
     }
 
     function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) virtual public onlyOwner {
-        require(vestingEditableOverride || block.timestamp > withdrawTime, "Can't edit vesting after sale");
+        require(vestingEditableOverride || block.timestamp < withdrawTime, "Can't edit vesting after sale");
         require(claimTimes.length == pct.length, "dates and pct doesn't match");
         require(claimTimes.length > 0, "input is empty");
         require(claimTimes.length <= 100, "input length cannot exceed 100");
