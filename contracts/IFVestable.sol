@@ -19,7 +19,7 @@ abstract contract IFVestable is Ownable {
     // --- VESTING
 
     // Allow vesting to be editable after sale
-    bool public vestingEditableOverride = false;
+    bool public vestingEditableOverride;
 
     // withdraw/cash delay timestamp (inclusive)
     uint256 public withdrawTime;
