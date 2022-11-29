@@ -1,0 +1,22 @@
+name: Generate go abi
+
+on:
+  pull_request:
+    branches: [ '*' ]
+  # pull_request:
+  #   types:
+  #     - closed
+
+# jobs:
+#   if_merged:
+#     if: github.event.pull_request.merged == true
+
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get geth tools
+      uses: gacts/install-geth-tools@v1
+
+    - name: Generate abi
+      run: npm run compile:go IFAllocatonSale
