@@ -15,8 +15,22 @@ jobs:
   gen:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
     - name: Get geth tools
       uses: gacts/install-geth-tools@v1
 
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+      
+    - name: Install node modules
+      run: yarn install
+
+    - name: Export abi
+      run: npx hardhat export-abi
+
     - name: Generate abi
-      run: npm run compile:go IFAllocatonSale
+      run: npm run compile:go IFAllocationSale
