@@ -1,15 +1,9 @@
 name: Generate go abi
 
 on:
-  pull_request:
-    branches: [ '*' ]
-  # pull_request:
-  #   types:
-  #     - closed
-
-# jobs:
-#   if_merged:
-#     if: github.event.pull_request.merged == true
+  push:
+    branches:
+      - main
 
 jobs:
   gen:
