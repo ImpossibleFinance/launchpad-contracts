@@ -240,9 +240,15 @@ export default describe('vIDIA', async () => {
     await checkSuccess(vester)
     await checkFailure(vester2)
 
-    // case 3: source addr and dest addr in whunstakingDelayess])
-    await checkFailure(vester)
+    // case 3: source addr and dest addr in whitelist, should not fail xfer
+    await vIDIA.addToWhitelist(vester2.address)
+    await checkWhitelist([ZERO_ADDRESS, vester.address, vester2.address])
+    await checkSuccess(vester)
     await checkSuccess(vester2)
+
+    // case 4: dest addr in whitelist, should not fail xfer
+    await vIDIA.removeFromWhitelist(vester.address)
+    await checkWhitelist([ZERO_ADDRESS, vester2.address])
 
     // case 5: remove all addr from whitelist, should fail xfer
     await vIDIA.removeFromWhitelist(vester2.address)
