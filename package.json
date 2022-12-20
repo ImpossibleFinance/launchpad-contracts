@@ -2,7 +2,8 @@
   "name": "impossible-launchpad-staking",
   "scripts": {
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol",
-    "postinstall": "husky install"
+    "postinstall": "husky install",
+    "compile:go": "./scripts/compile-go-file.sh"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "2.0.6",
@@ -26,6 +27,7 @@
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.3",
     "hardhat": "^2.9.9",
+    "hardhat-abi-exporter": "^2.10.1",
     "hardhat-gas-reporter": "^1.0.8",
     "hardhat-tracer": "^1.1.0-rc.6",
     "husky": "^8.0.1",
@@ -33,8 +35,8 @@
     "papaparse": "^5.3.1",
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
-    "solhint-plugin-prettier": "^0.0.5",
     "sgn-v2-contracts": "^0.2.0",
+    "solhint-plugin-prettier": "^0.0.5",
     "ts-node": "^10.4.0",
     "typescript": "^4.5.4"
   },

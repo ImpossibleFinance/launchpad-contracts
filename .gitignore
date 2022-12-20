@@ -7,6 +7,8 @@ out
 #Hardhat files
 cache
 artifacts
+abi
+*.bin
 
 #Other
 .DS_Store
