@@ -3,8 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { Contract } from '@ethersproject/contracts'
-import { mineNext, getBlockTime, mineTimeDelta, setAutomine } from './helpers'
-import { first } from 'lodash'
+import { getBlockTime, mineTimeDelta } from './helpers'
 import { BigNumber } from 'ethers'
 
 const MaxUint256 = ethers.constants.MaxUint256
@@ -250,8 +249,6 @@ export default describe('vIDIA', async () => {
     // case 4: dest addr in whitelist, should not fail xfer
     await vIDIA.removeFromWhitelist(vester.address)
     await checkWhitelist([ZERO_ADDRESS, vester2.address])
-    await checkFailure(vester)
-    await checkSuccess(vester2)
 
     // case 5: remove all addr from whitelist, should fail xfer
     await vIDIA.removeFromWhitelist(vester2.address)
@@ -332,9 +329,8 @@ export default describe('vIDIA', async () => {
       convToBN(93),
     ]
 
-    let userVidiaBalance = await vIDIA.balanceOf(owner.address)
+    const userVidiaBalance = await vIDIA.balanceOf(owner.address)
     let userUnderlying = await underlying.balanceOf(owner.address)
-    let userStakedAmt = (await vIDIA.userInfo(owner.address)).stakedAmt
     let userUnstakingAmt = (await vIDIA.userInfo(owner.address)).unstakingAmt
     let contractUnderlying = await underlying.balanceOf(vIDIA.address)
     let sumFees = await vIDIA.accumulatedFee()
@@ -408,10 +404,10 @@ export default describe('vIDIA', async () => {
     ]
 
     let userVidiaBalance = await vIDIA.balanceOf(owner.address)
-    let userUnderlying = await underlying.balanceOf(owner.address)
+    const userUnderlying = await underlying.balanceOf(owner.address)
     let userUnstakingAmt = (await vIDIA.userInfo(owner.address)).unstakingAmt
     let userStakedAmt = (await vIDIA.userInfo(owner.address)).stakedAmt
-    let contractUnderlying = await underlying.balanceOf(vIDIA.address)
+    const contractUnderlying = await underlying.balanceOf(vIDIA.address)
     let sumFees = await vIDIA.accumulatedFee()
 
     for (let i = 0; i < withdrawAmt.length; i++) {
@@ -519,5 +515,57 @@ export default describe('vIDIA', async () => {
     expect((await vIDIA.userInfo(vester.address)).stakedAmt).to.be.equal(stakeAmt)
     await vIDIA.connect(vester).unstake(stakeAmt)
     expect((await vIDIA.userInfo(vester.address)).stakedAmt).to.be.equal(0)
+  })
+  it('test whitelist send token and withdraw from another address', async () => {
+    const stakeAmt = convToBN(2)
+    // 0. Setup allocation master for staking
+    // Deploy allocation master
+    const IFAllocationMasterFactory = await ethers.getContractFactory(
+      'IFAllocationMaster'
+    )
+    const IFAllocationMaster = await IFAllocationMasterFactory.deploy(
+      ethers.constants.AddressZero
+    )
+    await IFAllocationMaster.addTrack(
+      'TEST Track', // name
+      vIDIA.address, // stake token
+      1000, // weight accrual rate
+      '100000000000000000', // passive rollover rate (10%)
+      '200000000000000000', // active rollover rate (20%)
+      '1000000000000000000000000000000' // max total stake (1 trillion)
+    )
+    const trackNum = 0
+
+    // 1. Setup wallets, whitelist addresses, and send vIDIA to vester2
+    await vIDIA.stake(WeiPerEth)
+    await vIDIA.connect(vester2).approve(IFAllocationMaster.address, MaxUint256.toString())
+    await vIDIA.addToWhitelist(vester.address)
+    await vIDIA.addToWhitelist(vester2.address)
+    await vIDIA.addToWhitelist(IFAllocationMaster.address)
+    await vIDIA.connect(vester).stake(stakeAmt.mul(2))
+    await expect(vIDIA.connect(vester).transfer(vester2.address, stakeAmt))
+      .to.emit(vIDIA, 'Transfer')
+      .withArgs(vester.address, vester2.address, stakeAmt)
+    expect(await vIDIA.balanceOf(vester2.address)).to.equal(stakeAmt)
+    await vIDIA.connect(owner).updateCancelUnstakeFee(0)
+
+    // 2. Vester 2 stakes, unstakes, and tries withdraw
+    // 2a. Can stake and unstake vIDIA to a project
+    await IFAllocationMaster.connect(vester2).stake(trackNum, stakeAmt)
+    expect(await vIDIA.balanceOf(vester2.address)).to.equal(0)
+    await IFAllocationMaster.connect(vester2).unstake(trackNum, stakeAmt)
+    expect(await vIDIA.balanceOf(vester2.address)).to.equal(stakeAmt)
+    // 2b. Unstake received vIDIA will fail
+    expect(vIDIA.connect(vester2).unstake(stakeAmt)).to.be.reverted
+    expect(vIDIA.connect(vester2).claimUnstaked()).to.be.reverted
+    // 2c. Stake IDIA and unstake vIDIA
+    await vIDIA.connect(vester2).stake(stakeAmt.mul(2))
+    // Unstake received vIDIA + staked vIDIA will fail
+    expect(vIDIA.connect(vester2).unstake(stakeAmt.mul(2))).to.be.reverted
+    expect(vIDIA.connect(vester2).claimUnstaked()).to.be.reverted
+    mineTimeDelta((await vIDIA.unstakingDelay()).toNumber())
+    // Can unstake staked vIDIA
+    await vIDIA.connect(vester2).claimUnstaked()
+    expect(await vIDIA.balanceOf(vester2.address)).to.equal(stakeAmt)
   })
 })
