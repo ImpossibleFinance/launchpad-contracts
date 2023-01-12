@@ -2,6 +2,7 @@ import '@nomiclabs/hardhat-waffle'
 import '@nomiclabs/hardhat-etherscan'
 import '@nomiclabs/hardhat-web3'
 import 'hardhat-tracer'
+import 'hardhat-abi-exporter'
 // import 'hardhat-gas-reporter'
 // import 'hardhat-ethernal'
 import dotenv from 'dotenv'
@@ -30,11 +31,14 @@ module.exports = {
     },
   },
   networks: {
-    // hardhat: {
-    //   forking: {
-    //     url: 'https://bsc-dataseed.binance.org/',
-    //   },
-    // },
+    hardhat: {
+      forking: {
+        url: 'https://bsc-dataseed.binance.org/',
+        accounts: {
+          mnemonic: process.env.MAINNET_MNEMONIC || '',
+        },
+      },
+    },
     bsc_test: {
       url: 'https://data-seed-prebsc-1-s3.binance.org:8545',
       chainId: 97,

@@ -303,4 +303,18 @@ export default describe('IF Allocation Sale', function () {
     await ctx.IFAllocationSale.connect(ctx.buyer).withdrawGiveaway([])
     expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal(value)
   })
+  it('can get cliff period', async function () {
+    const pct = [10, 20, 30, 40]
+    await IFAllocationSale.connect(owner).setCliffPeriod(
+      [
+        endTime + 10,
+        endTime + 20,
+        endTime + 30,
+        endTime + 40,
+      ],
+      pct
+    )
+    const cliffPeriod = await IFAllocationSale.getCliffPeriod()
+    expect(cliffPeriod[0].pct).eq(pct[0])
+  })
 })

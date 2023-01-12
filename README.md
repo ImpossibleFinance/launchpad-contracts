@@ -187,3 +187,60 @@ SALE=0xABCD NEW_OWNER=0xABCD npx hardhat run ./scripts/IFAllocationSale-transfer
 ```
 SALE=0xABCD npx hardhat run ./scripts/IFAllocationSale-cash.ts --network bsc_test
 ```
+
+### Setting cliff periods
+
+```
+// To set cliff starting at 2022-OCT-27, lasting for 270 days, unlock every 3 days with 1 percent
+SALE=0xABCD WITHDRAW_TIME=1666843153 DURATION=270 STEP=3 PCT=1 npx hardhat run scripts/IFAllocationSale-setCliffVesting.ts                            
+```
+
+## Local Development
+
+### Init Loyalty Program contracts
+
+This will deploy the following contracts locally with addresses that those preset in backend-service for local development
+- LoyaltyCardMaster.sol
+- LoyaltyRewardsLookup.sol
+- LoyaltyCardRewarder.sol
+
+Additionally it will initialize the RewardsLookup contract with some credential values which should match the preset values used in the backend-service to populate the loyalty_credential table in dev-mode
+
+```
+CODE    POINTS   NAME
+
+1       11       'dao'
+2       12       'swap1'
+3       13       'stake1'
+```
+
+```shell
+# terminal 1 - keeps logging blockchain
+ganache-cli --deterministic
+
+# terminal 2 - loyalty setup output
+npx hardhat run --network localhost ./scripts/loyalty-dev-setup.ts
+```
+
+
+## Setup local contracts
+
+Start a hardhat node. It will fork from bsc mainnet and start a JSON-RPC server at http://127.0.0.1:8545/
+```bash
+npx hardhat node
+```
+
+Specify rpc url and block number to fork from bsc testnet.
+```bash
+npx hardhat node --fork https://data-seed-prebsc-1-s3.binance.org:8545 --fork-block-height <BLOCK_NUMBER>
+```
+
+Deploy allocation master. We'll need celer message bus address. It can be found here: https://im-docs.celer.network/developer/contract-addresses-and-rpc-info
+```bash
+MESSAGE_BUS=0x95714818fdd7a5454F73Da9c777B3ee6EbAEEa6B npx hardhat run scripts/IFAllocationMaster-deploy.ts --network localhost
+```
+
+Deploy sale contract. Get the allocation master address from the previous deployment. Put it to ALLOCATION_MASTER.
+```bash
+SELLER=0x54F5A04417E29FF5D7141a6d33cb286F50d5d50e PAY_TOKEN=0x0b15Ddf19D47E6a86A56148fb4aFFFc6929BcB89 SALE_TOKEN=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82 ALLOCATION_MASTER=<ALLOCATION_MASTER_ADDRESS> TRACK_ID=1 SNAP_BLOCK=1667377037 START_BLOCK=1667377037 END_BLOCK=1767377037 SALE_PRICE=100000000000000000000 MAX_TOTAL_PAYMENT=10000000000000000000000 npx hardhat run ./scripts/IFAllocationSale-deploy.ts --network localhost
+```
