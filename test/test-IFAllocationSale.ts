@@ -305,16 +305,16 @@ export default describe('IF Allocation Sale', function () {
   })
   it('can get cliff period', async function () {
     const pct = [10, 20, 30, 40]
-    await IFAllocationSale.connect(owner).setCliffPeriod(
+    await ctx.IFAllocationSale.connect(ctx.owner).setCliffPeriod(
       [
-        endTime + 10,
-        endTime + 20,
-        endTime + 30,
-        endTime + 40,
+        ctx.endTime + 10,
+        ctx.endTime + 20,
+        ctx.endTime + 30,
+        ctx.endTime + 40,
       ],
       pct
     )
-    const cliffPeriod = await IFAllocationSale.getCliffPeriod()
+    const cliffPeriod = await ctx.IFAllocationSale.getCliffPeriod()
     expect(cliffPeriod[0].pct).eq(pct[0])
   })
 })
