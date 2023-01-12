@@ -11,7 +11,7 @@ import {
 } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
-import { ALREADY_CASHED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CLAIM_NOT_YET_STARTED } from './reverts/msg-IFAllocationSale'
+import { ALREADY_CASHED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM } from './reverts/msg-IFAllocationSale'
 
 export const _ctx ={
   owner: SignerWithAddress,
@@ -344,7 +344,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     mineTimeDelta(ctx.endTime - (await getBlockTime()))
 
     // test withdraw and cash (should fail because need 1 more block)
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CLAIM_NOT_YET_STARTED)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_BEFORE_CLAIM)
     // access control: Call cash before ctx.endTime + withdrawDelay
     await expect(ctx.IFAllocationSale.connect(ctx.casher).cash())
 
@@ -540,7 +540,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     )
     await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
     // cliff vesting: User makes a purchase and claim before cliff vesting starts
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CLAIM_NOT_YET_STARTED)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_BEFORE_CLAIM)
 
     mineTimeDelta(ctx.endTime + withdrawDelay - (await getBlockTime()) + 1)
 

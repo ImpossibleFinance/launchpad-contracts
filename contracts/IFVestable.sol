@@ -45,6 +45,10 @@ abstract contract IFVestable is Ownable {
     Cliff[] public cliffPeriod;
     event SetCliffVestingPeriod(Cliff[] indexed cliffPeriod);
 
+    function getCliffPeriod() public view returns (Cliff[] memory){
+        return cliffPeriod;
+    }
+
     // --- CONSTRUCTOR
 
     constructor(
