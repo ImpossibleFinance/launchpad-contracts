@@ -52,6 +52,7 @@ contract IFAllocationSale is IFSale {
             'total weight is 0 on while using older timestamp'
         );
 
+        trackId = _trackId;
         allocationMaster = _allocationMaster; // can be 0 (with allocation override)
         allocSnapshotTimestamp = _allocSnapshotTimestamp; // can be 0 (with allocation override)
     }
