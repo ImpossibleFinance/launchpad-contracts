@@ -8,17 +8,17 @@ import { getBlockTime, mineNext, mineTimeDelta } from './helpers'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY } from './reverts/msg-IFAllocationSale'
 
-function computeMerkleRootWithAllocation(signers: SignerWithAddress[], allocations: number[]): [string[], Map<string, string>]{
+function computeMerkleRootWithAllocation(signers: string[], allocations: number[]): [string[], Map<string, string>]{
     const leaves: string[] = []
     const addressValMap = new Map()
-    signers.forEach((s: SignerWithAddress, i: number) => {
+    signers.forEach((s: string, i: number) => {
         const amount = allocations[i].toString()
         const packed = ethers.utils.solidityPack(
           ['address', 'uint256'],
-          [s.address.toLowerCase(), amount],
+          [s.toLowerCase(), amount],
         )
         leaves.push(packed)
-        addressValMap.set(s.address.toLowerCase(), packed)
+        addressValMap.set(s.toLowerCase(), packed)
       }
     )
     leaves.sort()
@@ -39,26 +39,31 @@ export default describe('IF Fixed Sale', function () {
 
 
   generalTest.prototype.it = it('can save allocation amount in merkle tree', async function () {
-    const signers = await ethers.getSigners()
-    const allocations = Array(signers.length).fill(1)
+    
+    const signers = ['0x68e9aD62a0b82cD69c2bb6Cd43Ab36Fd8B8893C7', '0xEbb20d93973c758C7e423B67f3Bbb7c7587A526E', '0x06E28Ad566a128d7424F5351Ef8d9EbbD3eA3F0D', '0x6d0e3E0bF5212E6c8d58D0aedCeAc57ee5eC021F', '0x9ae5982150c5AE649F9a016e025cB3eDdAb609AD', '0xFD06e473e232CDe29AeBd8bacEf8E8C441037196', '0x906fC3CD9C6E2dd1E1F96a5f6D3A02Ef648326c4']
+    const allocation = 1000000
+    const allocations = Array(signers.length).fill(allocation)
     const [leaves, addressValMap] = computeMerkleRootWithAllocation(signers, allocations)
     const merkleRoot = computeMerkleRoot(leaves)
+    console.log('root:', merkleRoot)
+    console.log('leaves:', leaves)
     await ctx.IFAllocationSale.connect(ctx.owner).setWhitelist(merkleRoot)
     mineNext()
 
-    const tempAcct = (await ethers.getSigners())[0]
-    const packed = addressValMap.get(tempAcct.address.toLowerCase()) || ''
+    const tempAcct = '0xFD06e473e232CDe29AeBd8bacEf8E8C441037196'
+    const packed = addressValMap.get(tempAcct.toLowerCase()) || ''
     const tempAcctIdx = getAddressIndex(leaves, packed)
+    console.log('proof', computeMerkleProof(leaves, tempAcctIdx))
     expect(
       await ctx.IFAllocationSale.connect(tempAcct)['checkWhitelist(address,bytes32[],uint256)'](
-        tempAcct.address,
+        tempAcct,
         computeMerkleProof(leaves, tempAcctIdx),
-        1,
+        allocation,
       )
     ).to.equal(true)
     expect(
       await ctx.IFAllocationSale.connect(tempAcct)['checkWhitelist(address,bytes32[],uint256)'](
-        tempAcct.address,
+        tempAcct,
         computeMerkleProof(leaves, tempAcctIdx),
         200,
       )
