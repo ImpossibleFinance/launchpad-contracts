@@ -30,7 +30,6 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
         uint256 _salePrice,
         ERC20 _paymentToken,
         ERC20 _saleToken,
-        uint24 _trackId,
         uint256 _startTime,
         uint256 _endTime,
         uint256 _maxTotalPayment

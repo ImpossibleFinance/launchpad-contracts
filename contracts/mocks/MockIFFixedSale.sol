@@ -23,7 +23,6 @@ contract MockIFFixedSale is IFFixedSale {
             _funder,
             _paymentToken,
             _saleToken,
-            _trackId,
             _startTime,
             _endTime,
             _maxTotalPayment
