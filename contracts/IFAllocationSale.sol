@@ -35,7 +35,6 @@ contract IFAllocationSale is IFSale {
             _salePrice,
             _paymentToken,
             _saleToken,
-            _trackId,
             _startTime,
             _endTime,
             _maxTotalPayment
