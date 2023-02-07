@@ -19,7 +19,6 @@ contract IFFixedSale is IFSale {
         address _funder,
         ERC20 _paymentToken,
         ERC20 _saleToken,
-        uint24 _trackId,
         uint256 _startTime,
         uint256 _endTime,
         uint256 _maxTotalPayment
@@ -29,7 +28,6 @@ contract IFFixedSale is IFSale {
             _salePrice,
             _paymentToken,
             _saleToken,
-            _trackId,
             _startTime,
             _endTime,
             _maxTotalPayment
