@@ -448,14 +448,18 @@ contract IFAllocationMaster is
         public
         view
         returns (AddressStakeWeight[] memory)
-    {   
-        AddressStakeWeight[] memory result;
+    {
+        require(timestamp <= block.timestamp, 'timestamp # too high');
+        require(start >= 0, 'start parameter cannot be negative number');
+        require(count > 0, 'count parameter must be greater than zero');
 
         // total current user for a track
         uint256 totalUser = numTrackStakers[trackId];
 
         uint end = start + count;
         uint stakersCount = totalUser < end ? totalUser : end;
+
+        AddressStakeWeight[] memory result = new AddressStakeWeight[](stakersCount - start);
 
         for (uint i = start; i < stakersCount; i++) {
             // get staker address
