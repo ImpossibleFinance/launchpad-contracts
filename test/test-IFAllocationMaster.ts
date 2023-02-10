@@ -386,12 +386,6 @@ export default describe('IFAllocationMaster', function () {
       mineNext()
     }
 
-    // bump sale counter
-    for (let i = 0; i < 15; i++) {
-      await IFAllocationMaster.bumpSaleCounter(trackId)
-    }
-    mineNext()
-
     const currBlockNum = await ethers.provider.getBlockNumber()
     const currBlock = await ethers.provider.getBlock(currBlockNum)
 
