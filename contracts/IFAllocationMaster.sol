@@ -78,6 +78,12 @@ contract IFAllocationMaster is
         uint104 maxTotalStake;
     }
 
+    // Info of each user stake weight.
+    struct AddressStakeWeight {
+        address user;
+        uint192 stakeWeight;
+    }
+
     // INFO FOR FACTORING IN ROLLOVERS
 
     // the number of checkpoints of a track -- (track, finished sale count) => timestamp number
@@ -435,6 +441,36 @@ contract IFAllocationMaster is
 
         // return
         return stakeWeight;
+    }
+
+    // get batch stake weight users by trackId
+    function getBatchStakeWeightByTrackId(uint24 trackId, uint80 timestamp, uint start, uint count)
+        public
+        view
+        returns (AddressStakeWeight[] memory)
+    {
+        require(timestamp <= block.timestamp, 'timestamp # too high');
+        require(start >= 0, 'start parameter cannot be negative number');
+        require(count > 0, 'count parameter must be greater than zero');
+
+        // total current user for a track
+        uint256 totalUser = numTrackStakers[trackId];
+
+        uint end = start + count;
+        uint stakersCount = totalUser < end ? totalUser : end;
+
+        AddressStakeWeight[] memory result = new AddressStakeWeight[](stakersCount - start);
+
+        for (uint i = start; i < stakersCount; i++) {
+            // get staker address
+            address staker = trackStakers[trackId][i];
+            // get stake weight for user
+            uint192 stakeWeight = getUserStakeWeight(trackId, staker, timestamp);
+        
+            result[i - start] = AddressStakeWeight(staker, stakeWeight);
+        }
+
+        return result;
     }
 
     // get closest PRECEDING track checkpoint

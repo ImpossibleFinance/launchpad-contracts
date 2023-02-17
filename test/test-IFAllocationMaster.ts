@@ -16,7 +16,7 @@ const simulations = [
   { in: sim1Input, out: './test/simulationData/sim1ExpectedOutput.csv' },
   { in: sim2Input, out: './test/simulationData/sim2ExpectedOutput.csv' },
   { in: sim3Input, out: './test/simulationData/sim3ExpectedOutput.csv' },
-  { in: sim4Input, out: './test/simulationData/sim4ExpectedOutput.csv' },
+  { in: sim4Input, out: './test/simulationData/sim4ExpectedOutput.csv' }
 ]
 
 export default describe('IFAllocationMaster', function () {
@@ -334,5 +334,77 @@ export default describe('IFAllocationMaster', function () {
     expectedLines.map((expectedLine, i) => {
       expect(expectedLine).to.equal(simOutLines[i])
     })
+  })
+
+  it('simulation 5: 5 users stake and check stake weight use getBatchStakeWeightByTrackId', async () => {
+    // create 5 users
+    const testUser = (await ethers.getSigners())[5]
+    const testUser2 = (await ethers.getSigners())[6]
+    const testUser3 = (await ethers.getSigners())[7]
+    const testUser4 = (await ethers.getSigners())[8]
+    const testUser5 = (await ethers.getSigners())[9]
+
+    mineNext()
+
+    const users = [testUser, testUser2, testUser3, testUser4, testUser5]
+    const stakeAmounts = [
+      '100000000000000000000000000',
+      '500000000000000000000000000',
+      '500000000000000000000000000',
+      '1000000000000000000000000000',
+      '1500000000000000000000000000'
+    ]
+
+    // transfer token to each user with rate 1 : 5 : 5 : 10 : 15
+    await TestToken.transfer(testUser.address, stakeAmounts[0])
+    await TestToken.transfer(testUser2.address, stakeAmounts[1])
+    await TestToken.transfer(testUser3.address, stakeAmounts[2])
+    await TestToken.transfer(testUser4.address, stakeAmounts[3])
+    await TestToken.transfer(testUser5.address, stakeAmounts[4])
+
+    mineNext()
+
+    // add a track
+    await IFAllocationMaster.addTrack(
+      'TEST Track', // name
+      TestToken.address, // stake token
+      '10000000', // weight accrual rate
+      '0', // passive rollover rate (0%)
+      '0', // active rollover rate (0%)
+      '20000000000000000000000000000' // 20B
+    )
+    mineNext()
+
+    const trackId = 0
+
+    // stake token
+    for (let j = 0; j < stakeAmounts.length; j++) {
+      const amount = stakeAmounts[j]
+      const user = users[j]
+
+      await TestToken.connect(user).approve(IFAllocationMaster.address, amount)
+      mineNext()
+    }
+
+    const currBlockNum = await ethers.provider.getBlockNumber()
+    const currBlock = await ethers.provider.getBlock(currBlockNum)
+
+    // get user stake weights
+    const userStakeWeights =
+      await IFAllocationMaster.getBatchStakeWeightByTrackId(
+        trackId,
+        currBlock.timestamp,
+        0, // start
+        10 // size
+      )
+
+    const expectedRate = [1, 5, 5, 10, 15]
+
+    // validate
+    for (let i = 0; i < userStakeWeights.length; i++) {
+      expect(parseFloat(userStakeWeights[i].stakeWeight)).to.equal(
+        expectedRate[i] * 1000000000000000
+      )
+    }
   })
 })
