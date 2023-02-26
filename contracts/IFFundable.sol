@@ -20,7 +20,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     uint64 private constant ONE_HOUR = 3600;
     uint64 private constant ONE_YEAR = 31556926;
     uint64 private constant FIVE_YEARS = 157784630;
-    uint64 private constant TEN_YEARS = 315569260;
+    uint64 private constant TEN_YEARS = 315360000;
 
     // --- OPERATOR ADDRESSES
 
