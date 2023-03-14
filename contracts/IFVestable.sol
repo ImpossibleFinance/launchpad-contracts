@@ -14,7 +14,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
   @notice Cliff vesting unlocks tokens at a series of specific time. According to cliff period
  */
 abstract contract IFVestable is Ownable {
-    uint64 private constant TEN_YEARS = 315569260;
+    uint64 private constant TEN_YEARS = 315360000;
 
     // --- VESTING
 
