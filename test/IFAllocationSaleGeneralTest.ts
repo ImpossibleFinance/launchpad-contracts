@@ -592,10 +592,9 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
   })
   it('can opt in buyback', async function () {
     const paymentAmount = 333330
-    const user = ctx.buyer
 
     // 
-    await expect(ctx.IFAllocationSale.connect(user).optInBuyback()).to.be.revertedWith(BUY_BACK_NOT_ENABLED)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()).to.be.revertedWith(BUY_BACK_NOT_ENABLED)
     
     // set cliff vesting period
     const cliffInterval = Math.floor((ctx.linearVestingEndTime - ctx.endTime) / 3)
@@ -620,6 +619,11 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
       paymentAmount
     )
     await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    await ctx.IFAllocationSale.connect(ctx.buyer2)['purchase(uint256)'](paymentAmount)
     // cliff vesting: User makes a purchase and claim before cliff vesting starts
     await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_BEFORE_CLAIM)
 
@@ -631,9 +635,16 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
 
     // test withdraw after opted in buyback
     await ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()
-    await expect(ctx.IFAllocationSale.connect(user).optInBuyback()).to.be.revertedWith(ALREADY_OPTED_IN)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()).to.be.revertedWith(ALREADY_OPTED_IN)
     mineTimeDelta(cliffPeriod[2] - (await getBlockTime()))
     await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
     expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('9999')
+    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('19999')
+
+    mineTimeDelta(cliffPeriod[3] - (await getBlockTime()))
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(NO_TOKEN_TO_BE_WITHDRAWN)
+    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('33333')
   })
 }
