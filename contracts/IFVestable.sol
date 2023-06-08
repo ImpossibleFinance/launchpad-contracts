@@ -22,7 +22,7 @@ abstract contract IFVestable is Ownable {
     bool public vestingEditableOverride;
 
     // whether the user has opted in to buy back
-    // if true, the user cannot claim the token after `buyBbckClaimableNumber` vesting phase
+    // if true, the user cannot claim the token after `buybackClaimableNumber` vesting phase
     // only applicable to cliff vesting for now
     mapping(address => bool) public hasOptInBuyback;
 
@@ -35,7 +35,7 @@ abstract contract IFVestable is Ownable {
     // the most recent time the user claimed the saleToken
     mapping(address => uint256) public latestClaimTime;
 
-    event OptInBackback(address indexed user);
+    event OptInBuyback(address indexed user);
 
     // --- LINEAR VESTING
 
@@ -125,14 +125,14 @@ abstract contract IFVestable is Ownable {
     // --- VESTING LOGIC
 
     // Opt in buyback. If called, the user will not be able to claim their token afer 
-    // Emit an event OptInBackback(user) if the user has successfully opted in
+    // Emit an event OptInBuyback(user) if the user has successfully opted in
     // Only applicable to cliff vesting for now
     function optInBuyback() public {
         address user = _msgSender();
         require(hasOptInBuyback[user] == false, "user has already opted in");
         require(buybackClaimableNumber != 0, "buyback is not enabled");
         hasOptInBuyback[user] = true;
-        emit OptInBackback(user);
+        emit OptInBuyback(user);
     }
 
     /**
