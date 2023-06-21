@@ -11,7 +11,7 @@ import {
 } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
-import { ALREADY_CASHED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM } from './reverts/msg-IFAllocationSale'
+import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM } from './reverts/msg-IFAllocationSale'
 
 export const _ctx ={
   owner: SignerWithAddress,
@@ -589,5 +589,62 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
         await expect(ctx.IFAllocationSale.connect(user).setSaleTokenAllocationOverride(0)).to.be.revertedWith(NOT_OWNER)
       }
     }
+  })
+  it('can opt in buyback', async function () {
+    const paymentAmount = 333330
+
+    // 
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()).to.be.revertedWith(BUY_BACK_NOT_ENABLED)
+    
+    // set cliff vesting period
+    const cliffInterval = Math.floor((ctx.linearVestingEndTime - ctx.endTime) / 3)
+    const cliffPeriod = [
+      ctx.endTime + 1,
+      ctx.endTime + cliffInterval * 1,
+      ctx.endTime + cliffInterval * 2,
+      ctx.endTime + cliffInterval * 3
+    ]
+    const cliffPct = [10, 20, 30, 40]
+    await ctx.IFAllocationSale.connect(ctx.owner).setCliffPeriod(cliffPeriod, cliffPct)
+
+    // set buyback claimable number
+    await ctx.IFAllocationSale.connect(ctx.owner).setBuybackClaimableNumber(2)
+
+    // fast forward from current time to start time
+    mineTimeDelta(ctx.startTime - (await getBlockTime()))
+    // purchase
+    mineNext()
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    await ctx.IFAllocationSale.connect(ctx.buyer2)['purchase(uint256)'](paymentAmount)
+    // cliff vesting: User makes a purchase and claim before cliff vesting starts
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_BEFORE_CLAIM)
+
+    mineTimeDelta(ctx.endTime - (await getBlockTime()) + 1)
+
+    // test withdraw
+    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('3333')
+
+    // test withdraw after opted in buyback
+    await ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()).to.be.revertedWith(ALREADY_OPTED_IN)
+    mineTimeDelta(cliffPeriod[2] - (await getBlockTime()))
+    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('9999')
+    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('19999')
+
+    mineTimeDelta(cliffPeriod[3] - (await getBlockTime()))
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(NO_TOKEN_TO_BE_WITHDRAWN)
+    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('33333')
   })
 }

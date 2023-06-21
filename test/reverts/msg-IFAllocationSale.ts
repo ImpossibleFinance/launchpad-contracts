@@ -15,3 +15,5 @@ export const END_TIMESTAMP_TOO_EARLY = 'end timestamp before start should be lea
 export const CLAIM_NOT_YET_STARTED = 'claim not yet started'
 export const SALE_ALREADY_STARTED = 'sale already started'
 export const CANNOT_WITHDRAW_BEFORE_CLAIM = 'can\'t withdraw before claim is started'
+export const BUY_BACK_NOT_ENABLED = 'buyback is not enabled'
+export const ALREADY_OPTED_IN = 'user has already opted in'
