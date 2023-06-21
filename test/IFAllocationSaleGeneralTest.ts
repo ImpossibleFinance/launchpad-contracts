@@ -11,7 +11,7 @@ import {
 } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
-import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM } from './reverts/msg-IFAllocationSale'
+import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM, ADDRESS_ZERO_FUNDER } from './reverts/msg-IFAllocationSale'
 
 export const _ctx ={
   owner: SignerWithAddress,
@@ -238,6 +238,61 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
     await expect(ctx.IFAllocationSale.connect(ctx.seller).emergencyTokenRetrieve(ctx.PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
     await expect(ctx.IFAllocationSale.connect(ctx.buyer).emergencyTokenRetrieve(ctx.PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
     ctx.IFAllocationSale.connect(ctx.owner).emergencyTokenRetrieve(ctx.PaymentToken.address)
+  })
+
+  it('can set funder', async function () {
+    mineNext()
+
+    await ctx.SaleToken.connect(ctx.seller).transfer(
+      ctx.buyer.address,
+      ctx.fundAmount,
+    )
+
+    // deploy 0 price allocation sale
+    const IFAllocationSaleFactory = await ethers.getContractFactory(
+      'IFAllocationSale'
+    )
+    ctx.IFAllocationSale = await IFAllocationSaleFactory.deploy(
+      0, // sale price
+      ctx.seller.address,
+      ctx.PaymentToken.address, // doesn't matter
+      ctx.SaleToken.address,
+      ctx.IFAllocationMaster.address, // doesn't matter
+      ctx.trackId, // doesn't matter
+      ctx.snapshotTimestamp, // doesn't matter
+      ctx.startTime, // doesn't matter
+      ctx.endTime, // doesn't matter
+      ctx.maxTotalDeposit // doesn't matter
+    )
+    mineNext()
+
+    // fund sale
+    mineNext()
+
+    await ctx.SaleToken.connect(ctx.seller).approve(
+      ctx.IFAllocationSale.address,
+      ctx.fundAmount
+    ) // approve
+    await ctx.IFAllocationSale.connect(ctx.seller).fund(ctx.fundAmount) // fund
+    // access control: Address other than funder calls fund
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).fund(ctx.fundAmount)).to.be.revertedWith(NOT_FUNDER) // fund
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).fund(ctx.fundAmount)).to.be.revertedWith(NOT_FUNDER) // fund
+
+    await ctx.IFAllocationSale.connect(ctx.owner).setFunder(ctx.buyer.address) // set funer address
+    await ctx.SaleToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      ctx.fundAmount
+    ) // approve
+    await ctx.IFAllocationSale.connect(ctx.buyer).fund(ctx.fundAmount) // fund
+    mineNext()
+
+    // send fund from funder address, expect error
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).fund(ctx.fundAmount)).to.be.revertedWith(NOT_FUNDER)
+    await expect(ctx.IFAllocationSale.connect(ctx.seller).fund(ctx.fundAmount)).to.be.revertedWith(NOT_FUNDER)
+  })
+
+  it('cannot set 0x0 as funder', async function () {
+    await expect(ctx.IFAllocationSale.connect(ctx.owner).setFunder(ethers.constants.AddressZero)).to.be.revertedWith(ADDRESS_ZERO_FUNDER)
   })
 
   it('can perform a zero price giveaway sale (unwhitelisted / first come first serve)', async function () {

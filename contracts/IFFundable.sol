@@ -123,6 +123,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     // --- EVENTS
 
     event SetCasher(address indexed casher);
+    event SetFunder(address indexed funder);
     event Fund(address indexed sender, uint256 amount);
     event SetWithdrawDelay(uint24 indexed withdrawDelay);
     event Cash(
@@ -140,6 +141,13 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         casher = _casher;
 
         emit SetCasher(_casher);
+    }
+
+    function setFunder(address _funder) public onlyOwner {
+        require(_funder != address(0), '0x0 funder');
+        funder = _funder;
+
+        emit SetFunder(_funder);
     }
 
     // Function for owner to set a withdraw delay
