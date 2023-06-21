@@ -21,10 +21,21 @@ abstract contract IFVestable is Ownable {
     // Allow vesting to be editable after sale
     bool public vestingEditableOverride;
 
+    // whether the user has opted in to buy back
+    // if true, the user cannot claim the token after `buybackClaimableNumber` vesting phase
+    // only applicable to cliff vesting for now
+    mapping(address => bool) public hasOptInBuyback;
+
+    // the number of vesting phase the user can claim the token if they have opted in to buyback
+    // default 0
+    uint256 public buybackClaimableNumber;
+
     // withdraw/cash delay timestamp (inclusive)
     uint256 public withdrawTime;
     // the most recent time the user claimed the saleToken
     mapping(address => uint256) public latestClaimTime;
+
+    event OptInBuyback(address indexed user);
 
     // --- LINEAR VESTING
 
@@ -68,6 +79,11 @@ abstract contract IFVestable is Ownable {
         withdrawTime = _withdrawTime;
     }
 
+    function setBuybackClaimableNumber(uint256 _buybackClaimableNumber) public onlyOwner {
+        require(_buybackClaimableNumber < cliffPeriod.length, "buyback claimable number cannot exceed number of cliff period");
+        buybackClaimableNumber = _buybackClaimableNumber;
+    }
+
     // Function for owner to set a vesting end time
     function setLinearVestingEndTime(uint256 _linearVestingEndTime) virtual public onlyOwner {
         require(vestingEditableOverride || block.timestamp < withdrawTime, "Can't edit vesting after sale");
@@ -108,6 +124,17 @@ abstract contract IFVestable is Ownable {
 
     // --- VESTING LOGIC
 
+    // Opt in buyback. If called, the user will not be able to claim their token afer 
+    // Emit an event OptInBuyback(user) if the user has successfully opted in
+    // Only applicable to cliff vesting for now
+    function optInBuyback() public {
+        address user = _msgSender();
+        require(hasOptInBuyback[user] == false, "user has already opted in");
+        require(buybackClaimableNumber != 0, "buyback is not enabled");
+        hasOptInBuyback[user] = true;
+        emit OptInBuyback(user);
+    }
+
     /**
       @notice Get the amount of token unlocked
       @param totalPurchased Total tokens purchased
@@ -122,9 +149,15 @@ abstract contract IFVestable is Ownable {
 
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
-        if (cliffPeriodLength != 0 && cliffPeriod[cliffPeriodLength - 1].claimTime > block.timestamp) {
+        if (cliffPeriodLength != 0 && (cliffPeriod[cliffPeriodLength - 1].claimTime > block.timestamp || hasOptInBuyback[user] == true)) {
             uint8 claimablePct;
             for (uint8 i; i < cliffPeriodLength; i++) {
+                // if hasOptInBuyback is true, user's claimable phase will be limited by buyBackClaimableNumber
+                // buyBackClaimableNumber is 0 means buyback is not enabled. Thus, user can claim all of the token
+                // if (hasOptInBuyback[user] == true && buybackClaimableNumber <= i && buybackClaimableNumber != 0) {
+                if (hasOptInBuyback[user] == true && buybackClaimableNumber <= i) {
+                    return totalPurchased * claimablePct / 100;
+                }
                 // if the cliff timestamp has been passed, add the claimable percentage
                 if (cliffPeriod[i].claimTime > block.timestamp) { break; }
                 if (latestClaimTime[user] < cliffPeriod[i].claimTime) {

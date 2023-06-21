@@ -28,6 +28,7 @@ module.exports = {
       goerli: process.env.ETHERSCAN_API_KEY,
       kovan: process.env.ETHERSCAN_API_KEY,
       bscTestnet: process.env.BSCSCAN_API_KEY,
+      arbitrumOne: process.env.ARBISCAN_API_KEY,
     },
   },
   networks: {
@@ -37,6 +38,14 @@ module.exports = {
         accounts: {
           mnemonic: process.env.MAINNET_MNEMONIC || '',
         },
+      },
+    },
+    arbitrumOne: {
+      url: 'https://arb1.arbitrum.io/rpc',
+      chainId: 42161,
+      gasPrice: 11000000000,
+      accounts: {
+        mnemonic: process.env.MAINNET_MNEMONIC || '',
       },
     },
     bsc_test: {
