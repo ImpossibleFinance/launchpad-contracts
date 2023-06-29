@@ -3,6 +3,10 @@ import '@nomiclabs/hardhat-etherscan'
 import '@nomiclabs/hardhat-web3'
 import 'hardhat-tracer'
 import 'hardhat-abi-exporter'
+import '@matterlabs/hardhat-zksync-deploy'
+import '@matterlabs/hardhat-zksync-solc'
+import '@matterlabs/hardhat-zksync-verify'
+
 // import 'hardhat-gas-reporter'
 // import 'hardhat-ethernal'
 import dotenv from 'dotenv'
@@ -10,7 +14,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 // You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more 
+// Go to https://hardhat.org/config/ to learn more
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -32,6 +36,24 @@ module.exports = {
     },
   },
   networks: {
+    zksolc: {
+      version: 'latest',
+      compilerSource: 'binary',
+      settings: {
+        optimizer: {
+          enabled: true,
+        },
+      },
+      url: '',
+    },
+    // defaultNetwork: 'zkSyncTestnet',
+    zkSyncTestnet: {
+      url: 'https://testnet.era.zksync.dev',
+      ethNetwork: 'goerli', // or a Goerli RPC endpoint from Infura/Alchemy/Chainstack etc.
+      zksync: true,
+      verifyURL:
+        'https://zksync2-testnet-explorer.zksync.dev/contract_verification',
+    },
     hardhat: {
       forking: {
         url: 'https://bsc-dataseed.binance.org/',
