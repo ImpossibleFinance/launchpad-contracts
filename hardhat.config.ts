@@ -46,6 +46,13 @@ module.exports = {
       },
       url: '',
     },
+    zkSyncMainnet: {
+      url: 'https://zksync2-mainnet.zksync.io',
+      ethNetwork: 'mainnet', // Can also be the RPC URL of the network (e.g. `https://goerli.infura.io/v3/<API_KEY>`)
+      zksync: true,
+      verifyURL:
+        'https://zksync2-mainnet-explorer.zksync.io/contract_verification',
+    },
     // defaultNetwork: 'zkSyncTestnet',
     zkSyncTestnet: {
       url: 'https://testnet.era.zksync.dev',
