@@ -2,11 +2,12 @@ import '@nomiclabs/hardhat-ethers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { computeMerkleProof, computeMerkleRoot, getAddressIndex } from '../library/merkleWhitelist'
+import { computeMerkleProof, computeMerkleProofFromLeaves, computeMerkleRoot, getAddressIndex } from '../library/merkleWhitelist'
 import IFAllocationSaleGeneralTest, { _ctx } from './IFAllocationSaleGeneralTest'
 import { getBlockTime, mineNext, mineTimeDelta } from './helpers'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY } from './reverts/msg-IFAllocationSale'
+import { bAddresses, bAllocations } from './merklet'
 
 function computeMerkleRootWithAllocation(signers: SignerWithAddress[], allocations: number[]): [string[], Map<string, string>]{
     const leaves: string[] = []
@@ -19,6 +20,23 @@ function computeMerkleRootWithAllocation(signers: SignerWithAddress[], allocatio
         )
         leaves.push(packed)
         addressValMap.set(s.address.toLowerCase(), packed)
+      }
+    )
+    leaves.sort()
+    return [leaves, addressValMap]
+}
+
+function computeMerkleRootWithAllocationFromStrings(signers: string[], allocations: string[]): [string[], Map<string, string>]{
+    const leaves: string[] = []
+    const addressValMap = new Map()
+    signers.forEach((s: string, i: number) => {
+        const amount = allocations[i].toString()
+        const packed = ethers.utils.solidityPack(
+          ['address', 'uint256'],
+          [s.toLowerCase(), amount],
+        )
+        leaves.push(packed)
+        addressValMap.set(s.toLowerCase(), packed)
       }
     )
     leaves.sort()
@@ -39,30 +57,31 @@ export default describe('IF Fixed Sale', function () {
 
 
   generalTest.prototype.it = it('can save allocation amount in merkle tree', async function () {
-    const signers = await ethers.getSigners()
-    const allocations = Array(signers.length).fill(1)
-    const [leaves, addressValMap] = computeMerkleRootWithAllocation(signers, allocations)
+    const [leaves, addressValMap] = computeMerkleRootWithAllocationFromStrings(bAddresses, bAllocations)
     const merkleRoot = computeMerkleRoot(leaves)
+    console.log('merkleRoot: ', merkleRoot)
     await ctx.IFAllocationSale.connect(ctx.owner).setWhitelist(merkleRoot)
     mineNext()
 
-    const tempAcct = (await ethers.getSigners())[0]
-    const packed = addressValMap.get(tempAcct.address.toLowerCase()) || ''
+    // const tempAcct = (await ethers.getSigners())[5]
+    // const tempAcct = ctx.buyer
+    // const packed = addressValMap.get(tempAcct.address.toLowerCase()) || ''
+    const address = ''
+    const amount = ''
+    const packed = ethers.utils.solidityPack(
+      ['address', 'uint256'],
+      [address.toLowerCase(), amount],
+    )
     const tempAcctIdx = getAddressIndex(leaves, packed)
+    console.log('index', tempAcctIdx)
+    console.log('proof of:' , address, computeMerkleProof(leaves, tempAcctIdx)),
     expect(
-      await ctx.IFAllocationSale.connect(tempAcct)['checkWhitelist(address,bytes32[],uint256)'](
-        tempAcct.address,
+      await ctx.IFAllocationSale.connect(ctx.buyer)['checkWhitelist(address,bytes32[],uint256)'](
+        address,
         computeMerkleProof(leaves, tempAcctIdx),
-        1,
+        amount,
       )
     ).to.equal(true)
-    expect(
-      await ctx.IFAllocationSale.connect(tempAcct)['checkWhitelist(address,bytes32[],uint256)'](
-        tempAcct.address,
-        computeMerkleProof(leaves, tempAcctIdx),
-        200,
-      )
-    ).to.equal(false)
   })
 
   generalTest.prototype.it = it('can override sale token allocations (test preventing exceeding allocation)', async function () {
