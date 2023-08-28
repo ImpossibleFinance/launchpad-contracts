@@ -27,7 +27,7 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     // max for payment token amount
     uint256 public maxTotalPayment;
     // current purchased amount
-    uint256 public totalPurchased;
+    uint256 public saleTokenPurchased;
     // optional min for payment token amount
     uint256 public minTotalPayment;
     // optional max for total purchasable amount, default is 0 if there's no limit
@@ -100,8 +100,8 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
         // payment must not exceed remaining
         require(paymentAmount <= remaining, 'exceeds max payment');
 
-        totalPurchased += paymentAmount;
-        require(maxTotalPurchasable == 0 || maxTotalPurchasable >= totalPurchased, 'exceed max purchasable');
+        saleTokenPurchased += paymentAmount;
+        require(maxTotalPurchasable == 0 || maxTotalPurchasable >= saleTokenPurchased, 'exceed max purchasable');
 
         // transfer specified amount from user to this contract
         paymentToken.safeTransferFrom(_msgSender(), address(this), paymentAmount);
