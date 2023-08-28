@@ -26,8 +26,14 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     uint256 public salePrice;
     // max for payment token amount
     uint256 public maxTotalPayment;
+    // current purchased amount
+    uint256 public totalPurchased;
     // optional min for payment token amount
     uint256 public minTotalPayment;
+    // optional max for total purchasable amount, default is 0 if there's no limit
+    // assuming all users buy the token on the same price
+    uint256 public maxTotalPurchasable;
+
 
     // --- USER INFO
 
@@ -41,6 +47,7 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
 
     event Purchase(address indexed sender, uint256 paymentAmount);
     event SetMinTotalPayment(uint256 indexed minTotalPayment);
+    event SetMaxTotalPurchasable(uint256 indexed _maxTotalPurchasable);
 
     constructor(
         ERC20 _paymentToken,
@@ -70,6 +77,15 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
         emit SetMinTotalPayment(_minTotalPayment);
     }
 
+
+    // Function for owner to set an optional, maxTotalPurchasable
+    // The amount is calculated on salePrice. 
+    function setMaxTotalPurchasable(uint256 _maxTotalPurchasable) public onlyOwner {
+        maxTotalPurchasable = _maxTotalPurchasable * salePrice;
+
+        emit SetMaxTotalPurchasable(_maxTotalPurchasable);
+    }
+
     // --- PURCHASE
 
     function purchase(uint256 paymentAmount) virtual public {}
@@ -83,6 +99,9 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
 
         // payment must not exceed remaining
         require(paymentAmount <= remaining, 'exceeds max payment');
+
+        totalPurchased += paymentAmount;
+        require(maxTotalPurchasable == 0 || maxTotalPurchasable >= totalPurchased, 'exceed max purchasable');
 
         // transfer specified amount from user to this contract
         paymentToken.safeTransferFrom(_msgSender(), address(this), paymentAmount);
