@@ -46,6 +46,7 @@
     "@matterlabs/hardhat-zksync-solc": "^0.4.0",
     "@matterlabs/hardhat-zksync-verify": "^0.1.8",
     "@nomiclabs/hardhat-web3": "^2.0.0",
+    "@omni/contracts": "https://github.com/omni-network/omni-std",
     "erc-payable-token": "^4.5.0"
   },
   "husky": {
