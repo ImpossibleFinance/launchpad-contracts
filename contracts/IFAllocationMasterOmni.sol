@@ -185,8 +185,12 @@ contract IFAllocationMasterOmni is
     // MODIFIERS
     
     // Throws if called by any account other than approved cross-chain omni caller
+    function isContractWhitelisted(address _address) public view returns (bool) {
+        return whitelistedContracts[_address];
+    }
+
     modifier onlyWhitelistedContracts() {
-        require(whitelistedContracts[_msgSender()] == true, 'source contract is not whitelisted');
+        require(isContractWhitelisted(_msgSender()) == true, 'source contract is not whitelisted');
         _;
     }
 
@@ -271,7 +275,7 @@ contract IFAllocationMasterOmni is
     // perform active rollover
     function activeRollOver(uint24 trackId) external {
         // add new user checkpoint
-        addUserCheckpoint(trackId, 0, false);
+        addUserCheckpoint(trackId, 0, false, _msgSender());
 
         // get new user checkpoint
         UserCheckpoint memory userCp = userCheckpoints[trackId][_msgSender()][
@@ -592,13 +596,14 @@ contract IFAllocationMasterOmni is
     function addUserCheckpoint(
         uint24 trackId,
         uint104 amount,
-        bool addElseSub
+        bool addElseSub,
+        address user
     ) internal {
         // get track info
         TrackInfo storage track = tracks[trackId];
 
         // get user checkpoint count
-        uint32 nCheckpointsUser = userCheckpointCounts[trackId][_msgSender()];
+        uint32 nCheckpointsUser = userCheckpointCounts[trackId][user];
 
         // get track checkpoint count
         uint32 nCheckpointsTrack = trackCheckpointCounts[trackId];
@@ -614,13 +619,13 @@ contract IFAllocationMasterOmni is
             require(amount <= track.maxTotalStake, 'exceeds staking cap');
 
             // add user to stakers list of track
-            trackStakers[trackId].push(_msgSender());
+            trackStakers[trackId].push(user);
 
             // increment stakers count on track
             numTrackStakers[trackId]++;
 
             // add a first checkpoint for this user on this track
-            userCheckpoints[trackId][_msgSender()][0] = UserCheckpoint({
+            userCheckpoints[trackId][user][0] = UserCheckpoint({
                 timestamp: uint80(block.timestamp),
                 staked: amount,
                 stakeWeight: 0,
@@ -628,11 +633,11 @@ contract IFAllocationMasterOmni is
             });
 
             // increment user's checkpoint count
-            userCheckpointCounts[trackId][_msgSender()] = nCheckpointsUser + 1;
+            userCheckpointCounts[trackId][user] = nCheckpointsUser + 1;
         } else {
             // get previous checkpoint
             UserCheckpoint storage prev = userCheckpoints[trackId][
-                _msgSender()
+                user
             ][nCheckpointsUser - 1];
 
             // check if amount exceeds maximum
@@ -657,7 +662,7 @@ contract IFAllocationMasterOmni is
                     : prev.staked - amount;
                 prev.numFinishedSales = trackCp.numFinishedSales;
             } else {
-                userCheckpoints[trackId][_msgSender()][
+                userCheckpoints[trackId][user][
                     nCheckpointsUser
                 ] = UserCheckpoint({
                     timestamp: uint80(block.timestamp),
@@ -666,14 +671,14 @@ contract IFAllocationMasterOmni is
                         : prev.staked - amount,
                     stakeWeight: getUserStakeWeight(
                         trackId,
-                        _msgSender(),
+                        user,
                         uint80(block.timestamp)
                     ),
                     numFinishedSales: trackCp.numFinishedSales
                 });
 
                 // increment user's checkpoint count
-                userCheckpointCounts[trackId][_msgSender()] =
+                userCheckpointCounts[trackId][user] =
                     nCheckpointsUser +
                     1;
             }
@@ -805,12 +810,9 @@ contract IFAllocationMasterOmni is
     }
 
     // stake
-    function stake(uint24 trackId, uint104 amount) external onlyWhitelistedContracts nonReentrant {
+    function stake(uint24 trackId, uint104 amount, address user) external onlyWhitelistedContracts nonReentrant {
         // stake amount must be greater than 0
         require(amount > 0, 'amount is 0');
-
-        // get track info
-        TrackInfo storage track = tracks[trackId];
 
         // get whether track is disabled
         bool isDisabled = trackDisabled[trackId];
@@ -819,7 +821,7 @@ contract IFAllocationMasterOmni is
         require(!isDisabled, 'track is disabled');
 
         // add user checkpoint
-        addUserCheckpoint(trackId, amount, true);
+        addUserCheckpoint(trackId, amount, true, user);
 
         // add track checkpoint
         addTrackCheckpoint(trackId, amount, true, false);
@@ -835,38 +837,35 @@ contract IFAllocationMasterOmni is
         }
 
         // emit
-        emit Stake(trackId, _msgSender(), amount);
+        emit Stake(trackId, user, amount);
     }
 
     // unstake
-    function unstake(uint24 trackId, uint104 amount) external onlyWhitelistedContracts nonReentrant {
+    function unstake(uint24 trackId, uint104 amount, address user) external onlyWhitelistedContracts nonReentrant {
         // amount must be greater than 0
         require(amount > 0, 'amount is 0');
 
-        // get track info
-        TrackInfo storage track = tracks[trackId];
-
         // get number of user's checkpoints within this track
         uint32 userCheckpointCount = userCheckpointCounts[trackId][
-            _msgSender()
+            user
         ];
 
         // get user's latest checkpoint
         UserCheckpoint storage checkpoint = userCheckpoints[trackId][
-            _msgSender()
+            user
         ][userCheckpointCount - 1];
 
         // ensure amount <= user's current stake
         require(amount <= checkpoint.staked, 'amount > staked');
 
         // add user checkpoint
-        addUserCheckpoint(trackId, amount, false);
+        addUserCheckpoint(trackId, amount, false, user);
 
         // add track checkpoint
         addTrackCheckpoint(trackId, amount, false, false);
 
         // emit
-        emit Unstake(trackId, _msgSender(), amount);
+        emit Unstake(trackId, user, amount);
     }
 
     // emergency withdraw
@@ -898,7 +897,7 @@ contract IFAllocationMasterOmni is
 
         // update checkpoint before emergency withdrawal
         // add user checkpoint
-        addUserCheckpoint(trackId, checkpoint.staked, false);
+        addUserCheckpoint(trackId, checkpoint.staked, false, _msgSender());
         // add track checkpoint
         addTrackCheckpoint(trackId, checkpoint.staked, false, false);
 

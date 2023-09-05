@@ -186,6 +186,10 @@ contract IFAllocationMasterSource is
     // FUNCTIONS
 
     // set omni chain contract address 
+    function setOmniPortal(IOmniPortal _portal) external onlyOwner {
+        omni = _portal;
+    }
+
     function setOmniddress(address _address) external onlyOwner {
         omniAddress = _address;
     }
