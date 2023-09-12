@@ -190,7 +190,7 @@ contract IFAllocationMasterSource is
         omni = _portal;
     }
 
-    function setOmniddress(address _address) external onlyOwner {
+    function setOmniAddress(address _address) external onlyOwner {
         omniAddress = _address;
     }
 
@@ -832,7 +832,7 @@ contract IFAllocationMasterSource is
 
         omni.sendOmniTx(
             omniAddress,
-            abi.encodeWithSignature('stake(uint24, uint104)', trackId, amount)
+            abi.encodeWithSignature('stake(uint24,uint104,address)', trackId, amount, _msgSender())
         );
 
         // emit
@@ -871,7 +871,7 @@ contract IFAllocationMasterSource is
 
         omni.sendOmniTx(
             omniAddress,
-            abi.encodeWithSignature('unstake(uint24, uint104)', trackId, amount)
+            abi.encodeWithSignature('unstake(uint24,uint104,address)', trackId, amount, _msgSender())
         );
 
         // emit
