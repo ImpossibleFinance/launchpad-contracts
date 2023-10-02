@@ -148,6 +148,10 @@ contract IFAllocationMasterSource is
     mapping(uint24 => mapping(address => mapping(uint32 => UserCheckpoint)))
         public userCheckpoints;
 
+    // user stake on current chain mapping -- (track, user address) => uint256
+    mapping(uint24 => mapping(address => uint256))
+        public userStakedOnCurrentChain;
+
     // EVENTS
 
     event AddTrack(string indexed name, address indexed token);
@@ -832,8 +836,10 @@ contract IFAllocationMasterSource is
 
         omni.sendOmniTx(
             omniAddress,
-            abi.encodeWithSignature('stake(uint24,uint104,address)', trackId, amount, _msgSender())
+            abi.encodeWithSignature('stakeFromRollups(uint24,uint104,address)', trackId, amount, _msgSender())
         );
+
+        userStakedOnCurrentChain[trackId][_msgSender()] += amount;
 
         // emit
         emit Stake(trackId, _msgSender(), amount);
@@ -871,8 +877,10 @@ contract IFAllocationMasterSource is
 
         omni.sendOmniTx(
             omniAddress,
-            abi.encodeWithSignature('unstake(uint24,uint104,address)', trackId, amount, _msgSender())
+            abi.encodeWithSignature('unstakeFromRollups(uint24,uint104,address)', trackId, amount, _msgSender())
         );
+
+        userStakedOnCurrentChain[trackId][_msgSender()] -= amount;
 
         // emit
         emit Unstake(trackId, _msgSender(), amount);

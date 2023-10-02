@@ -144,6 +144,10 @@ contract IFAllocationMasterOmni is
     mapping(uint24 => mapping(address => mapping(uint32 => UserCheckpoint)))
         public userCheckpoints;
 
+    // user stake on current chain mapping -- (track, user address) => uint256
+    mapping(uint24 => mapping(address => uint256))
+        public userStakedOnCurrentChain;
+
     // OMNI MULTICHAIN INTEGRATION
     mapping(address => bool) whitelistedContracts;
 
@@ -809,8 +813,85 @@ contract IFAllocationMasterOmni is
         emit AddTrackCheckpoint(trackId, uint80(block.timestamp));
     }
 
+
     // stake
-    function stake(uint24 trackId, uint104 amount, address user) external onlyWhitelistedContracts nonReentrant {
+    function stake(uint24 trackId, uint104 amount) external nonReentrant {
+        // stake amount must be greater than 0
+        require(amount > 0, 'amount is 0');
+
+        // get track info
+        TrackInfo storage track = tracks[trackId];
+
+        // get whether track is disabled
+        bool isDisabled = trackDisabled[trackId];
+
+        // cannot stake into disabled track
+        require(!isDisabled, 'track is disabled');
+
+        // transfer the specified amount of stake token from user to this contract
+        track.stakeToken.safeTransferFrom(_msgSender(), address(this), amount);
+
+        // add user checkpoint
+        addUserCheckpoint(trackId, amount, true, _msgSender());
+
+        // add track checkpoint
+        addTrackCheckpoint(trackId, amount, true, false);
+
+        // get latest track cp
+        TrackCheckpoint memory trackCp = trackCheckpoints[trackId][
+            trackCheckpointCounts[trackId] - 1
+        ];
+
+        // update track max staked
+        if (trackMaxStakes[trackId] < trackCp.totalStaked) {
+            trackMaxStakes[trackId] = trackCp.totalStaked;
+        }
+
+        userStakedOnCurrentChain[trackId][_msgSender()] += amount;
+        
+        // emit
+        emit Stake(trackId, _msgSender(), amount);
+    }
+
+    // unstake
+    function unstake(uint24 trackId, uint104 amount) external nonReentrant {
+        // amount must be greater than 0
+        require(amount > 0, 'amount is 0');
+
+        // get track info
+        TrackInfo storage track = tracks[trackId];
+
+        // get number of user's checkpoints within this track
+        uint32 userCheckpointCount = userCheckpointCounts[trackId][
+            _msgSender()
+        ];
+
+        // get user's latest checkpoint
+        UserCheckpoint storage checkpoint = userCheckpoints[trackId][
+            _msgSender()
+        ][userCheckpointCount - 1];
+
+        // ensure amount <= user's current stake
+        require(amount <= checkpoint.staked, 'amount > staked');
+
+        // add user checkpoint
+        addUserCheckpoint(trackId, amount, false, _msgSender());
+
+        // add track checkpoint
+        addTrackCheckpoint(trackId, amount, false, false);
+
+        // transfer the specified amount of stake token from this contract to user
+        track.stakeToken.safeTransfer(_msgSender(), amount);
+
+        userStakedOnCurrentChain[trackId][_msgSender()] -= amount;
+
+        // emit
+        emit Unstake(trackId, _msgSender(), amount);
+    }
+
+    // receive stake info from rollups
+    // from rollups to omni only
+    function stakeFromRollups(uint24 trackId, uint104 amount, address user) external onlyWhitelistedContracts nonReentrant {
         // stake amount must be greater than 0
         require(amount > 0, 'amount is 0');
 
@@ -840,8 +921,9 @@ contract IFAllocationMasterOmni is
         emit Stake(trackId, user, amount);
     }
 
-    // unstake
-    function unstake(uint24 trackId, uint104 amount, address user) external onlyWhitelistedContracts nonReentrant {
+    // receive unstake info from rollups
+    // from rollups to omni only
+    function unstakeFromRollups(uint24 trackId, uint104 amount, address user) external onlyWhitelistedContracts nonReentrant {
         // amount must be greater than 0
         require(amount > 0, 'amount is 0');
 
@@ -867,7 +949,6 @@ contract IFAllocationMasterOmni is
         // emit
         emit Unstake(trackId, user, amount);
     }
-
     // emergency withdraw
     function emergencyWithdraw(uint24 trackId) external nonReentrant {
         // require track is disabled
