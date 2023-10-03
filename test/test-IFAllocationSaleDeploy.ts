@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { getBlockTime, mineNext, mineTimeDelta, setAutomine } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from 'ethers'
-import { END_TIMESTAMP_TOO_EARLY, INPUT_SHOULD_NOT_BE_0_WHEN_SALE_PRIVE_IS_0 } from './reverts/msg-IFAllocationSale'
+import { INPUT_SHOULD_NOT_BE_0_WHEN_SALE_PRIVE_IS_0 } from './reverts/msg-IFAllocationSale'
 
 export default describe('IF Allocation Sale Deployment', function () {
   this.timeout(0)
@@ -160,7 +160,7 @@ export default describe('IF Allocation Sale Deployment', function () {
         currTime + 250,
         maxTotalDeposit
       )
-    ).to.be.revertedWith(END_TIMESTAMP_TOO_EARLY)
+    ).to.be.revertedWith('total weight is 0 on while using older timestamp')
   })
 
   // TokenAddress = PaymentAddress

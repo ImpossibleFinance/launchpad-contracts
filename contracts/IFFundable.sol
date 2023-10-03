@@ -72,7 +72,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
         require(block.timestamp < _startTime, 'start timestamp too early');
         require(_startTime - ONE_YEAR < block.timestamp, 'start time has to be within 1 year');
         // end timestamp must be after start timestamp
-        require(_startTime < _endTime - ONE_HOUR, 'end timestamp before start should be least 1 hour');
+        require(_startTime < _endTime, 'end timestamp must be after start timestamp');
         require(_endTime - TEN_YEARS < _startTime, 'end time has to be within 10 years');
 
         require(_funder != address(0), '0x0 funder');
