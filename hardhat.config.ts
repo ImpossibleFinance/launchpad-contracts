@@ -150,5 +150,30 @@ module.exports = {
         mnemonic: process.env.MAINNET_MNEMONIC || '',
       },
     },
+    omni_test: {
+      url: 'https://testnet.omni.network',
+      chainId: 165,
+      gasPrice: 5000000000,
+      accounts: {
+        mnemonic: process.env.MAINNET_MNEMONIC || '',
+      },
+    },
+    arbitrum_goerili: {
+      url: 'https://goerli-rollup.arbitrum.io/rpc',
+      chainId: 421613,
+      gasPrice: 5000000000,
+      accounts: {
+        mnemonic: process.env.MAINNET_MNEMONIC || '',
+      },
+    },
+    linea_goerili: {
+      url: 'https://rpc.goerli.linea.build',
+      chainId: 59140,
+      gasPrice: 5000000000,
+      accounts: {
+        mnemonic: process.env.MAINNET_MNEMONIC || '',
+      },
+    },
+
   },
 }
