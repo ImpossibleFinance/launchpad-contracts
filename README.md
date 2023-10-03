@@ -244,3 +244,9 @@ Deploy sale contract. Get the allocation master address from the previous deploy
 ```bash
 SELLER=0x54F5A04417E29FF5D7141a6d33cb286F50d5d50e PAY_TOKEN=0x0b15Ddf19D47E6a86A56148fb4aFFFc6929BcB89 SALE_TOKEN=0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82 ALLOCATION_MASTER=<ALLOCATION_MASTER_ADDRESS> TRACK_ID=1 SNAP_BLOCK=1667377037 START_BLOCK=1667377037 END_BLOCK=1767377037 SALE_PRICE=100000000000000000000 MAX_TOTAL_PAYMENT=10000000000000000000000 npx hardhat run ./scripts/IFAllocationSale-deploy.ts --network localhost
 ```
+
+## Compile contracts into go files
+The base path taken by the compile script is `./contract`. 
+```bash
+bash scripts/compile-go-file.sh <CONTRACT_NAME>
+```
