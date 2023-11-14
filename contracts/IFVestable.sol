@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import 'hardhat/console.sol';
 
 /**
   @dev Abstract contract containing vesting logics.
@@ -25,6 +26,8 @@ abstract contract IFVestable is Ownable {
     // if true, the user cannot claim the token after `buybackClaimableNumber` vesting phase
     // only applicable to cliff vesting for now
     mapping(address => bool) public hasOptInBuyback;
+
+    address[] public hasOptInBuybackList;
 
     // the number of vesting phase the user can claim the token if they have opted in to buyback
     // default 0
@@ -124,6 +127,19 @@ abstract contract IFVestable is Ownable {
 
     // --- VESTING LOGIC
 
+    function optInBuybackLockPercentage() public view returns (uint8) {
+        uint8 claimablePct = 0;
+        uint256 cliffPeriodLength = cliffPeriod.length;
+        for (uint8 i; i < cliffPeriodLength; i++) {
+            if (i >= buybackClaimableNumber) {
+                // Total claimablePct won't be larger than 100
+                return 100 - claimablePct;
+            }
+            claimablePct += cliffPeriod[i].pct;
+        }
+        return 100 - claimablePct;
+    }
+
     // Opt in buyback. If called, the user will not be able to claim their token afer 
     // Emit an event OptInBuyback(user) if the user has successfully opted in
     // Only applicable to cliff vesting for now
@@ -131,7 +147,9 @@ abstract contract IFVestable is Ownable {
         address user = _msgSender();
         require(hasOptInBuyback[user] == false, "user has already opted in");
         require(buybackClaimableNumber != 0, "buyback is not enabled");
+        require(cliffPeriod[buybackClaimableNumber].claimTime > block.timestamp, "opt in period has ended");
         hasOptInBuyback[user] = true;
+        hasOptInBuybackList.push(user);
         emit OptInBuyback(user);
     }
 
