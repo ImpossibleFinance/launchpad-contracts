@@ -126,7 +126,7 @@ abstract contract IFVestable is Ownable {
     }
 
     // --- VESTING LOGIC
-
+    // Return 0 if optInBuyback is not enabled
     function optInBuybackLockPercentage() public view returns (uint8) {
         uint8 claimablePct = 0;
         uint256 cliffPeriodLength = cliffPeriod.length;

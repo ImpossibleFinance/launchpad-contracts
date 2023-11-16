@@ -23,6 +23,8 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     mapping(address => uint256) public claimable;
     // tracks amount of tokens purchased by each address
     mapping(address => uint256) public totalPurchased;
+    // tracks whether sale tokens has been cashed
+    bool public hasCashedOptInBuyback;
 
     // --- CONSTRUCTOR
 
@@ -147,6 +149,8 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     }
 
     // --- Cash OptInBackback
+    // Cash sale tokens locked by optInBuyback
+    // Doesn't overlap with `amountUnsold` in `cash()`
     function cashOptInBuyback() external onlyCasherOrOwner {
         // must be past end timestamp plus withdraw delay
         require(
@@ -154,14 +158,15 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
             'cannot withdraw yet'
         );
         // prevent repeat cash
-        require(!hasCashed, 'already cashed');
+        require(!hasCashedOptInBuyback, 'already cashed');
+        hasCashedOptInBuyback = true;
         uint256 totalOptInBuybackPurchased;
         for (uint256 i; i < hasOptInBuybackList.length; i++) {
             totalOptInBuybackPurchased += totalPurchased[hasOptInBuybackList[i]];
         }
         uint8 percentageLocked = optInBuybackLockPercentage();
-        uint256 totalLocked = totalOptInBuybackPurchased * percentageLocked / 100;
-        saleToken.safeTransfer(_msgSender(), totalLocked);
+        uint256 amountLocked = totalOptInBuybackPurchased * percentageLocked / 100;
+        saleToken.safeTransfer(_msgSender(), amountLocked);
     }
 
 }
