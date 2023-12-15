@@ -93,6 +93,35 @@ contract IFFixedSale is IFSale {
         require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
     }
 
+    // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
+    function withdrawGiveawayVested(bytes32[] calldata merkleProof, uint256 allocation)
+        external
+        nonReentrant
+        onlyAfterSale
+    {
+        address user = _msgSender();
+        // must be a zero price sale
+        require(salePrice == 0, 'not a giveaway');
+        // if there is whitelist, require that user is whitelisted by checking proof
+        require(
+            whitelistRootHash == 0 || checkWhitelist(user, merkleProof, allocation),
+            'proof invalid'
+        );
+
+        // initialize claimable before the first time of withdrawal
+        if (!hasWithdrawn[user]) {
+            claimable[user] = allocation;
+            totalPurchased[user] = allocation;
+        }
+
+        uint256 tokenOwed = getCurrentClaimableToken(user);
+
+        // send token and update states
+        _withdraw(tokenOwed);
+        // sale token owed must be greater than 0
+        require(tokenOwed != 0, 'withdraw giveaway amount 0');
+    }
+
     // --- HELPER FUNCTIONS
 
     // Returns true if user's allocation matches the one in merkle root, otherwise false
