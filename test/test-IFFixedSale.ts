@@ -3,10 +3,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { computeMerkleProof, computeMerkleRoot, getAddressIndex } from '../library/merkleWhitelist'
-import IFAllocationSaleGeneralTest, { _ctx } from './IFAllocationSaleGeneralTest'
+import IFAllocationSaleGeneralTest, { _ctx, _ctxFree } from './IFAllocationSaleGeneralTest'
 import { getBlockTime, mineNext, mineTimeDelta } from './helpers'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY } from './reverts/msg-IFAllocationSale'
+import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY, USE_VESTED_WITHDRAW_GIVEAWAY } from './reverts/msg-IFAllocationSale'
 
 function computeMerkleRootWithAllocation(signers: SignerWithAddress[], allocations: number[]): [string[], Map<string, string>]{
     const leaves: string[] = []
@@ -31,11 +31,12 @@ export default describe('IF Fixed Sale', function () {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctx: any = _ctx
+  const ctxFree: any = _ctxFree
 
   const contractName = 'MockIFFixedSale'
 
   const generalTest = IFAllocationSaleGeneralTest
-  generalTest(this, contractName, ctx)
+  generalTest(this, contractName, ctx, _ctxFree)
 
 
   generalTest.prototype.it = it('can save allocation amount in merkle tree', async function () {
@@ -175,5 +176,41 @@ export default describe('IF Fixed Sale', function () {
 
     // test withdrawer counter
     expect(await ctx.IFAllocationSale.withdrawerCount()).to.equal(2)
+  })
+
+  generalTest.prototype.it = it('can giveaway whitelist vested tokens', async function () {
+    console.log('can giveaway whitelist vested tokens')
+    mineNext()
+
+    const allocationAmount = 5000
+
+    const [leaves, addressValMap] = computeMerkleRootWithAllocation([ctxFree.buyer, ctxFree.buyer2], [allocationAmount, allocationAmount])
+    await ctxFree.IFAllocationSale.connect(ctxFree.owner).setWhitelist(computeMerkleRoot(leaves))
+    mineNext()
+    await ctxFree.IFAllocationSale.connect(ctxFree.owner).setVestedGiveaway(true)
+    mineNext()
+
+    // fast forward from current time to after end time
+    mineTimeDelta(ctxFree.endTime - (await getBlockTime()))
+
+    // test withdraw
+    mineNext()
+    // access control: Withdraw giveaway when sale price is not 0
+    await expect(ctxFree.IFAllocationSale.connect(ctxFree.buyer)['withdrawGiveaway(bytes32[],uint256)']([], allocationAmount)).to.be.revertedWith(USE_VESTED_WITHDRAW_GIVEAWAY)
+    
+    // test withdrawGiveawayVested
+    const packed = addressValMap.get(ctxFree.buyer.address.toLowerCase()) || ''
+    const tempAcctIdx = getAddressIndex(leaves, packed)
+    await ctxFree.IFAllocationSale.connect(ctxFree.buyer)['withdrawGiveawayVested(bytes32[],uint256)'](
+      computeMerkleProof(leaves, tempAcctIdx),
+      allocationAmount,
+    )
+    mineNext()
+
+    // expect balance to be 5000 for both buyers
+    expect(await ctxFree.SaleToken.balanceOf(ctxFree.buyer.address)).to.equal('5000')
+
+    // test withdrawer counter
+    expect(await ctxFree.IFAllocationSale.withdrawerCount()).to.equal(1)
   })
 })

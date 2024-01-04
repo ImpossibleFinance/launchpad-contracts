@@ -18,3 +18,4 @@ export const CANNOT_WITHDRAW_BEFORE_CLAIM = 'can\'t withdraw before claim is sta
 export const ADDRESS_ZERO_FUNDER = '0x0 funder'
 export const BUY_BACK_NOT_ENABLED = 'buyback is not enabled'
 export const ALREADY_OPTED_IN = 'user has already opted in'
+export const USE_VESTED_WITHDRAW_GIVEAWAY = 'use withdrawGiveawayVested'

@@ -37,7 +37,31 @@ export const _ctx ={
   fundAmount: '1000000000'
 }
 
-export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
+export const _ctxFree = {
+  owner: SignerWithAddress,
+  buyer: SignerWithAddress,
+  buyer2: SignerWithAddress,
+  seller: SignerWithAddress,
+  casher: SignerWithAddress,
+  StakeToken: Contract,
+  PaymentToken: Contract,
+  SaleToken: Contract,
+  IFAllocationMaster: Contract,
+  IFAllocationSale: Contract,
+  trackId: 0,
+  // sale contract vars
+  snapshotTimestamp: 0,// block at which to take allocation snapshot
+  startTime: 0, // start timestamp of sale (inclusive)
+  endTime: 0, // end timestamp of sale (inclusive)
+  linearVestingEndTime: 0, // end timestamp of vesting
+  salePrice: '0', // FREE
+  maxTotalDeposit: '25000000000000000000000000', // max deposit
+  // other vars
+  // const ctx.fundAmount = '33333'
+  fundAmount: '1000000000'
+}
+
+export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctxFree: any) {
   // unset timeout from the test
   _this.timeout(0)
 
@@ -175,6 +199,77 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any) {
 
     //fastforward from current block to after snapshot block
     mineTimeDelta(ctx.snapshotTimestamp - (await getBlockTime()))
+
+    //Setup ctxFree
+    if (!ctxFree) return
+
+    ctxFree.snapshotTimestamp = currTime + 5000
+    ctxFree.startTime = currTime + 10000
+    ctxFree.endTime = currTime + 20000
+    ctxFree.linearVestingEndTime = currTime + 50000
+
+    //Free get test accounts
+    ctxFree.owner = (await ethers.getSigners())[0]
+    ctxFree.buyer = (await ethers.getSigners())[1]
+    ctxFree.seller = (await ethers.getSigners())[2]
+    ctxFree.casher = (await ethers.getSigners())[3]
+    ctxFree.buyer2 = (await ethers.getSigners())[4]
+    ctxFree.StakeToken = ctx.StakeToken
+    ctxFree.PaymentToken = ctx.PaymentToken
+    ctxFree.SaleToken = ctx.SaleToken
+
+    //Free redistribute tokens
+    mineNext()
+    ctxFree.StakeToken.connect(ctxFree.buyer).transfer(
+      ctxFree.buyer2.address,
+      '1000000000000000000000000'
+    )
+    ctxFree.PaymentToken.connect(ctxFree.buyer).transfer(
+      ctxFree.buyer2.address,
+      '1000000000000000000000000'
+    )
+
+    //Free deploy allocation master
+    ctxFree.IFAllocationMaster = await IFAllocationMasterFactory.deploy(
+      ethers.constants.AddressZero
+    )
+
+    mineNext()
+    await ctxFree.IFAllocationMaster.addTrack(
+      'IDIA track', // name
+      ctxFree.StakeToken.address, // stake token
+      10000, // weight accrual rate
+      '100000000000000000', // passive rollover rate (10%)
+      '200000000000000000', // active rollover rate (20%)
+      '1000000000000000000000000000000' // max total stake (1 trillion)
+    )
+    mineNext()
+
+    ctxFree.IFAllocationSale = await IFAllocationSaleFactory.deploy(
+      ctxFree.salePrice,
+      ctxFree.seller.address,
+      ctxFree.PaymentToken.address,
+      ctxFree.SaleToken.address,
+      ctxFree.IFAllocationMaster.address,
+      ctxFree.trackId,
+      ctxFree.snapshotTimestamp,
+      ctxFree.startTime,
+      ctxFree.endTime,
+      ctxFree.maxTotalDeposit
+    )
+    mineNext()
+
+    // set the ctx.casher address
+    await ctxFree.IFAllocationSale.setCasher(ctxFree.casher.address)
+    mineNext()
+
+    // fund sale
+    await ctxFree.SaleToken.connect(ctxFree.seller).approve(
+      ctxFree.IFAllocationSale.address,
+      ctxFree.fundAmount
+    )
+    await ctxFree.IFAllocationSale.connect(ctxFree.seller).fund(ctxFree.fundAmount) // fund
+    mineNext()
   })
 
   it('can purchase, withdraw, and cash', async function () {

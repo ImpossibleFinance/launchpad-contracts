@@ -34,6 +34,13 @@ contract IFFixedSale is IFSale {
         )
     {}
 
+    bool isVestedGiveaway = false;
+
+    // --- SETTER FUNCTIONS
+    function setVestedGiveaway(bool _isVestedGiveaway) public onlyOwner {
+        isVestedGiveaway = _isVestedGiveaway;
+    }
+
     // --- DISABLED FUNCTIONS
 
     function purchase(uint256) virtual override public {
@@ -70,6 +77,8 @@ contract IFFixedSale is IFSale {
         onlyAfterSale
     {
         address user = _msgSender();
+        // not vested giveaway
+        require(isVestedGiveaway == false, 'use withdrawGiveawayVested');
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
         // if there is whitelist, require that user is whitelisted by checking proof
@@ -100,6 +109,9 @@ contract IFFixedSale is IFSale {
         onlyAfterSale
     {
         address user = _msgSender();
+
+        // not vested giveaway
+        require(isVestedGiveaway == true, 'use withdrawGiveaway');
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
         // if there is whitelist, require that user is whitelisted by checking proof
