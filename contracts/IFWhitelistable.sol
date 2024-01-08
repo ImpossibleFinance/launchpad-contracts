@@ -14,6 +14,11 @@ abstract contract IFWhitelistable is Ownable, ReentrancyGuard {
     event SetWhitelistSetter(address indexed whitelistSetter);
     event SetWhitelist(bytes32 indexed whitelistRootHash);
 
+    constructor() {
+        whitelistSetter = _msgSender();
+    }
+
+
     // Throws if called by any account other than the whitelist setter.
     modifier onlyWhitelistSetterOrOwner() {
         require(
