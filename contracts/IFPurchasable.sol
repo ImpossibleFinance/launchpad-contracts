@@ -123,31 +123,14 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     }
 
     function _purchaseWithCode(uint256 paymentAmount, uint256 remaining, string memory code) virtual internal nonReentrant {
-        // amount must be greater than minTotalPayment
-        // by default, minTotalPayment is 0 unless otherwise set
-        require(paymentAmount >= minTotalPayment, 'amount below min');
-
-        // payment must not exceed remaining
-        require(paymentAmount <= remaining, 'exceeds max payment');
-
-        saleTokenPurchased += paymentAmount;
-        require(maxTotalPurchasable == 0 || maxTotalPurchasable >= saleTokenPurchased, 'exceed max purchasable');
-
-        // transfer specified amount from user to this contract
-        paymentToken.safeTransferFrom(_msgSender(), address(this), paymentAmount);
-
-        // if user is paying for the first time to this contract, increase counter
-        if (paymentReceived[_msgSender()] == 0) purchaserCount += 1;
-
+        _purchase(paymentAmount, remaining);
+        
         if (bytes(code).length > 0) {
             amountPerCode[code] += paymentAmount;
             if (paymentReceived[_msgSender()] == 0) {
                 uniqueUsePerCode[code] += 1;
             }
         }
-
-        // increase payment received amount
-        paymentReceived[_msgSender()] += paymentAmount;
 
         emit PurchaseWithCode(_msgSender(), paymentAmount, code);
     }
