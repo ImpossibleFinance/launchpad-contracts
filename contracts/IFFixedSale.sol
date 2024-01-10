@@ -50,6 +50,20 @@ contract IFFixedSale is IFSale {
 
     // --- WHITELISTED ACTIONS
 
+        // purchase function when there is a whitelist
+    function whitelistedPurchaseWithCode(
+        uint256 paymentAmount,
+        bytes32[] calldata merkleProof,
+        uint256 allocation,
+        string memory code
+    ) public onlyDuringSale {
+        // require that user is whitelisted by checking proof
+        require(checkWhitelist(_msgSender(), merkleProof, allocation), 'proof invalid');
+
+        uint256 remaining = getMaxPayment(_msgSender(), allocation);
+        _purchaseWithCode(paymentAmount, remaining, code);
+    }
+
     // purchase function when there is a whitelist
     function whitelistedPurchase(
         uint256 paymentAmount,

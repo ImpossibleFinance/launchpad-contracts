@@ -40,12 +40,17 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     // tracks amount purchased by each address
     mapping(address => uint256) public paymentReceived;
 
+    // promo code
+    mapping(string => uint256) public amountPerCode;
+    mapping(string => uint256) public uniqueUsePerCode;
+
     // --- STAT
 
     // counter of unique purchasers
     uint32 public purchaserCount;
 
     event Purchase(address indexed sender, uint256 paymentAmount);
+    event PurchaseWithCode(address indexed sender, uint256 paymentAmount, string code);
     event SetMinTotalPayment(uint256 indexed minTotalPayment);
     event SetMaxTotalPurchasable(uint256 indexed _maxTotalPurchasable);
 
@@ -115,5 +120,18 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
         paymentReceived[_msgSender()] += paymentAmount;
 
         emit Purchase(_msgSender(), paymentAmount);
+    }
+
+    function _purchaseWithCode(uint256 paymentAmount, uint256 remaining, string memory code) virtual internal nonReentrant {
+        _purchase(paymentAmount, remaining);
+        
+        if (bytes(code).length > 0) {
+            amountPerCode[code] += paymentAmount;
+            if (paymentReceived[_msgSender()] == 0) {
+                uniqueUsePerCode[code] += 1;
+            }
+        }
+
+        emit PurchaseWithCode(_msgSender(), paymentAmount, code);
     }
 }
