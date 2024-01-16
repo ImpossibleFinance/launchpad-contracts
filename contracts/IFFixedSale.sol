@@ -34,6 +34,13 @@ contract IFFixedSale is IFSale {
         )
     {}
 
+    bool isVestedGiveaway = false;
+
+    // --- SETTER FUNCTIONS
+    function setVestedGiveaway(bool _isVestedGiveaway) public onlyOwner {
+        isVestedGiveaway = _isVestedGiveaway;
+    }
+
     // --- DISABLED FUNCTIONS
 
     function purchase(uint256) virtual override public {
@@ -84,6 +91,8 @@ contract IFFixedSale is IFSale {
         onlyAfterSale
     {
         address user = _msgSender();
+        // not vested giveaway
+        require(isVestedGiveaway == false, 'use withdrawGiveawayVested');
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
         // if there is whitelist, require that user is whitelisted by checking proof
@@ -105,6 +114,38 @@ contract IFFixedSale is IFSale {
         _withdraw(saleTokenOwed);
         // sale token owed must be greater than 0
         require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
+    }
+
+    // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
+    function withdrawGiveawayVested(bytes32[] calldata merkleProof, uint256 allocation)
+        external
+        nonReentrant
+        onlyAfterSale
+    {
+        address user = _msgSender();
+
+        // not vested giveaway
+        require(isVestedGiveaway == true, 'use withdrawGiveaway');
+        // must be a zero price sale
+        require(salePrice == 0, 'not a giveaway');
+        // if there is whitelist, require that user is whitelisted by checking proof
+        require(
+            whitelistRootHash == 0 || checkWhitelist(user, merkleProof, allocation),
+            'proof invalid'
+        );
+
+        // initialize claimable before the first time of withdrawal
+        if (!hasWithdrawn[user]) {
+            claimable[user] = allocation;
+            totalPurchased[user] = allocation;
+        }
+
+        uint256 tokenOwed = getCurrentClaimableToken(user);
+
+        // send token and update states
+        _withdraw(tokenOwed);
+        // sale token owed must be greater than 0
+        require(tokenOwed != 0, 'withdraw giveaway amount 0');
     }
 
     // --- HELPER FUNCTIONS
