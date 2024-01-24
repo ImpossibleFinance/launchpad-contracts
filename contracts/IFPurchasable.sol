@@ -122,9 +122,12 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
         emit Purchase(_msgSender(), paymentAmount);
     }
 
-    function _purchaseWithCode(uint256 paymentAmount, uint256 remaining, string memory code) virtual internal nonReentrant {
+    function _purchaseWithCode(uint256 paymentAmount, uint256 remaining, string memory code) virtual internal {
+        // This needs to be before anything else
+        // ===
         _purchase(paymentAmount, remaining);
-        
+        // ====
+
         if (bytes(code).length > 0) {
             amountPerCode[code] += paymentAmount;
             if (paymentReceived[_msgSender()] == 0) {
