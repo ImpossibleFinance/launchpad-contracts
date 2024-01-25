@@ -39,10 +39,12 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
 
     // tracks amount purchased by each address
     mapping(address => uint256) public paymentReceived;
+    mapping(address => uint256) public paymentReceivedWithCode;
 
     // promo code
     mapping(string => uint256) public amountPerCode;
     mapping(string => uint256) public uniqueUsePerCode;
+
 
     // --- STAT
 
@@ -123,6 +125,10 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     }
 
     function _purchaseWithCode(uint256 paymentAmount, uint256 remaining, string memory code) virtual internal {
+        bool isFirst;
+        if (paymentReceivedWithCode[_msgSender()] == 0 && paymentAmount > 0) {
+            isFirst = true;
+        }
         // This needs to be before anything else
         // ===
         _purchase(paymentAmount, remaining);
@@ -130,9 +136,10 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
 
         if (bytes(code).length > 0) {
             amountPerCode[code] += paymentAmount;
-            if (paymentReceived[_msgSender()] == 0) {
+            if (isFirst) {
                 uniqueUsePerCode[code] += 1;
             }
+            paymentReceivedWithCode[_msgSender()] += paymentAmount;
         }
 
         emit PurchaseWithCode(_msgSender(), paymentAmount, code);
