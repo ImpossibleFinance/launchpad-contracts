@@ -248,5 +248,5 @@ SELLER=0x54F5A04417E29FF5D7141a6d33cb286F50d5d50e PAY_TOKEN=0x0b15Ddf19D47E6a86A
 ## Compile contracts into go files
 The base path taken by the compile script is `./contract`. 
 ```bash
-bash scripts/compile-go-file.sh <CONTRACT_NAME>
+bash scripts/compile-file.sh <CONTRACT_NAME>
 ```
