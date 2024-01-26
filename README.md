@@ -246,7 +246,13 @@ SELLER=0x54F5A04417E29FF5D7141a6d33cb286F50d5d50e PAY_TOKEN=0x0b15Ddf19D47E6a86A
 ```
 
 ## Compile contracts into go files
+
 The base path taken by the compile script is `./contract`. 
 ```bash
-bash scripts/compile-file.sh <CONTRACT_NAME>
+bash scripts/compile-file.sh <CONTRACT_NAME> <VERSION>
+# e.g. bash scripts/compile-file.sh IFFixedSale V10
 ```
+
+Then the flattened contract will be in "/resources/flattened/".
+The compiled go file will be in "/go-contracts/"
+ABI will be in "/abi/contracts/"
