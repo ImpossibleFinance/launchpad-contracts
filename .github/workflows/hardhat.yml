@@ -25,6 +25,6 @@ jobs:
       - name: Install Node.js dependencies
         run: yarn install
       - name: Install hardhat
-        run: yarn add hardhat@^2.19.4
+        run: yarn install hardhat@^2.19.4
       - run: npx hardhat compile
       - run: npx hardhat test
