@@ -17,6 +17,13 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: yarn install
+      - name: Install latest Yarn
+        run: corepack prepare yarn@stable --activate
+
+      - name: Activate latest Yarn
+        run: yarn set version stable
+
+      - name: Install Node.js dependencies
+        run: yarn install --immutable --immutable-cache --check-cache
       - run: npx hardhat compile
       - run: npx hardhat test
