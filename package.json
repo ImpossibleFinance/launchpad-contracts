@@ -2,10 +2,11 @@
   "name": "impossible-launchpad-staking",
   "scripts": {
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol",
-    "postinstall": "husky install",
-    "compile:go": "./scripts/compile-go-file.sh"
+    "postinstall": "node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky install",
+    "compile": "./scripts/compile-file.sh"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-foundry": "^1.1.1",
     "@nomiclabs/hardhat-ethers": "2.0.6",
     "@nomiclabs/hardhat-etherscan": "^3.1.7",
     "@nomiclabs/hardhat-solhint": "^2.0.1",
@@ -26,7 +27,7 @@
     "eslint-config-prettier": "^8.3.0",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.7.2",
-    "hardhat": "^2.16.1",
+    "hardhat": "^2.19.4",
     "hardhat-abi-exporter": "^2.10.1",
     "hardhat-gas-reporter": "^1.0.8",
     "hardhat-tracer": "^1.1.0-rc.6",
@@ -46,7 +47,7 @@
     "@matterlabs/hardhat-zksync-solc": "^0.4.0",
     "@matterlabs/hardhat-zksync-verify": "^0.1.8",
     "@nomiclabs/hardhat-web3": "^2.0.0",
-    "@omni/contracts": "https://github.com/omni-network/omni-std",
+    "@omni-network/contracts": "^0.1.5",
     "erc-payable-token": "^4.5.0"
   },
   "husky": {

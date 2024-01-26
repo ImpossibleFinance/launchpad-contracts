@@ -14,6 +14,18 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: Install latest Yarn
+      run: corepack prepare yarn@stable --activate
+    - name: Activate latest Yarn
+      run: yarn set version stable
+    - run: yarn config set -H enableImmutableInstalls false
+    - name: Install Node.js dependencies
+      run: yarn install
+
     - name: Run Slither
       uses: crytic/slither-action@v0.3.0
       continue-on-error: true

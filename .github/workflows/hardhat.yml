@@ -9,7 +9,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16.x]
+        node-version: [18.12]
 
     steps:
       - uses: actions/checkout@v3
@@ -17,6 +17,14 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: yarn install
+      - name: Install latest Yarn
+        run: corepack prepare yarn@stable --activate
+      - name: Activate latest Yarn
+        run: yarn set version stable
+      - run: yarn config set -H enableImmutableInstalls false
+      - name: Install Node.js dependencies
+        run: yarn install
+      - name: Install hardhat
+        run: yarn add --dev hardhat@^2.19.4
       - run: npx hardhat compile
       - run: npx hardhat test
