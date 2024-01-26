@@ -19,10 +19,9 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Install latest Yarn
         run: corepack prepare yarn@stable --activate
-
       - name: Activate latest Yarn
         run: yarn set version stable
-
+      - run: yarn config set -H enableImmutableInstalls false
       - name: Install Node.js dependencies
         run: yarn install
       - run: npx hardhat compile
