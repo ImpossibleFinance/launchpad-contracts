@@ -35,10 +35,15 @@ contract IFFixedSale is IFSale {
     {}
 
     bool isVestedGiveaway = false;
+    uint256 publicAllocation = 0;
 
     // --- SETTER FUNCTIONS
     function setVestedGiveaway(bool _isVestedGiveaway) public onlyOwner {
         isVestedGiveaway = _isVestedGiveaway;
+    }
+
+    function setPublicAllocation(bool _publicAllocation) public onlyOwner {
+        publicAllocation = _publicAllocation;
     }
 
     // --- DISABLED FUNCTIONS
@@ -61,11 +66,15 @@ contract IFFixedSale is IFSale {
     function whitelistedPurchaseWithCode(
         uint256 paymentAmount,
         bytes32[] calldata merkleProof,
-        uint256 allocation,
+        uint256 _allocation,
         string memory code
     ) public onlyDuringSale {
-        // require that user is whitelisted by checking proof
-        require(checkWhitelist(_msgSender(), merkleProof, allocation), 'proof invalid');
+        uint256 allocation = publicAllocation;
+        if (merkleProof.length > 0) {
+            // require that user is whitelisted by checking proof
+            require(checkWhitelist(_msgSender(), merkleProof, _allocation), 'proof invalid');
+            allocation = _allocation;
+        }
 
         uint256 remaining = getMaxPayment(_msgSender(), allocation);
         _purchaseWithCode(paymentAmount, remaining, code);
@@ -75,10 +84,14 @@ contract IFFixedSale is IFSale {
     function whitelistedPurchase(
         uint256 paymentAmount,
         bytes32[] calldata merkleProof,
-        uint256 allocation
+        uint256 _allocation
     ) public onlyDuringSale {
-        // require that user is whitelisted by checking proof
-        require(checkWhitelist(_msgSender(), merkleProof, allocation), 'proof invalid');
+        uint256 allocation = defaultAllocation;
+        if (merkleProof.length > 0) {
+            // require that user is whitelisted by checking proof
+            require(checkWhitelist(_msgSender(), merkleProof, _allocation), 'proof invalid');
+            allocation = _allocation;
+        }
 
         uint256 remaining = getMaxPayment(_msgSender(), allocation);
         _purchase(paymentAmount, remaining);
