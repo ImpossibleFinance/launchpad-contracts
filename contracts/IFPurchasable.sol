@@ -162,11 +162,7 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
         if (bytes(code).length > 0) {
             amountPerCode[code] += paymentAmount;
 
-            bool isFirst;
             if (paymentReceivedWithEachCode[_msgSender()][code] == 0 && paymentAmount > 0) {
-                isFirst = true;
-            }
-            if (isFirst) {
                 uniqueUsePerCode[code] += 1;
             }
             paymentReceivedWithCode[_msgSender()] += paymentAmount;
