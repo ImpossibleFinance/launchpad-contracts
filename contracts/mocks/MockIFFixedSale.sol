@@ -33,4 +33,9 @@ contract MockIFFixedSale is IFFixedSale {
         // Skip merkle check and set max allocation
         _purchase(paymentAmount, type(uint256).max);
     }
+
+    function purchaseWithCode(uint256 paymentAmount, string memory code) public {
+        // Skip merkle check and set max allocation
+        _purchaseWithCode(paymentAmount, type(uint256).max, code);
+    }
 }
