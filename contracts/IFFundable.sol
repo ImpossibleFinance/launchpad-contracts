@@ -215,12 +215,6 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     }
 
     function cashPaymentToken() external onlyCasherOrOwner {
-        // must be past end timestamp plus withdraw delay
-        require(
-            endTime + withdrawDelay < block.timestamp,
-            'cannot withdraw yet'
-        );
-
         // Get amount of payment token received
         uint256 paymentTokenBal = paymentToken.balanceOf(address(this));
 

@@ -804,9 +804,6 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     // Assuming ctx.IFAllocationSale has a function to cash payment tokens and ctx.casher is authorized
     let initialCasherBalance = await ctx.PaymentToken.balanceOf(ctx.casher.address);
 
-    // mineTimeDelta((ctx.endTime + ctx.withdrawDelay) - (await getBlockTime() + 1))
-    mineTimeDelta(ctx.endTime - (await getBlockTime()))
-
     // Authorized casher cashes payment tokens
     await expect(ctx.IFAllocationSale.connect(ctx.casher).cashPaymentToken())
       .to.emit(ctx.IFAllocationSale, "Cash")
@@ -836,5 +833,14 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     // Attempt to cash payment tokens by an unauthorized user (e.g., ctx.buyer) should still fail
     await expect(ctx.IFAllocationSale.connect(ctx.buyer).cashPaymentToken())
       .to.be.revertedWith(NOT_CASHER_OR_OWNER); // Adjust the error message based on your contract's requirements
+
+    // mineTimeDelta((ctx.endTime + ctx.withdrawDelay) - (await getBlockTime() + 1))
+    mineTimeDelta(ctx.endTime - (await getBlockTime()))
+
+    // check the balance of payment token is 0
+    expect(await ctx.PaymentToken.balanceOf(ctx.IFAllocationSale.address)).to.equal(0)
+
+    // can call cash()
+    await ctx.IFAllocationSale.connect(ctx.casher).cash() 
   });
 }
