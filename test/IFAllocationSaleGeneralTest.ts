@@ -845,7 +845,9 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     // check the balance of payment token is 0
     expect(await ctx.PaymentToken.balanceOf(ctx.IFAllocationSale.address)).to.equal(0)
 
+    expect(await ctx.SaleToken.balanceOf(ctx.casher.address)).to.equal(0)
     // can call cash()
     await ctx.IFAllocationSale.connect(ctx.casher).cash() 
+    expect(await ctx.SaleToken.balanceOf(ctx.casher.address)).to.equal(ctx.fundAmount)
   });
 }
