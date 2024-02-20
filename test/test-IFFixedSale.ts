@@ -230,8 +230,12 @@ export default describe('IF Fixed Sale', function () {
     // test purchase
     mineNext()
 
-    const packed = addressValMap.get(ctx.buyer.address.toLowerCase()) || ''
-    const tempAcctIdx = getAddressIndex(leaves, packed)
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+
     await ctx.IFAllocationSale.connect(ctx.buyer2)['whitelistedPurchase(uint256,bytes32[],uint256)'](
       paymentAmount,
       [],
