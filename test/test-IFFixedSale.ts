@@ -213,4 +213,33 @@ export default describe('IF Fixed Sale', function () {
     // test withdrawer counter
     expect(await ctxFree.IFAllocationSale.withdrawerCount()).to.equal(1)
   })
+  generalTest.prototype.it = it('can enable public sale', async function () {
+
+    const allocationAmount = 10000
+    const paymentAmount = 10000
+    const [leaves, addressValMap] = computeMerkleRootWithAllocation([ctx.buyer], [allocationAmount])
+
+    // set sale token allocation override
+    await ctx.IFAllocationSale.connect(ctx.owner).setWhitelist(computeMerkleRoot(leaves))
+    await ctx.IFAllocationSale.connect(ctx.owner).setPublicAllocation(allocationAmount)
+    mineNext()
+
+    // fast forward from current time to start time
+    mineTimeDelta(ctx.startTime - (await getBlockTime()))
+
+    // test purchase
+    mineNext()
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+
+    const packed = addressValMap.get(ctx.buyer.address.toLowerCase()) || ''
+    const tempAcctIdx = getAddressIndex(leaves, packed)
+    await ctx.IFAllocationSale.connect(ctx.buyer2)['whitelistedPurchase(uint256,bytes32[],uint256)'](
+      paymentAmount,
+      [],
+      allocationAmount,
+    )
+  })
 })
