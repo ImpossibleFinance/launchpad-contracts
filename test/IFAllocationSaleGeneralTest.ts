@@ -11,7 +11,7 @@ import {
 } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
-import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM, ADDRESS_ZERO_FUNDER } from './reverts/msg-IFAllocationSale'
+import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM, ADDRESS_ZERO_FUNDER, NOT_ENOUGH_PAYMENT_TOKEN_TO_CASH } from './reverts/msg-IFAllocationSale'
 
 export const _ctx ={
   owner: SignerWithAddress,
@@ -797,4 +797,55 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
     expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('33333')
   })
+  it("allows authorized users to cash payment tokens multiple times", async function () {
+    // Sending some payment tokens to the IFAllocationSale contract to simulate earnings
+    await ctx.PaymentToken.transfer(ctx.IFAllocationSale.address, ethers.utils.parseEther("100"));
+
+    // Assuming ctx.IFAllocationSale has a function to cash payment tokens and ctx.casher is authorized
+    let initialCasherBalance = await ctx.PaymentToken.balanceOf(ctx.casher.address);
+
+    // Define an excessive cash amount that exceeds the contract's balance
+    const excessiveCashAmount = ethers.utils.parseEther("150");
+
+    // Attempting to cash more than the available balance by an authorized user should revert
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cashPaymentToken(excessiveCashAmount))
+      .to.be.revertedWith(NOT_ENOUGH_PAYMENT_TOKEN_TO_CASH);
+
+    // Authorized casher cashes payment tokens
+    const validCashAmount = ethers.utils.parseEther("50");
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cashPaymentToken(validCashAmount))
+      .to.emit(ctx.IFAllocationSale, "Cash")
+      .withArgs(ctx.casher.address, validCashAmount, 0);
+
+    // Validate casher's new balance
+    let newCasherBalance = await ctx.PaymentToken.balanceOf(ctx.casher.address);
+    // expect(newCasherBalance.sub(initialCasherBalance)).to.equal(validCashAmount);
+
+    // Attempt to cash payment tokens by an unauthorized user (e.g., ctx.buyer) should fail
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).cashPaymentToken(validCashAmount))
+      .to.be.revertedWith(NOT_CASHER_OR_OWNER); // Adjust the error message based on your contract's requirements
+
+    // Second cashing operation
+    initialCasherBalance = newCasherBalance; // Update the initial balance to the new balance for the next comparison
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cashPaymentToken(validCashAmount))
+      .to.emit(ctx.IFAllocationSale, "Cash")
+      .withArgs(ctx.casher.address, validCashAmount, 0);
+
+    // Check balance after second cashing
+    newCasherBalance = await ctx.PaymentToken.balanceOf(ctx.casher.address);
+    // expect(newCasherBalance.sub(initialCasherBalance)).to.equal(validCashAmount);
+
+    // Attempt to cash payment tokens by an unauthorized user (e.g., ctx.buyer) should still fail
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).cashPaymentToken(validCashAmount))
+      .to.be.revertedWith(NOT_CASHER_OR_OWNER); // Adjust the error message based on your contract's requirements
+
+    // mineTimeDelta((ctx.endTime + ctx.withdrawDelay) - (await getBlockTime() + 1))
+    mineTimeDelta(ctx.endTime - (await getBlockTime()))
+
+    // check the balance of payment token is 0
+    expect(await ctx.PaymentToken.balanceOf(ctx.IFAllocationSale.address)).to.equal(0)
+
+    // can call cash()
+    await ctx.IFAllocationSale.connect(ctx.casher).cash() 
+  });
 }

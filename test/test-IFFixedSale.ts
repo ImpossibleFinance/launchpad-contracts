@@ -229,10 +229,6 @@ export default describe('IF Fixed Sale', function () {
 
     // test purchase
     mineNext()
-    await ctx.PaymentToken.connect(ctx.buyer2).approve(
-      ctx.IFAllocationSale.address,
-      paymentAmount
-    )
 
     const packed = addressValMap.get(ctx.buyer.address.toLowerCase()) || ''
     const tempAcctIdx = getAddressIndex(leaves, packed)
@@ -241,5 +237,104 @@ export default describe('IF Fixed Sale', function () {
       [],
       allocationAmount,
     )
+  })
+  generalTest.prototype.it = it('can purchase with code', async function () {
+    const paymentAmount = 5000
+
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+    // 1. use the function to purchaseWithCode
+    await ctx.IFAllocationSale.connect(ctx.buyer).purchaseWithCode(
+      paymentAmount,
+      'CODE',
+    )
+    mineNext()
+
+    // check variables
+    expect(await ctx.IFAllocationSale.paymentReceived(ctx.buyer.address)).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithCode(ctx.buyer.address)).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithEachCode(ctx.buyer.address, 'CODE')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.promoCodesPerUser(ctx.buyer.address, 0)).to.equal('CODE')
+    expect(await ctx.IFAllocationSale.hasUsedCode(ctx.buyer.address, 'CODE')).to.equal(true)
+    
+    expect(await ctx.IFAllocationSale.codes(0)).to.eql('CODE')
+    expect(await ctx.IFAllocationSale.amountPerCode('CODE')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE')).to.equal(1)
+
+    // 2. make another purchase with another code
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+    mineNext()
+    // use the function to purchaseWithCode
+    await ctx.IFAllocationSale.connect(ctx.buyer).purchaseWithCode(
+      paymentAmount,
+      'CODE2',
+    )
+    mineNext()
+
+    // check variables
+    expect(await ctx.IFAllocationSale.paymentReceived(ctx.buyer.address)).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithCode(ctx.buyer.address)).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithEachCode(ctx.buyer.address, 'CODE2')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.promoCodesPerUser(ctx.buyer.address, 1)).to.equal('CODE2')
+    expect(await ctx.IFAllocationSale.hasUsedCode(ctx.buyer.address, 'CODE2')).to.equal(true)
+      
+    expect(await ctx.IFAllocationSale.codes(1)).to.eql('CODE2')
+    expect(await ctx.IFAllocationSale.amountPerCode('CODE2')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE2')).to.equal(1)
+
+    // 3. make another purchase with the ctx.buyer2
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+    // use the function to purchaseWithCode
+    await ctx.IFAllocationSale.connect(ctx.buyer2).purchaseWithCode(
+      paymentAmount,
+      'CODE2',
+    )
+    mineNext()
+
+    // check variables
+    expect(await ctx.IFAllocationSale.paymentReceived(ctx.buyer2.address)).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithCode(ctx.buyer2.address)).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithEachCode(ctx.buyer2.address, 'CODE2')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.promoCodesPerUser(ctx.buyer2.address, 0)).to.equal('CODE2')
+    expect(await ctx.IFAllocationSale.hasUsedCode(ctx.buyer2.address, 'CODE2')).to.equal(true)
+
+    expect(await ctx.IFAllocationSale.codes(1)).to.eql('CODE2')
+    expect(await ctx.IFAllocationSale.amountPerCode('CODE2')).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE2')).to.equal(2)
+
+    // 4. make another purchase with the ctx.buyer2 with the same code
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+    // use the function to purchaseWithCode
+    await ctx.IFAllocationSale.connect(ctx.buyer2).purchaseWithCode(
+      paymentAmount,
+      'CODE2',
+    )
+    mineNext()
+    
+    // check variables
+    expect(await ctx.IFAllocationSale.paymentReceived(ctx.buyer2.address)).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithCode(ctx.buyer2.address)).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithEachCode(ctx.buyer2.address, 'CODE2')).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.promoCodesPerUser(ctx.buyer2.address, 0)).to.equal('CODE2')
+    expect(await ctx.IFAllocationSale.hasUsedCode(ctx.buyer2.address, 'CODE2')).to.equal(true)
+    
+    expect(await ctx.IFAllocationSale.codes(1)).to.eql('CODE2')
+    expect(await ctx.IFAllocationSale.amountPerCode('CODE2')).to.equal(paymentAmount * 3)
+    expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE2')).to.equal(2)
   })
 })

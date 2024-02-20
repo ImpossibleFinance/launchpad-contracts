@@ -38,11 +38,32 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     // --- USER INFO
 
     // tracks amount purchased by each address
+    // user address => purchased amount
     mapping(address => uint256) public paymentReceived;
+    // track amount purchased with code by each address
+    // user address => purchased amount with code
+    mapping(address => uint256) public paymentReceivedWithCode;
+    // track amount purchased with each code by each address
+    // user address => code => purchased amount with each code
+    mapping(address => mapping(string => uint256)) public paymentReceivedWithEachCode;
+    // track promo code used by each address
+    // user address => promo codes
+    mapping(address => string[]) public promoCodesPerUser;
+    // track if a promo code is used by an address
+    // user address => promo code => bool
+    mapping(address => mapping(string => bool)) public hasUsedCode;
 
-    // promo code
+    // -- PROMO CODE
+
+    // all promo codes  
+    string[] public codes;
+    // track if a promo code is stored
+    mapping(string => bool) isCodeStored;
+    // amount received per promo code
     mapping(string => uint256) public amountPerCode;
+    // unique use per promo code
     mapping(string => uint256) public uniqueUsePerCode;
+
 
     // --- STAT
 
@@ -128,11 +149,24 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
         _purchase(paymentAmount, remaining);
         // ====
 
+        if (!isCodeStored[code]) {
+            isCodeStored[code] = true;
+            codes.push(code);
+        }
+
+        if (!hasUsedCode[_msgSender()][code]) {
+            hasUsedCode[_msgSender()][code] = true;
+            promoCodesPerUser[_msgSender()].push(code);
+        }
+
         if (bytes(code).length > 0) {
             amountPerCode[code] += paymentAmount;
-            if (paymentReceived[_msgSender()] == 0) {
+
+            if (paymentReceivedWithEachCode[_msgSender()][code] == 0 && paymentAmount > 0) {
                 uniqueUsePerCode[code] += 1;
             }
+            paymentReceivedWithCode[_msgSender()] += paymentAmount;
+            paymentReceivedWithEachCode[_msgSender()][code] += paymentAmount;
         }
 
         emit PurchaseWithCode(_msgSender(), paymentAmount, code);
