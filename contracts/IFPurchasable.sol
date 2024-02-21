@@ -33,8 +33,8 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     // optional max for total purchasable amount, default is 0 if there's no limit
     // assuming all users buy the token on the same price
     uint256 public maxTotalPurchasable;
-    // halt purchase if true
-    bool public isPurchaseHalted;
+    // halt purchase if true. default is false
+    bool public isPurchaseHalted = false;
 
 
     // --- USER INFO

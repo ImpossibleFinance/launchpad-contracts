@@ -11,7 +11,7 @@ import {
 } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
-import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM, ADDRESS_ZERO_FUNDER, NOT_ENOUGH_PAYMENT_TOKEN_TO_CASH } from './reverts/msg-IFAllocationSale'
+import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM, ADDRESS_ZERO_FUNDER, NOT_ENOUGH_PAYMENT_TOKEN_TO_CASH, PURCHASE_IS_HALTED } from './reverts/msg-IFAllocationSale'
 
 export const _ctx ={
   owner: SignerWithAddress,
@@ -792,5 +792,31 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     // can call cash()
     await ctx.IFAllocationSale.connect(ctx.casher).cash() 
     expect(await ctx.SaleToken.balanceOf(ctx.casher.address)).to.equal(ctx.fundAmount)
+  });
+  it("can pause purchase", async function () {
+    mineNext()
+
+    // amount to pay
+    const paymentAmount = '333330'
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+
+    // fast forward from current time to start time
+    mineTimeDelta(ctx.startTime - (await getBlockTime()))
+
+    // pause purchase
+    await ctx.IFAllocationSale.connect(ctx.owner).setIsPurchaseHalted(true)
+
+    // test purchase (expect to revert)
+    mineNext()
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount))
+      .to.be.revertedWith(PURCHASE_IS_HALTED)
+
+    // unpause purchase
+    await ctx.IFAllocationSale.connect(ctx.owner).setIsPurchaseHalted(false)
+    mineNext()
+    await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
   });
 }
