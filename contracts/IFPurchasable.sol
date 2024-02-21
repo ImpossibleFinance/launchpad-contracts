@@ -33,6 +33,8 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     // optional max for total purchasable amount, default is 0 if there's no limit
     // assuming all users buy the token on the same price
     uint256 public maxTotalPurchasable;
+    // halt purchase if true
+    bool public isPurchaseHalted;
 
 
     // --- USER INFO
@@ -74,6 +76,7 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     event PurchaseWithCode(address indexed sender, uint256 paymentAmount, string code);
     event SetMinTotalPayment(uint256 indexed minTotalPayment);
     event SetMaxTotalPurchasable(uint256 indexed _maxTotalPurchasable);
+    event SetIsPurchaseHalted(bool indexed isPurchaseHalted);
 
     constructor(
         ERC20 _paymentToken,
@@ -92,6 +95,12 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
         maxTotalPayment = _maxTotalPayment; // can be 0 (for giveaway)
     }
 
+
+    function setIsPurchaseHalted(bool _isPurchaseHalted) public onlyOwner {
+        isPurchaseHalted = _isPurchaseHalted;
+
+        emit SetIsPurchaseHalted(_isPurchaseHalted);
+    }
 
     // Function for owner to set an optional, minTotalPayment
     // function setMinTotalPayment(uint256 _minTotalPayment) public onlyOwner onlyBeforeSale{
@@ -121,6 +130,7 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     // Internal function for making purchase
     // Used by public functions `purchase`
     function _purchase(uint256 paymentAmount, uint256 remaining) virtual internal nonReentrant {
+        require(!isPurchaseHalted, 'purchase is halted');
         // amount must be greater than minTotalPayment
         // by default, minTotalPayment is 0 unless otherwise set
         require(paymentAmount >= minTotalPayment, 'amount below min');

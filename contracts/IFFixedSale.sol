@@ -34,10 +34,10 @@ contract IFFixedSale is IFSale {
         )
     {}
 
-    bool isVestedGiveaway = false;
+    bool public isVestedGiveaway = false;
 
     // allocation when the user is not whitelisted
-    uint256 publicAllocation = 0;
+    uint256 public publicAllocation = 0;
 
     // --- SETTER FUNCTIONS
     function setVestedGiveaway(bool _isVestedGiveaway) public onlyOwner {

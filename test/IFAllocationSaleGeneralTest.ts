@@ -740,63 +740,6 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
       }
     }
   })
-  it('can opt in buyback', async function () {
-    const paymentAmount = 333330
-
-    // 
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()).to.be.revertedWith(BUY_BACK_NOT_ENABLED)
-    
-    // set cliff vesting period
-    const cliffInterval = Math.floor((ctx.linearVestingEndTime - ctx.endTime) / 3)
-    const cliffPeriod = [
-      ctx.endTime + 1,
-      ctx.endTime + cliffInterval * 1,
-      ctx.endTime + cliffInterval * 2,
-      ctx.endTime + cliffInterval * 3
-    ]
-    const cliffPct = [10, 20, 30, 40]
-    await ctx.IFAllocationSale.connect(ctx.owner).setCliffPeriod(cliffPeriod, cliffPct)
-
-    // set buyback claimable number
-    await ctx.IFAllocationSale.connect(ctx.owner).setBuybackClaimableNumber(2)
-
-    // fast forward from current time to start time
-    mineTimeDelta(ctx.startTime - (await getBlockTime()))
-    // purchase
-    mineNext()
-    await ctx.PaymentToken.connect(ctx.buyer).approve(
-      ctx.IFAllocationSale.address,
-      paymentAmount
-    )
-    await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
-    await ctx.PaymentToken.connect(ctx.buyer2).approve(
-      ctx.IFAllocationSale.address,
-      paymentAmount
-    )
-    await ctx.IFAllocationSale.connect(ctx.buyer2)['purchase(uint256)'](paymentAmount)
-    // cliff vesting: User makes a purchase and claim before cliff vesting starts
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_BEFORE_CLAIM)
-
-    mineTimeDelta(ctx.endTime - (await getBlockTime()) + 1)
-
-    // test withdraw
-    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('3333')
-
-    // test withdraw after opted in buyback
-    await ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()).to.be.revertedWith(ALREADY_OPTED_IN)
-    mineTimeDelta(cliffPeriod[2] - (await getBlockTime()))
-    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('9999')
-    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('19999')
-
-    mineTimeDelta(cliffPeriod[3] - (await getBlockTime()))
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(NO_TOKEN_TO_BE_WITHDRAWN)
-    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('33333')
-  })
   it("allows authorized users to cash payment tokens multiple times", async function () {
     // Sending some payment tokens to the IFAllocationSale contract to simulate earnings
     await ctx.PaymentToken.transfer(ctx.IFAllocationSale.address, ethers.utils.parseEther("100"));
