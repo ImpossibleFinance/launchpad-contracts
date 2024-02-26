@@ -54,9 +54,10 @@ abstract contract IFVestable is Ownable {
     // --- CONSTRUCTOR
 
     constructor(
-        // withdrawTime is endTime + withdrawal delay 
         uint256 _withdrawTime
     ) {
+        // withdrawal delay is by default 0
+        // it can be set using setWithdrawDelay
         withdrawTime = _withdrawTime;
     }
 

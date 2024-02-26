@@ -40,11 +40,11 @@ contract IFFixedSale is IFSale {
     uint256 public publicAllocation = 0;
 
     // --- SETTER FUNCTIONS
-    function setVestedGiveaway(bool _isVestedGiveaway) public onlyOwner {
+    function setVestedGiveaway(bool _isVestedGiveaway) public onlyOwner onlyBeforeSale {
         isVestedGiveaway = _isVestedGiveaway;
     }
 
-    function setPublicAllocation(uint256 _publicAllocation) public onlyOwner {
+    function setPublicAllocation(uint256 _publicAllocation) public onlyOwner onlyBeforeSale {
         publicAllocation = _publicAllocation;
     }
 
@@ -69,7 +69,7 @@ contract IFFixedSale is IFSale {
         uint256 paymentAmount,
         bytes32[] calldata merkleProof,
         uint256 _allocation,
-        string memory code
+        string calldata code
     ) public onlyDuringSale {
         uint256 allocation = publicAllocation;
         if (merkleProof.length > 0) {
@@ -110,6 +110,8 @@ contract IFFixedSale is IFSale {
         require(isVestedGiveaway == false, 'use withdrawGiveawayVested');
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
+        // can withdraw only once
+        require(hasWithdrawn[user] == false, 'already withdrawn');
         // if there is whitelist, require that user is whitelisted by checking proof
         require(
             whitelistRootHash == 0 || checkWhitelist(user, merkleProof, allocation),
@@ -125,10 +127,11 @@ contract IFFixedSale is IFSale {
             totalPurchased[user] = allocation;
         }
 
-        // send token and update states
-        _withdraw(saleTokenOwed);
         // sale token owed must be greater than 0
         require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
+
+        // send token and update states
+        _withdraw(saleTokenOwed);
     }
 
     // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
@@ -157,10 +160,11 @@ contract IFFixedSale is IFSale {
 
         uint256 tokenOwed = getCurrentClaimableToken(user);
 
-        // send token and update states
-        _withdraw(tokenOwed);
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'withdraw giveaway amount 0');
+
+        // send token and update states
+        _withdraw(tokenOwed);
     }
 
     // --- HELPER FUNCTIONS

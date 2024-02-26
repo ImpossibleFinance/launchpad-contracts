@@ -43,7 +43,7 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     // --- SETTERS
 
     function setWithdrawDelay(uint24 _withdrawDelay) override public onlyOwner onlyBeforeSale {
-        setWithdrawTime(endTime + _withdrawDelay);
+        setWithdrawTime(endTime - withdrawDelay + _withdrawDelay);
         super.setWithdrawDelay(_withdrawDelay);
     }
 
@@ -117,10 +117,10 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     }
 
     function _withdraw(uint256 tokenOwed) override internal {
-        super._withdraw(tokenOwed);
         // Update vesting variables
         latestClaimTime[_msgSender()] = block.timestamp;
         claimable[_msgSender()] -= tokenOwed;
+        super._withdraw(tokenOwed);
     }
 
     // --- HELPER FUNCTIONS

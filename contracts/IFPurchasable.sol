@@ -65,6 +65,8 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     mapping(string => uint256) public amountPerCode;
     // unique use per promo code
     mapping(string => uint256) public uniqueUsePerCode;
+    // max amount of promo code per user
+    uint256 public maxPromoCodePerUser = 50;
 
 
     // --- STAT
@@ -103,10 +105,7 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     }
 
     // Function for owner to set an optional, minTotalPayment
-    // function setMinTotalPayment(uint256 _minTotalPayment) public onlyOwner onlyBeforeSale{
     function setMinTotalPayment(uint256 _minTotalPayment) public onlyOwner {
-        // sale must not have started
-
         minTotalPayment = _minTotalPayment;
 
         emit SetMinTotalPayment(_minTotalPayment);
@@ -137,12 +136,10 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
 
         // payment must not exceed remaining
         require(paymentAmount <= remaining, 'exceeds max payment');
+        require(paymentAmount != 0, 'zero payment amount');
 
         saleTokenPurchased += paymentAmount;
         require(maxTotalPurchasable == 0 || maxTotalPurchasable >= saleTokenPurchased, 'exceed max purchasable');
-
-        // transfer specified amount from user to this contract
-        paymentToken.safeTransferFrom(_msgSender(), address(this), paymentAmount);
 
         // if user is paying for the first time to this contract, increase counter
         if (paymentReceived[_msgSender()] == 0) purchaserCount += 1;
@@ -150,10 +147,18 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
         // increase payment received amount
         paymentReceived[_msgSender()] += paymentAmount;
 
+        // transfer specified amount from user to this contract
+        paymentToken.safeTransferFrom(_msgSender(), address(this), paymentAmount);
+
         emit Purchase(_msgSender(), paymentAmount);
     }
 
     function _purchaseWithCode(uint256 paymentAmount, uint256 remaining, string memory code) virtual internal {
+        // check if code is not empty
+        require(bytes(code).length > 0, 'code is empty');
+        // check if code is too long
+        require(bytes(code).length <= 64, 'code is too long');
+
         // This needs to be before anything else
         // ===
         _purchase(paymentAmount, remaining);
@@ -165,6 +170,7 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
         }
 
         if (!hasUsedCode[_msgSender()][code]) {
+            require(promoCodesPerUser[_msgSender()].length < maxPromoCodePerUser, 'max promo code per user reached');
             hasUsedCode[_msgSender()][code] = true;
             promoCodesPerUser[_msgSender()].push(code);
         }
