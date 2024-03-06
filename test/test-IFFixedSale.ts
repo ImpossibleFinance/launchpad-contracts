@@ -6,7 +6,7 @@ import { computeMerkleProof, computeMerkleRoot, getAddressIndex } from '../libra
 import IFAllocationSaleGeneralTest, { _ctx, _ctxFree } from './IFAllocationSaleGeneralTest'
 import { getBlockTime, mineNext, mineTimeDelta } from './helpers'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY, USE_VESTED_WITHDRAW_GIVEAWAY } from './reverts/msg-IFAllocationSale'
+import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY, NOT_WHITELIST_SETTER_OR_OWNER, USE_VESTED_WITHDRAW_GIVEAWAY } from './reverts/msg-IFAllocationSale'
 
 function computeMerkleRootWithAllocation(signers: SignerWithAddress[], allocations: number[]): [string[], Map<string, string>]{
     const leaves: string[] = []
@@ -340,5 +340,14 @@ export default describe('IF Fixed Sale', function () {
     expect(await ctx.IFAllocationSale.codes(1)).to.eql('CODE2')
     expect(await ctx.IFAllocationSale.amountPerCode('CODE2')).to.equal(paymentAmount * 3)
     expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE2')).to.equal(2)
+  })
+  generalTest.prototype.it = it('whitelist setter can setMaxTotalPurchasable', async function () {
+
+    await ctx.IFAllocationSale.connect(ctx.owner).setMaxTotalPurchasable(10)
+    await ctx.IFAllocationSale.connect(ctx.owner).setWhitelistSetter(ctx.buyer.address)
+    await ctx.IFAllocationSale.connect(ctx.buyer).setMaxTotalPurchasable(10)
+    mineNext()
+
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer2).setMaxTotalPurchasable(10)).to.be.revertedWith(NOT_WHITELIST_SETTER_OR_OWNER)
   })
 })

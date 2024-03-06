@@ -44,8 +44,16 @@ contract IFFixedSale is IFSale {
         isVestedGiveaway = _isVestedGiveaway;
     }
 
-    function setPublicAllocation(uint256 _publicAllocation) public onlyOwner onlyBeforeSale {
+    function setPublicAllocation(uint256 _publicAllocation) public onlyWhitelistSetterOrOwner onlyBeforeSale {
         publicAllocation = _publicAllocation;
+    }
+
+    function setMaxTotalPurchasable(uint256 _maxTotalPurchasable) override public onlyWhitelistSetterOrOwner {
+        maxTotalPurchasable = _maxTotalPurchasable * salePrice;
+
+        require(maxTotalPurchasable >= saleTokenPurchased, 'Max purchasable should not be lower than the amount of token purchased');
+
+        emit SetMaxTotalPurchasable(_maxTotalPurchasable);
     }
 
     // --- DISABLED FUNCTIONS

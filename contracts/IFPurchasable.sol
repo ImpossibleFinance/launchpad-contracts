@@ -114,7 +114,7 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
 
     // Function for owner to set an optional, maxTotalPurchasable
     // The amount is calculated on salePrice. 
-    function setMaxTotalPurchasable(uint256 _maxTotalPurchasable) public onlyOwner {
+    function setMaxTotalPurchasable(uint256 _maxTotalPurchasable) virtual public onlyOwner {
         maxTotalPurchasable = _maxTotalPurchasable * salePrice;
 
         require(maxTotalPurchasable >= saleTokenPurchased, 'Max purchasable should not be lower than the amount of token purchased');
