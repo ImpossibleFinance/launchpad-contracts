@@ -242,7 +242,7 @@ export default describe('IF Fixed Sale', function () {
       allocationAmount,
     )
   })
-  generalTest.prototype.it = it('can purchase with code', async function () {
+  generalTest.prototype.it = it('can purchase with code and withdraw', async function () {
     const paymentAmount = 5000
 
     await ctx.PaymentToken.connect(ctx.buyer).approve(
@@ -340,6 +340,18 @@ export default describe('IF Fixed Sale', function () {
     expect(await ctx.IFAllocationSale.codes(1)).to.eql('CODE2')
     expect(await ctx.IFAllocationSale.amountPerCode('CODE2')).to.equal(paymentAmount * 3)
     expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE2')).to.equal(2)
+
+    // withdraw
+    // fast forward from current time to after end time
+    mineTimeDelta(ctx.endTime - (await getBlockTime()))
+    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
+    mineNext()
+    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
+    mineNext()
+
+    // expect balance to be 5000 for both buyers
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal(paymentAmount * 2 / 10)
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal(paymentAmount * 2 / 10)
   })
   generalTest.prototype.it = it('whitelist setter can setMaxTotalPurchasable', async function () {
 
