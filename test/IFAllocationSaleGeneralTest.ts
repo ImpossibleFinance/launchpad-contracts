@@ -527,7 +527,71 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     // test withdrawer counter
     expect(await ctx.IFAllocationSale.withdrawerCount()).to.equal(1)
   })
+  it('can set withdraw delay multiple times', async function () {
+    mineNext()
 
+    // delay of 10 blocks
+    const delay = 10
+
+    // add withdraw delay
+    await ctx.IFAllocationSale.setWithdrawDelay(5)
+    await ctx.IFAllocationSale.setWithdrawDelay(20)
+    await ctx.IFAllocationSale.setWithdrawDelay(delay)
+    mineNext()
+
+    // amount to pay
+    const paymentAmount = '333330'
+
+    // fast forward from current time to start time
+    mineTimeDelta(ctx.startTime - (await getBlockTime()))
+
+    // test purchase
+    mineNext()
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
+
+    mineNext()
+
+    // fast forward from current time to after end time
+    mineTimeDelta(ctx.endTime - (await getBlockTime()))
+
+    // test withdraw and cash (should fail because need 1 more block)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_BEFORE_CLAIM)
+    // access control: Call cash before ctx.endTime + withdrawDelay
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cash())
+
+    mineNext()
+
+    // fails
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('0')
+    // fails
+    expect(await ctx.PaymentToken.balanceOf(ctx.casher.address)).to.equal('0')
+
+    // simulate `delay` time passing
+    mineTimeDelta(delay)
+
+    // test withdraw and cash (should work here after delay passed)
+    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
+    await ctx.IFAllocationSale.connect(ctx.casher).cash()
+    // access control: Call cash after ctx.endTime + withdrawDelay twice
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cash()).to.be.revertedWith(ALREADY_CASHED)
+
+    mineNext()
+
+    // expect balance to increase by fund amount
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('33333')
+    // expect balance to increase by cash amount
+    expect(await ctx.PaymentToken.balanceOf(ctx.casher.address)).to.equal(paymentAmount)
+
+    // test purchaser counter
+    expect(await ctx.IFAllocationSale.purchaserCount()).to.equal(1)
+
+    // test withdrawer counter
+    expect(await ctx.IFAllocationSale.withdrawerCount()).to.equal(1)
+  })
   it('does not over cash', async function () {
     mineNext()
 
