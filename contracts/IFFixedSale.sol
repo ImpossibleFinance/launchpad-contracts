@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import './IFSale.sol';
@@ -59,11 +59,11 @@ contract IFFixedSale is IFSale {
     // --- DISABLED FUNCTIONS
 
     function purchase(uint256) virtual override public {
-        revert("Use purchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
+        revert("Use whitelistedPurchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
     }
 
     function whitelistedPurchase(uint256, bytes32[] calldata) override public pure {
-        revert("Use purchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
+        revert("Use whitelistedPurchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
     }
 
     function withdrawGiveaway(bytes32[] calldata) override public pure {

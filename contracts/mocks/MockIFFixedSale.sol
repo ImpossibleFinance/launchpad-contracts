@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import '../../contracts/IFFixedSale.sol';
 import '../interfaces/IIFRetrievableStakeWeight.sol';
@@ -34,7 +34,9 @@ contract MockIFFixedSale is IFFixedSale {
         _purchase(paymentAmount, type(uint256).max);
     }
 
-    function purchaseWithCode(uint256 paymentAmount, string memory code) public {
+    function purchaseWithCode(uint256 paymentAmount, string memory code)
+        public
+    {
         // Skip merkle check and set max allocation
         _purchaseWithCode(paymentAmount, type(uint256).max, code);
     }

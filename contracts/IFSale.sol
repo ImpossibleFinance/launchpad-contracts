@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
@@ -75,22 +75,24 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     // --- WITHDRAW
 
     function withdraw() virtual override public onlyAfterSale nonReentrant {
-        address user = _msgSender();
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
 
+        address user = _msgSender();
+
         uint256 tokenOwed = getCurrentClaimableToken(user);
+        require(tokenOwed != 0, 'no token to be withdrawn');
         // send token and update states
         _withdraw(tokenOwed);
-        require(tokenOwed != 0, 'no token to be withdrawn');
     }   
 
     // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
     function withdrawGiveaway(bytes32[] calldata merkleProof) virtual override public onlyAfterSale nonReentrant
     {
-        address user = _msgSender();
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
+
+        address user = _msgSender();
         // if there is whitelist, require that user is whitelisted by checking proof
         require(whitelistRootHash == 0 || checkWhitelist(user, merkleProof), 'proof invalid');
 
@@ -100,9 +102,9 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
             claimable[user] = tokenOwed;
             totalPurchased[user] = tokenOwed;
         }
+        require(tokenOwed != 0, 'withdraw giveaway amount 0');
         // send token and update states
         _withdraw(tokenOwed);
-        require(tokenOwed != 0, 'withdraw giveaway amount 0');
     }
 
     // --- UPDATE SALE STATES

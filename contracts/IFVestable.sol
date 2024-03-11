@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
@@ -14,7 +14,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
   @notice Cliff vesting unlocks tokens at a series of specific time. According to cliff period
  */
 abstract contract IFVestable is Ownable {
-    uint64 private constant TEN_YEARS = 315360000;
+    uint64 private constant TEN_YEARS = 315742060;
 
     // --- VESTING
 

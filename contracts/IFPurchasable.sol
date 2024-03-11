@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -175,15 +175,13 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
             promoCodesPerUser[_msgSender()].push(code);
         }
 
-        if (bytes(code).length > 0) {
-            amountPerCode[code] += paymentAmount;
+        amountPerCode[code] += paymentAmount;
 
-            if (paymentReceivedWithEachCode[_msgSender()][code] == 0 && paymentAmount > 0) {
-                uniqueUsePerCode[code] += 1;
-            }
-            paymentReceivedWithCode[_msgSender()] += paymentAmount;
-            paymentReceivedWithEachCode[_msgSender()][code] += paymentAmount;
+        if (paymentReceivedWithEachCode[_msgSender()][code] == 0) {
+            uniqueUsePerCode[code] += 1;
         }
+        paymentReceivedWithCode[_msgSender()] += paymentAmount;
+        paymentReceivedWithEachCode[_msgSender()][code] += paymentAmount;
 
         emit PurchaseWithCode(_msgSender(), paymentAmount, code);
     }
