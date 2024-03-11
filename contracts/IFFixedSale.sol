@@ -122,7 +122,7 @@ contract IFFixedSale is IFSale {
         require(hasWithdrawn[user] == false, 'already withdrawn');
         // if there is whitelist, require that user is whitelisted by checking proof
         require(
-            whitelistRootHash == 0 || checkWhitelist(user, merkleProof, allocation),
+            whitelistRootHash != 0 && checkWhitelist(user, merkleProof, allocation),
             'proof invalid'
         );
 
@@ -156,7 +156,7 @@ contract IFFixedSale is IFSale {
         require(salePrice == 0, 'not a giveaway');
         // if there is whitelist, require that user is whitelisted by checking proof
         require(
-            whitelistRootHash == 0 || checkWhitelist(user, merkleProof, allocation),
+            whitelistRootHash != 0 && checkWhitelist(user, merkleProof, allocation),
             'proof invalid'
         );
 
