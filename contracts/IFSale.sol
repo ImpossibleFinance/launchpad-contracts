@@ -108,6 +108,7 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     // --- UPDATE SALE STATES
 
     function _purchase(uint256 paymentAmount, uint256 remaining) override internal {
+        require(salePrice > 0, 'sale price is zero');
         totalPaymentReceived += paymentAmount;
         super._purchase(paymentAmount, remaining);
         // Update vesting variables
