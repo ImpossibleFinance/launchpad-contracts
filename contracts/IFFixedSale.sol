@@ -37,6 +37,7 @@ contract IFFixedSale is IFSale {
     bool public isVestedGiveaway = false;
 
     // allocation when the user is not whitelisted
+    // note that any user can get publicAllocation regardless of their whitelisted allocation
     uint256 public publicAllocation = 0;
 
     // --- SETTER FUNCTIONS
@@ -83,7 +84,9 @@ contract IFFixedSale is IFSale {
         if (merkleProof.length > 0) {
             // require that user is whitelisted by checking proof
             require(checkWhitelist(_msgSender(), merkleProof, _allocation), 'proof invalid');
-            allocation = _allocation;
+            if (_allocation > publicAllocation) {
+                allocation = _allocation;
+            }
         }
 
         uint256 remaining = getMaxPayment(_msgSender(), allocation);
@@ -100,7 +103,9 @@ contract IFFixedSale is IFSale {
         if (merkleProof.length > 0) {
             // require that user is whitelisted by checking proof
             require(checkWhitelist(_msgSender(), merkleProof, _allocation), 'proof invalid');
-            allocation = _allocation;
+            if (_allocation > publicAllocation) {
+                allocation = _allocation;
+            }
         }
 
         uint256 remaining = getMaxPayment(_msgSender(), allocation);
