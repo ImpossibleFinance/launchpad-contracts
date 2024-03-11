@@ -125,11 +125,8 @@ contract IFFixedSale is IFSale {
         require(salePrice == 0, 'not a giveaway');
         // can withdraw only once
         require(hasWithdrawn[user] == false, 'already withdrawn');
-        // if there is whitelist, require that user is whitelisted by checking proof
-        require(
-            whitelistRootHash != 0 && checkWhitelist(user, merkleProof, allocation),
-            'proof invalid'
-        );
+        // require that user is whitelisted by checking proof
+        require(checkWhitelist(user, merkleProof, allocation), 'proof invalid');
 
         uint256 saleTokenOwed = 0;
         // initialize claimable before the first time of withdrawal
@@ -159,11 +156,8 @@ contract IFFixedSale is IFSale {
         require(isVestedGiveaway == true, 'use withdrawGiveaway');
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
-        // if there is whitelist, require that user is whitelisted by checking proof
-        require(
-            whitelistRootHash != 0 && checkWhitelist(user, merkleProof, allocation),
-            'proof invalid'
-        );
+        // require that user is whitelisted by checking proof
+        require(checkWhitelist(user, merkleProof, allocation), 'proof invalid');
 
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[user]) {
