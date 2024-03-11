@@ -76,7 +76,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
   beforeEach(async () => {
     // set launchpad blocks in future
     mineNext()
-    const currTime = await getBlockTime()
+    let currTime = await getBlockTime()
     mineNext()
     ctx.snapshotTimestamp = currTime + 5000
     ctx.startTime = currTime + 10000
@@ -203,6 +203,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     //Setup ctxFree
     if (!ctxFree) return
 
+    currTime = await getBlockTime()
     ctxFree.snapshotTimestamp = currTime + 5000
     ctxFree.startTime = currTime + 10000
     ctxFree.endTime = currTime + 20000
@@ -333,6 +334,22 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     await expect(ctx.IFAllocationSale.connect(ctx.seller).emergencyTokenRetrieve(ctx.PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
     await expect(ctx.IFAllocationSale.connect(ctx.buyer).emergencyTokenRetrieve(ctx.PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
     ctx.IFAllocationSale.connect(ctx.owner).emergencyTokenRetrieve(ctx.PaymentToken.address)
+  })
+
+  it('can cash when salePrice is 0', async function () {
+    // fast forward from current time to after end time
+    mineTimeDelta(ctxFree.endTime - (await getBlockTime()))
+
+    // test cash
+    await ctxFree.IFAllocationSale.connect(ctxFree.casher).cash()
+    // access control: only ctx.casher can cash
+    await expect(ctxFree.IFAllocationSale.connect(ctxFree.buyer).cash()).to.be.revertedWith(NOT_CASHER_OR_OWNER)
+    await expect(ctxFree.IFAllocationSale.connect(ctxFree.seller).cash()).to.be.revertedWith(NOT_CASHER_OR_OWNER)
+    await expect(ctxFree.IFAllocationSale.connect(ctxFree.owner).cash()).to.be.revertedWith(ALREADY_CASHED)
+    mineNext()
+
+    // expect balance to increase by cash amount
+    expect(await ctx.SaleToken.balanceOf(ctx.casher.address)).to.equal(ctxFree.fundAmount)
   })
 
   it('can set funder', async function () {

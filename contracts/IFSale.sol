@@ -126,8 +126,12 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     // --- HELPER FUNCTIONS
 
     function getSaleTokensSold() override internal view returns (uint256 amount) {
-        return (totalPaymentReceived * SALE_PRICE_DECIMALS) /
-            salePrice;
+        // if salePrice is 0, no tokens will be sold
+        if (salePrice == 0) {
+            return 0;
+        } else {
+            return totalPaymentReceived * SALE_PRICE_DECIMALS / salePrice;
+        }
     }
 
     // A helper function to get the amount of unlocked token by providing user's address
