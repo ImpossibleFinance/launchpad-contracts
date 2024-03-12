@@ -11,7 +11,7 @@ import {
 } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
-import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM, ADDRESS_ZERO_FUNDER, NOT_ENOUGH_PAYMENT_TOKEN_TO_CASH, PURCHASE_IS_HALTED } from './reverts/msg-IFAllocationSale'
+import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM, ADDRESS_ZERO_FUNDER, NOT_ENOUGH_PAYMENT_TOKEN_TO_CASH, PURCHASE_IS_HALTED, CAN_ONLY_BUY_INTEGER_AMOUNT } from './reverts/msg-IFAllocationSale'
 
 export const _ctx ={
   owner: SignerWithAddress,
@@ -900,4 +900,26 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     mineNext()
     await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
   });
+  it('can set integer purchase', async function () {
+    const integerPaymentAmount = '333330'
+    const nonIntegerPaymentAmount = '333331'
+    await ctx.IFAllocationSale.connect(ctx.owner).setIsIntegerSale(true)
+    // fast forward from current time to start time
+    mineTimeDelta(ctx.startTime - (await getBlockTime()))
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      nonIntegerPaymentAmount
+    )
+    await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](integerPaymentAmount)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](nonIntegerPaymentAmount))
+      .to.be.revertedWith(CAN_ONLY_BUY_INTEGER_AMOUNT)
+
+    // fast forward from current time to after end time
+    mineTimeDelta(ctx.endTime - (await getBlockTime()))
+    // test withdraw
+    mineNext()
+    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
+    mineNext()
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('33333')
+  })
 }

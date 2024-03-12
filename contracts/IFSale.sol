@@ -22,6 +22,8 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     mapping(address => uint256) public claimable;
     // tracks amount of tokens purchased by each address
     mapping(address => uint256) public totalPurchased;
+    // flag to enable integer sale
+    bool public isIntegerSale = false;
 
     // --- CONSTRUCTOR
 
@@ -53,6 +55,10 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
 
     function setCliffPeriod(uint256[] calldata claimTimes, uint8[] calldata pct) override public onlyOwner onlyBeforeSale {
         super.setCliffPeriod(claimTimes, pct);
+    }
+
+    function setIsIntegerSale(bool _isIntegerSale) public onlyOwner {
+        isIntegerSale = _isIntegerSale;
     }
 
     // --- PURCHASE
@@ -111,6 +117,9 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
 
     function _purchase(uint256 paymentAmount, uint256 remaining) override internal {
         require(salePrice > 0, 'sale price is zero');
+        if (isIntegerSale) {
+            require(isIntegerPayment(paymentAmount), 'can only buy integer amount of sale tokens');
+        }
         totalPaymentReceived += paymentAmount;
         super._purchase(paymentAmount, remaining);
         // Update vesting variables
@@ -150,5 +159,10 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
 
         // verify merkle proof
         return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
+    }
+
+    // a function to check if the payment amount can buy integer amount of sale tokens, accounting the token decimals
+    function isIntegerPayment(uint256 paymentAmount) public view returns (bool) {
+        return (paymentAmount * SALE_PRICE_DECIMALS) % salePrice == 0;
     }
 }
