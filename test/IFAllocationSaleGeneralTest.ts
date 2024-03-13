@@ -61,7 +61,34 @@ export const _ctxFree = {
   fundAmount: '1000000000'
 }
 
-export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctxFree: any) {
+const salePrice = '3700000000000000000' // 3.7 PAY per SALE
+
+export const _ctxSale ={
+  owner: SignerWithAddress,
+  buyer: SignerWithAddress,
+  buyer2: SignerWithAddress,
+  seller: SignerWithAddress,
+  casher: SignerWithAddress,
+  StakeToken: Contract,
+  PaymentToken: Contract,
+  SaleToken: Contract,
+  IFAllocationMaster: Contract,
+  IFAllocationSale: Contract,
+  trackId: 0,
+  // sale contract vars
+  snapshotTimestamp: 0,// block at which to take allocation snapshot
+  startTime: 0, // start timestamp of sale (inclusive)
+  endTime: 0, // end timestamp of sale (inclusive)
+  linearVestingEndTime: 0, // end timestamp of vesting
+  salePrice: salePrice,
+  maxTotalDeposit: '25000000000000000000000000', // max deposit
+  // other vars
+  // const ctx.fundAmount = '33333'
+  fundAmount: '1000000000',
+  paymentTokenPerSaleToken: 3.7
+}
+
+export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctxFree: any, ctxSale: any) {
   // unset timeout from the test
   _this.timeout(0)
 
@@ -270,6 +297,59 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
       ctxFree.fundAmount
     )
     await ctxFree.IFAllocationSale.connect(ctxFree.seller).fund(ctxFree.fundAmount) // fund
+    mineNext()
+
+    currTime = await getBlockTime()
+    ctxSale.snapshotTimestamp = currTime + 5000
+    ctxSale.startTime = currTime + 10000
+    ctxSale.endTime = currTime + 20000
+    ctxSale.linearVestingEndTime = currTime + 50000
+
+    //Free get test accounts
+    ctxSale.owner = (await ethers.getSigners())[0]
+    ctxSale.buyer = (await ethers.getSigners())[1]
+    ctxSale.seller = (await ethers.getSigners())[2]
+    ctxSale.casher = (await ethers.getSigners())[3]
+    ctxSale.buyer2 = (await ethers.getSigners())[4]
+    ctxSale.StakeToken = ctx.StakeToken
+    ctxSale.PaymentToken = ctx.PaymentToken
+    ctxSale.SaleToken = ctx.SaleToken
+
+    //Free redistribute tokens
+    mineNext()
+    ctxSale.StakeToken.connect(ctxSale.buyer).transfer(
+      ctxSale.buyer2.address,
+      '1000000000000000000000000'
+    )
+    ctxFree.PaymentToken.connect(ctxSale.buyer).transfer(
+      ctxSale.buyer2.address,
+      '1000000000000000000000000'
+    )
+
+    ctxSale.IFAllocationSale = await IFAllocationSaleFactory.deploy(
+      ctxSale.salePrice,
+      ctxSale.seller.address,
+      ctxSale.PaymentToken.address,
+      ctxSale.SaleToken.address,
+      ctx.IFAllocationMaster.address,
+      ctxSale.trackId,
+      ctxSale.snapshotTimestamp,
+      ctxSale.startTime,
+      ctxSale.endTime,
+      ctxSale.maxTotalDeposit
+    )
+    mineNext()
+
+    // set the ctx.casher address
+    await ctxSale.IFAllocationSale.setCasher(ctxSale.casher.address)
+    mineNext()
+
+    // fund sale
+    await ctxSale.SaleToken.connect(ctxSale.seller).approve(
+      ctxSale.IFAllocationSale.address,
+      ctxSale.fundAmount
+    )
+    await ctxSale.IFAllocationSale.connect(ctxSale.seller).fund(ctxSale.fundAmount) // fund
     mineNext()
   })
 
@@ -901,25 +981,27 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
   });
   it('can set integer purchase', async function () {
-    const integerPaymentAmount = '333330'
+    const integerPaymentAmount = '5920'
     const nonIntegerPaymentAmount = '333331'
-    await ctx.IFAllocationSale.connect(ctx.owner).setIsIntegerSale(true)
+    await ctxSale.IFAllocationSale.connect(ctxSale.owner).setIsIntegerSale(true)
     // fast forward from current time to start time
-    mineTimeDelta(ctx.startTime - (await getBlockTime()))
-    await ctx.PaymentToken.connect(ctx.buyer).approve(
-      ctx.IFAllocationSale.address,
+    mineTimeDelta(ctxSale.startTime - (await getBlockTime()))
+    await ctxSale.PaymentToken.connect(ctxSale.buyer).approve(
+      ctxSale.IFAllocationSale.address,
       nonIntegerPaymentAmount
     )
-    await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](integerPaymentAmount)
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](nonIntegerPaymentAmount))
+    await ctxSale.IFAllocationSale.connect(ctxSale.buyer)['purchase(uint256)'](integerPaymentAmount)
+    await expect(ctxSale.IFAllocationSale.connect(ctxSale.buyer)['purchase(uint256)'](nonIntegerPaymentAmount))
       .to.be.revertedWith(CAN_ONLY_BUY_INTEGER_AMOUNT)
 
     // fast forward from current time to after end time
-    mineTimeDelta(ctx.endTime - (await getBlockTime()))
+    mineTimeDelta(ctxSale.endTime - (await getBlockTime()))
     // test withdraw
     mineNext()
-    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
+    await ctxSale.IFAllocationSale.connect(ctxSale.buyer).withdraw()
     mineNext()
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('33333')
+
+    const expectedBalance = (parseFloat(integerPaymentAmount) / ctxSale.paymentTokenPerSaleToken).toString()
+    expect(await ctxSale.SaleToken.balanceOf(ctxSale.buyer.address)).to.equal(expectedBalance)
   })
 }

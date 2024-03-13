@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { computeMerkleProof, computeMerkleRoot, getAddressIndex } from '../library/merkleWhitelist'
-import IFAllocationSaleGeneralTest, { _ctx, _ctxFree } from './IFAllocationSaleGeneralTest'
+import IFAllocationSaleGeneralTest, { _ctx, _ctxFree, _ctxSale } from './IFAllocationSaleGeneralTest'
 import { getBlockTime, mineNext, mineTimeDelta } from './helpers'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY, NOT_WHITELIST_SETTER_OR_OWNER, USE_VESTED_WITHDRAW_GIVEAWAY } from './reverts/msg-IFAllocationSale'
@@ -32,11 +32,12 @@ export default describe('IF Fixed Sale', function () {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctx: any = _ctx
   const ctxFree: any = _ctxFree
+  const ctxSale: any = _ctxSale
 
   const contractName = 'MockIFFixedSale'
 
   const generalTest = IFAllocationSaleGeneralTest
-  generalTest(this, contractName, ctx, _ctxFree)
+  generalTest(this, contractName, ctx, _ctxFree, _ctxSale)
 
 
   generalTest.prototype.it = it('can save allocation amount in merkle tree', async function () {
