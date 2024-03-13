@@ -57,7 +57,7 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
         super.setCliffPeriod(claimTimes, pct);
     }
 
-    function setIsIntegerSale(bool _isIntegerSale) public onlyOwner {
+    function setIsIntegerSale(bool _isIntegerSale) public onlyOwner onlyBeforeSale {
         isIntegerSale = _isIntegerSale;
     }
 
