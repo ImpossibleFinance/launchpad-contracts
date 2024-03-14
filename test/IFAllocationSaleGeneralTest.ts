@@ -631,9 +631,13 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     const delay = 10
 
     // add withdraw delay
+    const withdrawTimeInitial = parseInt(await ctx.IFAllocationSale.withdrawTime())
     await ctx.IFAllocationSale.setWithdrawDelay(5)
-    await ctx.IFAllocationSale.setWithdrawDelay(20)
+    expect(await ctx.IFAllocationSale.withdrawTime()).to.equal(withdrawTimeInitial + 5)
+    await ctx.IFAllocationSale.setWithdrawDelay(100)
+    expect(await ctx.IFAllocationSale.withdrawTime()).to.equal(withdrawTimeInitial + 100)
     await ctx.IFAllocationSale.setWithdrawDelay(delay)
+    expect(await ctx.IFAllocationSale.withdrawTime()).to.equal(withdrawTimeInitial + delay)
     mineNext()
 
     // amount to pay

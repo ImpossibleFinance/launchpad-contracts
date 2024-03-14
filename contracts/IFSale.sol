@@ -45,7 +45,7 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     // --- SETTERS
 
     function setWithdrawDelay(uint24 _withdrawDelay) override public onlyOwner onlyBeforeSale {
-        setWithdrawTime(endTime - withdrawDelay + _withdrawDelay);
+        setWithdrawTime(endTime + _withdrawDelay);
         super.setWithdrawDelay(_withdrawDelay);
     }
 
