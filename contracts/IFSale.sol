@@ -164,4 +164,10 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     function isIntegerPayment(uint256 paymentAmount) public view returns (bool) {
         return (paymentAmount * SALE_PRICE_DECIMALS) % salePrice == 0;
     }
+
+    // Override the renounceOwnership function to disable it
+    function renounceOwnership() public pure override{
+        revert("ownership renunciation is disabled");
+    }
+
 }

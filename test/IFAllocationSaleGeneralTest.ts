@@ -1008,4 +1008,8 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     const expectedBalance = (parseFloat(integerPaymentAmount) / ctxSale.paymentTokenPerSaleToken).toString()
     expect(await ctxSale.SaleToken.balanceOf(ctxSale.buyer.address)).to.equal(expectedBalance)
   })
+  it('cannot renounce ownership', async function () {
+    await expect(ctxSale.IFAllocationSale.connect(ctxSale.owner).renounceOwnership())
+      .to.be.revertedWith('ownership renunciation is disabled')
+  })
 }
