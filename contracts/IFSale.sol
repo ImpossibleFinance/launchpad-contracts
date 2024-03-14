@@ -99,8 +99,8 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
         require(salePrice == 0, 'not a giveaway');
 
         address user = _msgSender();
-        // if there is whitelist, require that user is whitelisted by checking proof
-        require(whitelistRootHash == 0 || checkWhitelist(user, merkleProof), 'proof invalid');
+        // require the user is whitelisted by checking proof
+        require(checkWhitelist(user, merkleProof), 'proof invalid');
 
         uint256 tokenOwed = getCurrentClaimableToken(user);
         // initialize claimable before the first time of withdrawal
