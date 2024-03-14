@@ -130,6 +130,7 @@ abstract contract IFPurchasable is Ownable, ReentrancyGuard {
     // Used by public functions `purchase`
     function _purchase(uint256 paymentAmount, uint256 remaining) virtual internal nonReentrant {
         require(!isPurchaseHalted, 'purchase is halted');
+        require(salePrice > 0, 'sale price is zero');
         // amount must be greater than minTotalPayment
         // by default, minTotalPayment is 0 unless otherwise set
         require(paymentAmount >= minTotalPayment, 'amount below min');

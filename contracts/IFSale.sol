@@ -116,7 +116,6 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     // --- UPDATE SALE STATES
 
     function _purchase(uint256 paymentAmount, uint256 remaining) override internal {
-        require(salePrice > 0, 'sale price is zero');
         if (isIntegerSale) {
             require(isIntegerPayment(paymentAmount), 'can only buy integer amount of sale tokens');
         }
