@@ -797,4 +797,52 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
     expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('33333')
   })
+  it('can cash opt in buyback token', async function () {
+    const paymentAmount = 333330
+
+    // 
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()).to.be.revertedWith(BUY_BACK_NOT_ENABLED)
+    
+    // set cliff vesting period
+    const cliffInterval = Math.floor((ctx.linearVestingEndTime - ctx.endTime) / 3)
+    const cliffPeriod = [
+      ctx.endTime + 1,
+      ctx.endTime + cliffInterval * 1,
+      ctx.endTime + cliffInterval * 2,
+      ctx.endTime + cliffInterval * 3
+    ]
+    const cliffPct = [10, 20, 30, 40]
+    await ctx.IFAllocationSale.connect(ctx.owner).setCliffPeriod(cliffPeriod, cliffPct)
+
+    // set buyback claimable number
+    await ctx.IFAllocationSale.connect(ctx.owner).setBuybackClaimableNumber(2)
+
+    // fast forward from current time to start time
+    mineTimeDelta(ctx.startTime - (await getBlockTime()))
+    // purchase
+    mineNext()
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    await ctx.IFAllocationSale.connect(ctx.buyer2)['purchase(uint256)'](paymentAmount)
+    // cliff vesting: User makes a purchase and claim before cliff vesting starts
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_BEFORE_CLAIM)
+
+    mineTimeDelta(ctx.endTime - (await getBlockTime()) + 1)
+
+    await ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()
+
+    // test cash after opt in buyback
+    const balanceBeforeCash = await ctx.SaleToken.balanceOf(ctx.owner.address)
+    await ctx.IFAllocationSale.connect(ctx.owner).cashOptInBuyback()
+    mineNext()
+    const balanceAfterCash = await ctx.SaleToken.balanceOf(ctx.owner.address)
+    expect((balanceAfterCash - balanceBeforeCash).toString()).to.equal((Math.floor(33333 * 0.7)).toString())
+  })
 }

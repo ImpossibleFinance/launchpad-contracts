@@ -18,10 +18,13 @@ import './IFWhitelistable.sol';
   @notice 4. Vest tokens in linear or cliff mode
  */
 contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
+    using SafeERC20 for ERC20;
     // tracks amount of tokens owed to each address
     mapping(address => uint256) public claimable;
     // tracks amount of tokens purchased by each address
     mapping(address => uint256) public totalPurchased;
+    // tracks whether sale tokens has been cashed
+    bool public hasCashedOptInBuyback;
 
     // --- CONSTRUCTOR
 
@@ -144,4 +147,26 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
         // verify merkle proof
         return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
     }
+
+    // --- Cash OptInBackback
+    // Cash sale tokens locked by optInBuyback
+    // Doesn't overlap with `amountUnsold` in `cash()`
+    function cashOptInBuyback() external onlyCasherOrOwner {
+        // must be past end timestamp plus withdraw delay
+        require(
+            endTime + withdrawDelay < block.timestamp,
+            'cannot withdraw yet'
+        );
+        // prevent repeat cash
+        require(!hasCashedOptInBuyback, 'already cashed');
+        hasCashedOptInBuyback = true;
+        uint256 totalOptInBuybackPurchased;
+        for (uint256 i; i < hasOptInBuybackList.length; i++) {
+            totalOptInBuybackPurchased += totalPurchased[hasOptInBuybackList[i]];
+        }
+        uint8 percentageLocked = optInBuybackLockPercentage();
+        uint256 amountLocked = totalOptInBuybackPurchased * percentageLocked / 100;
+        saleToken.safeTransfer(_msgSender(), amountLocked);
+    }
+
 }
