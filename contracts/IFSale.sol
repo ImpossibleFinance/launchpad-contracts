@@ -95,22 +95,7 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
     function withdrawGiveaway(bytes32[] calldata merkleProof) virtual override public onlyAfterSale nonReentrant
     {
-        // must be a zero price sale
-        require(salePrice == 0, 'not a giveaway');
-
-        address user = _msgSender();
-        // require the user is whitelisted by checking proof
-        require(checkWhitelist(user, merkleProof), 'proof invalid');
-
-        uint256 tokenOwed = getCurrentClaimableToken(user);
-        // initialize claimable before the first time of withdrawal
-        if (!hasWithdrawn[user]) {
-            claimable[user] = tokenOwed;
-            totalPurchased[user] = tokenOwed;
-        }
-        require(tokenOwed != 0, 'withdraw giveaway amount 0');
-        // send token and update states
-        _withdraw(tokenOwed);
+        revert("Not implemented");
     }
 
     // --- UPDATE SALE STATES
