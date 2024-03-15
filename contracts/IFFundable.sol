@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -20,7 +20,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
     uint64 private constant ONE_HOUR = 3600;
     uint64 private constant ONE_YEAR = 31556926;
     uint64 private constant FIVE_YEARS = 157784630;
-    uint64 private constant TEN_YEARS = 315360000;
+    uint64 private constant TEN_YEARS = 315742060;
 
     // --- OPERATOR ADDRESSES
 
@@ -177,12 +177,7 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
 
 
     // Function for funder to cash in payment token and unsold sale token
-    function cash() external onlyCasherOrOwner {
-        // must be past end timestamp plus withdraw delay
-        require(
-            endTime + withdrawDelay < block.timestamp,
-            'cannot withdraw yet'
-        );
+    function cash() external onlyCasherOrOwner onlyAfterSale {
         // prevent repeat cash
         require(!hasCashed, 'already cashed');
 
@@ -213,6 +208,21 @@ abstract contract IFFundable is Ownable, ReentrancyGuard {
 
         emit Cash(_msgSender(), paymentTokenBal, amountUnsold);
     }
+
+    function cashPaymentToken(uint256 amount) external onlyCasherOrOwner {
+        // Get amount of payment token received
+        uint256 paymentTokenBal = paymentToken.balanceOf(address(this));
+
+        // Ensure there's enough payment tokens to cash
+        require(paymentTokenBal >= amount, "No enough payment tokens to cash");
+
+        // Transfer payment tokens to the caller
+        paymentToken.safeTransfer(_msgSender(), amount);
+
+        // Emit an event for this cashing
+        emit Cash(_msgSender(), amount, 0);
+    }
+
 
     // Retrieve tokens erroneously sent in to this address
     function emergencyTokenRetrieve(address token) public onlyOwner onlyAfterSale {

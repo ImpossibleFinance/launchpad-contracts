@@ -6,6 +6,7 @@ import 'hardhat-abi-exporter'
 import '@matterlabs/hardhat-zksync-deploy'
 import '@matterlabs/hardhat-zksync-solc'
 import '@matterlabs/hardhat-zksync-verify'
+import 'solidity-coverage'
 
 // import 'hardhat-gas-reporter'
 // import 'hardhat-ethernal'

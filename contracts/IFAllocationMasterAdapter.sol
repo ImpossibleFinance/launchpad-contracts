@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import 'sgn-v2-contracts/contracts/message/interfaces/IMessageReceiverApp.sol';
 import './interfaces/IIFRetrievableStakeWeight.sol';

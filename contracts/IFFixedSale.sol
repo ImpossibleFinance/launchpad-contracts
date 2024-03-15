@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import './IFSale.sol';
@@ -34,21 +34,37 @@ contract IFFixedSale is IFSale {
         )
     {}
 
-    bool isVestedGiveaway = false;
+    bool public isVestedGiveaway = false;
+
+    // allocation when the user is not whitelisted
+    // note that any user can get publicAllocation regardless of their whitelisted allocation
+    uint256 public publicAllocation = 0;
 
     // --- SETTER FUNCTIONS
-    function setVestedGiveaway(bool _isVestedGiveaway) public onlyOwner {
+    function setVestedGiveaway(bool _isVestedGiveaway) public onlyOwner onlyBeforeSale {
         isVestedGiveaway = _isVestedGiveaway;
+    }
+
+    function setPublicAllocation(uint256 _publicAllocation) public onlyWhitelistSetterOrOwner onlyBeforeSale {
+        publicAllocation = _publicAllocation;
+    }
+
+    function setMaxTotalPurchasable(uint256 _maxTotalPurchasable) override public onlyWhitelistSetterOrOwner {
+        maxTotalPurchasable = _maxTotalPurchasable * salePrice;
+
+        require(maxTotalPurchasable >= saleTokenPurchased, 'Max purchasable should not be lower than the amount of token purchased');
+
+        emit SetMaxTotalPurchasable(_maxTotalPurchasable);
     }
 
     // --- DISABLED FUNCTIONS
 
     function purchase(uint256) virtual override public {
-        revert("Use purchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
+        revert("Use whitelistedPurchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
     }
 
     function whitelistedPurchase(uint256, bytes32[] calldata) override public pure {
-        revert("Use purchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
+        revert("Use whitelistedPurchase(uint256 paymentAmount, bytes32[] calldata merkleProof, uint256 allocation)");
     }
 
     function withdrawGiveaway(bytes32[] calldata) override public pure {
@@ -57,15 +73,21 @@ contract IFFixedSale is IFSale {
 
     // --- WHITELISTED ACTIONS
 
-        // purchase function when there is a whitelist
+    // purchase with code function when there is a whitelist
     function whitelistedPurchaseWithCode(
         uint256 paymentAmount,
         bytes32[] calldata merkleProof,
-        uint256 allocation,
-        string memory code
+        uint256 _allocation,
+        string calldata code
     ) public onlyDuringSale {
-        // require that user is whitelisted by checking proof
-        require(checkWhitelist(_msgSender(), merkleProof, allocation), 'proof invalid');
+        uint256 allocation = publicAllocation;
+        if (merkleProof.length > 0) {
+            // require that user is whitelisted by checking proof
+            require(checkWhitelist(_msgSender(), merkleProof, _allocation), 'proof invalid');
+            if (_allocation > publicAllocation) {
+                allocation = _allocation;
+            }
+        }
 
         uint256 remaining = getMaxPayment(_msgSender(), allocation);
         _purchaseWithCode(paymentAmount, remaining, code);
@@ -75,10 +97,16 @@ contract IFFixedSale is IFSale {
     function whitelistedPurchase(
         uint256 paymentAmount,
         bytes32[] calldata merkleProof,
-        uint256 allocation
+        uint256 _allocation
     ) public onlyDuringSale {
-        // require that user is whitelisted by checking proof
-        require(checkWhitelist(_msgSender(), merkleProof, allocation), 'proof invalid');
+        uint256 allocation = publicAllocation;
+        if (merkleProof.length > 0) {
+            // require that user is whitelisted by checking proof
+            require(checkWhitelist(_msgSender(), merkleProof, _allocation), 'proof invalid');
+            if (_allocation > publicAllocation) {
+                allocation = _allocation;
+            }
+        }
 
         uint256 remaining = getMaxPayment(_msgSender(), allocation);
         _purchase(paymentAmount, remaining);
@@ -95,11 +123,10 @@ contract IFFixedSale is IFSale {
         require(isVestedGiveaway == false, 'use withdrawGiveawayVested');
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
-        // if there is whitelist, require that user is whitelisted by checking proof
-        require(
-            whitelistRootHash == 0 || checkWhitelist(user, merkleProof, allocation),
-            'proof invalid'
-        );
+        // can withdraw only once
+        require(hasWithdrawn[user] == false, 'already withdrawn');
+        // require that user is whitelisted by checking proof
+        require(checkWhitelist(user, merkleProof, allocation), 'proof invalid');
 
         uint256 saleTokenOwed = 0;
         // initialize claimable before the first time of withdrawal
@@ -110,10 +137,11 @@ contract IFFixedSale is IFSale {
             totalPurchased[user] = allocation;
         }
 
-        // send token and update states
-        _withdraw(saleTokenOwed);
         // sale token owed must be greater than 0
         require(saleTokenOwed != 0, 'withdraw giveaway amount 0');
+
+        // send token and update states
+        _withdraw(saleTokenOwed);
     }
 
     // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
@@ -128,11 +156,8 @@ contract IFFixedSale is IFSale {
         require(isVestedGiveaway == true, 'use withdrawGiveaway');
         // must be a zero price sale
         require(salePrice == 0, 'not a giveaway');
-        // if there is whitelist, require that user is whitelisted by checking proof
-        require(
-            whitelistRootHash == 0 || checkWhitelist(user, merkleProof, allocation),
-            'proof invalid'
-        );
+        // require that user is whitelisted by checking proof
+        require(checkWhitelist(user, merkleProof, allocation), 'proof invalid');
 
         // initialize claimable before the first time of withdrawal
         if (!hasWithdrawn[user]) {
@@ -142,10 +167,11 @@ contract IFFixedSale is IFSale {
 
         uint256 tokenOwed = getCurrentClaimableToken(user);
 
-        // send token and update states
-        _withdraw(tokenOwed);
         // sale token owed must be greater than 0
         require(tokenOwed != 0, 'withdraw giveaway amount 0');
+
+        // send token and update states
+        _withdraw(tokenOwed);
     }
 
     // --- HELPER FUNCTIONS

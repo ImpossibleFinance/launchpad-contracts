@@ -3,10 +3,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { computeMerkleProof, computeMerkleRoot, getAddressIndex } from '../library/merkleWhitelist'
-import IFAllocationSaleGeneralTest, { _ctx, _ctxFree } from './IFAllocationSaleGeneralTest'
+import IFAllocationSaleGeneralTest, { _ctx, _ctxFree, _ctxSale } from './IFAllocationSaleGeneralTest'
 import { getBlockTime, mineNext, mineTimeDelta } from './helpers'
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY, USE_VESTED_WITHDRAW_GIVEAWAY } from './reverts/msg-IFAllocationSale'
+import { EXCEED_MAX_PAYMENT, NO_TOKEN_TO_BE_WITHDRAWN, NOT_A_GIVEAWAY, NOT_WHITELIST_SETTER_OR_OWNER, USE_VESTED_WITHDRAW_GIVEAWAY } from './reverts/msg-IFAllocationSale'
 
 function computeMerkleRootWithAllocation(signers: SignerWithAddress[], allocations: number[]): [string[], Map<string, string>]{
     const leaves: string[] = []
@@ -32,11 +32,12 @@ export default describe('IF Fixed Sale', function () {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctx: any = _ctx
   const ctxFree: any = _ctxFree
+  const ctxSale: any = _ctxSale
 
   const contractName = 'MockIFFixedSale'
 
   const generalTest = IFAllocationSaleGeneralTest
-  generalTest(this, contractName, ctx, _ctxFree)
+  generalTest(this, contractName, ctx, _ctxFree, _ctxSale)
 
 
   generalTest.prototype.it = it('can save allocation amount in merkle tree', async function () {
@@ -212,5 +213,154 @@ export default describe('IF Fixed Sale', function () {
 
     // test withdrawer counter
     expect(await ctxFree.IFAllocationSale.withdrawerCount()).to.equal(1)
+  })
+  generalTest.prototype.it = it('can enable public sale', async function () {
+
+    const allocationAmount = 10000
+    const paymentAmount = 10000
+    const [leaves, addressValMap] = computeMerkleRootWithAllocation([ctx.buyer], [allocationAmount])
+
+    // set sale token allocation override
+    await ctx.IFAllocationSale.connect(ctx.owner).setWhitelist(computeMerkleRoot(leaves))
+    await ctx.IFAllocationSale.connect(ctx.owner).setPublicAllocation(allocationAmount)
+    mineNext()
+
+    // fast forward from current time to start time
+    mineTimeDelta(ctx.startTime - (await getBlockTime()))
+
+    // test purchase
+    mineNext()
+
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+
+    await ctx.IFAllocationSale.connect(ctx.buyer2)['whitelistedPurchase(uint256,bytes32[],uint256)'](
+      paymentAmount,
+      [],
+      allocationAmount,
+    )
+  })
+  generalTest.prototype.it = it('can purchase with code and withdraw', async function () {
+    const paymentAmount = 5000
+
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+    // 1. use the function to purchaseWithCode
+    await ctx.IFAllocationSale.connect(ctx.buyer).purchaseWithCode(
+      paymentAmount,
+      'CODE',
+    )
+    mineNext()
+
+    // check variables
+    expect(await ctx.IFAllocationSale.paymentReceived(ctx.buyer.address)).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithCode(ctx.buyer.address)).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithEachCode(ctx.buyer.address, 'CODE')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.promoCodesPerUser(ctx.buyer.address, 0)).to.equal('CODE')
+    expect(await ctx.IFAllocationSale.hasUsedCode(ctx.buyer.address, 'CODE')).to.equal(true)
+    
+    expect(await ctx.IFAllocationSale.codes(0)).to.eql('CODE')
+    expect(await ctx.IFAllocationSale.amountPerCode('CODE')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE')).to.equal(1)
+
+    // 2. make another purchase with another code
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+    mineNext()
+    // use the function to purchaseWithCode
+    await ctx.IFAllocationSale.connect(ctx.buyer).purchaseWithCode(
+      paymentAmount,
+      'CODE2',
+    )
+    mineNext()
+
+    // check variables
+    expect(await ctx.IFAllocationSale.paymentReceived(ctx.buyer.address)).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithCode(ctx.buyer.address)).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithEachCode(ctx.buyer.address, 'CODE2')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.promoCodesPerUser(ctx.buyer.address, 1)).to.equal('CODE2')
+    expect(await ctx.IFAllocationSale.hasUsedCode(ctx.buyer.address, 'CODE2')).to.equal(true)
+      
+    expect(await ctx.IFAllocationSale.codes(1)).to.eql('CODE2')
+    expect(await ctx.IFAllocationSale.amountPerCode('CODE2')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE2')).to.equal(1)
+
+    // 3. make another purchase with the ctx.buyer2
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+    // use the function to purchaseWithCode
+    await ctx.IFAllocationSale.connect(ctx.buyer2).purchaseWithCode(
+      paymentAmount,
+      'CODE2',
+    )
+    mineNext()
+
+    // check variables
+    expect(await ctx.IFAllocationSale.paymentReceived(ctx.buyer2.address)).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithCode(ctx.buyer2.address)).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithEachCode(ctx.buyer2.address, 'CODE2')).to.equal(paymentAmount)
+    expect(await ctx.IFAllocationSale.promoCodesPerUser(ctx.buyer2.address, 0)).to.equal('CODE2')
+    expect(await ctx.IFAllocationSale.hasUsedCode(ctx.buyer2.address, 'CODE2')).to.equal(true)
+
+    expect(await ctx.IFAllocationSale.codes(1)).to.eql('CODE2')
+    expect(await ctx.IFAllocationSale.amountPerCode('CODE2')).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE2')).to.equal(2)
+
+    // 4. make another purchase with the ctx.buyer2 with the same code
+    await ctx.PaymentToken.connect(ctx.buyer2).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    mineNext()
+    // use the function to purchaseWithCode
+    await ctx.IFAllocationSale.connect(ctx.buyer2).purchaseWithCode(
+      paymentAmount,
+      'CODE2',
+    )
+    mineNext()
+    
+    // check variables
+    expect(await ctx.IFAllocationSale.paymentReceived(ctx.buyer2.address)).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithCode(ctx.buyer2.address)).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.paymentReceivedWithEachCode(ctx.buyer2.address, 'CODE2')).to.equal(paymentAmount * 2)
+    expect(await ctx.IFAllocationSale.promoCodesPerUser(ctx.buyer2.address, 0)).to.equal('CODE2')
+    expect(await ctx.IFAllocationSale.hasUsedCode(ctx.buyer2.address, 'CODE2')).to.equal(true)
+    
+    expect(await ctx.IFAllocationSale.codes(1)).to.eql('CODE2')
+    expect(await ctx.IFAllocationSale.amountPerCode('CODE2')).to.equal(paymentAmount * 3)
+    expect(await ctx.IFAllocationSale.uniqueUsePerCode('CODE2')).to.equal(2)
+
+    // withdraw
+    // fast forward from current time to after end time
+    mineTimeDelta(ctx.endTime - (await getBlockTime()))
+    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
+    mineNext()
+    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
+    mineNext()
+
+    // expect balance to be 5000 for both buyers
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal(paymentAmount * 2 / 10)
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal(paymentAmount * 2 / 10)
+  })
+  generalTest.prototype.it = it('whitelist setter can setMaxTotalPurchasable', async function () {
+
+    await ctx.IFAllocationSale.connect(ctx.owner).setMaxTotalPurchasable(10)
+    await ctx.IFAllocationSale.connect(ctx.owner).setWhitelistSetter(ctx.buyer.address)
+    await ctx.IFAllocationSale.connect(ctx.buyer).setMaxTotalPurchasable(10)
+    mineNext()
+
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer2).setMaxTotalPurchasable(10)).to.be.revertedWith(NOT_WHITELIST_SETTER_OR_OWNER)
   })
 })

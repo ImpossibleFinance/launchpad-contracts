@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
@@ -22,6 +22,8 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     mapping(address => uint256) public claimable;
     // tracks amount of tokens purchased by each address
     mapping(address => uint256) public totalPurchased;
+    // flag to enable integer sale
+    bool public isIntegerSale = false;
 
     // --- CONSTRUCTOR
 
@@ -55,6 +57,10 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
         super.setCliffPeriod(claimTimes, pct);
     }
 
+    function setIsIntegerSale(bool _isIntegerSale) public onlyOwner onlyBeforeSale {
+        isIntegerSale = _isIntegerSale;
+    }
+
     // --- PURCHASE
 
     function purchase(uint256 paymentAmount) virtual override public onlyDuringSale {
@@ -75,39 +81,29 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     // --- WITHDRAW
 
     function withdraw() virtual override public onlyAfterSale nonReentrant {
-        address user = _msgSender();
         // must not be a zero price sale
         require(salePrice != 0, 'use withdrawGiveaway');
 
+        address user = _msgSender();
+
         uint256 tokenOwed = getCurrentClaimableToken(user);
+        require(tokenOwed != 0, 'no token to be withdrawn');
         // send token and update states
         _withdraw(tokenOwed);
-        require(tokenOwed != 0, 'no token to be withdrawn');
     }   
 
     // Function to withdraw (redeem) tokens from a zero cost "giveaway" sale
     function withdrawGiveaway(bytes32[] calldata merkleProof) virtual override public onlyAfterSale nonReentrant
     {
-        address user = _msgSender();
-        // must be a zero price sale
-        require(salePrice == 0, 'not a giveaway');
-        // if there is whitelist, require that user is whitelisted by checking proof
-        require(whitelistRootHash == 0 || checkWhitelist(user, merkleProof), 'proof invalid');
-
-        uint256 tokenOwed = getCurrentClaimableToken(user);
-        // initialize claimable before the first time of withdrawal
-        if (!hasWithdrawn[user]) {
-            claimable[user] = tokenOwed;
-            totalPurchased[user] = tokenOwed;
-        }
-        // send token and update states
-        _withdraw(tokenOwed);
-        require(tokenOwed != 0, 'withdraw giveaway amount 0');
+        revert("Not implemented");
     }
 
     // --- UPDATE SALE STATES
 
     function _purchase(uint256 paymentAmount, uint256 remaining) override internal {
+        if (isIntegerSale) {
+            require(isIntegerPayment(paymentAmount), 'can only buy integer amount of sale tokens');
+        }
         totalPaymentReceived += paymentAmount;
         super._purchase(paymentAmount, remaining);
         // Update vesting variables
@@ -117,17 +113,21 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
     }
 
     function _withdraw(uint256 tokenOwed) override internal {
-        super._withdraw(tokenOwed);
         // Update vesting variables
         latestClaimTime[_msgSender()] = block.timestamp;
         claimable[_msgSender()] -= tokenOwed;
+        super._withdraw(tokenOwed);
     }
 
     // --- HELPER FUNCTIONS
 
     function getSaleTokensSold() override internal view returns (uint256 amount) {
-        return (totalPaymentReceived * SALE_PRICE_DECIMALS) /
-            salePrice;
+        // if salePrice is 0, no tokens will be sold
+        if (salePrice == 0) {
+            return 0;
+        } else {
+            return totalPaymentReceived * SALE_PRICE_DECIMALS / salePrice;
+        }
     }
 
     // A helper function to get the amount of unlocked token by providing user's address
@@ -144,4 +144,15 @@ contract IFSale is IFPurchasable, IFVestable, IFFundable, IFWhitelistable {
         // verify merkle proof
         return MerkleProof.verify(merkleProof, whitelistRootHash, leaf);
     }
+
+    // a function to check if the payment amount can buy integer amount of sale tokens, accounting the token decimals
+    function isIntegerPayment(uint256 paymentAmount) public view returns (bool) {
+        return (paymentAmount * SALE_PRICE_DECIMALS) % salePrice == 0;
+    }
+
+    // Override the renounceOwnership function to disable it
+    function renounceOwnership() public pure override{
+        revert("ownership renunciation is disabled");
+    }
+
 }

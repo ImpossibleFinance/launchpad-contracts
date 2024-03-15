@@ -11,7 +11,7 @@ import {
 } from './helpers'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Contract } from '@ethersproject/contracts'
-import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM, ADDRESS_ZERO_FUNDER } from './reverts/msg-IFAllocationSale'
+import { ALREADY_CASHED, ALREADY_OPTED_IN, BUY_BACK_NOT_ENABLED, NO_TOKEN_TO_BE_WITHDRAWN, NOT_CASHER_OR_OWNER, NOT_OWNER, NOT_FUNDER, USE_WITHDRAWGIVEAWAY, CANNOT_WITHDRAW_BEFORE_CLAIM, ADDRESS_ZERO_FUNDER, NOT_ENOUGH_PAYMENT_TOKEN_TO_CASH, PURCHASE_IS_HALTED, CAN_ONLY_BUY_INTEGER_AMOUNT } from './reverts/msg-IFAllocationSale'
 
 export const _ctx ={
   owner: SignerWithAddress,
@@ -61,7 +61,34 @@ export const _ctxFree = {
   fundAmount: '1000000000'
 }
 
-export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctxFree: any) {
+const salePrice = '3700000000000000000' // 3.7 PAY per SALE
+
+export const _ctxSale ={
+  owner: SignerWithAddress,
+  buyer: SignerWithAddress,
+  buyer2: SignerWithAddress,
+  seller: SignerWithAddress,
+  casher: SignerWithAddress,
+  StakeToken: Contract,
+  PaymentToken: Contract,
+  SaleToken: Contract,
+  IFAllocationMaster: Contract,
+  IFAllocationSale: Contract,
+  trackId: 0,
+  // sale contract vars
+  snapshotTimestamp: 0,// block at which to take allocation snapshot
+  startTime: 0, // start timestamp of sale (inclusive)
+  endTime: 0, // end timestamp of sale (inclusive)
+  linearVestingEndTime: 0, // end timestamp of vesting
+  salePrice: salePrice,
+  maxTotalDeposit: '25000000000000000000000000', // max deposit
+  // other vars
+  // const ctx.fundAmount = '33333'
+  fundAmount: '1000000000',
+  paymentTokenPerSaleToken: 3.7
+}
+
+export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctxFree: any, ctxSale: any) {
   // unset timeout from the test
   _this.timeout(0)
 
@@ -76,7 +103,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
   beforeEach(async () => {
     // set launchpad blocks in future
     mineNext()
-    const currTime = await getBlockTime()
+    let currTime = await getBlockTime()
     mineNext()
     ctx.snapshotTimestamp = currTime + 5000
     ctx.startTime = currTime + 10000
@@ -203,6 +230,7 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     //Setup ctxFree
     if (!ctxFree) return
 
+    currTime = await getBlockTime()
     ctxFree.snapshotTimestamp = currTime + 5000
     ctxFree.startTime = currTime + 10000
     ctxFree.endTime = currTime + 20000
@@ -270,6 +298,59 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     )
     await ctxFree.IFAllocationSale.connect(ctxFree.seller).fund(ctxFree.fundAmount) // fund
     mineNext()
+
+    currTime = await getBlockTime()
+    ctxSale.snapshotTimestamp = currTime + 5000
+    ctxSale.startTime = currTime + 10000
+    ctxSale.endTime = currTime + 20000
+    ctxSale.linearVestingEndTime = currTime + 50000
+
+    //Free get test accounts
+    ctxSale.owner = (await ethers.getSigners())[0]
+    ctxSale.buyer = (await ethers.getSigners())[1]
+    ctxSale.seller = (await ethers.getSigners())[2]
+    ctxSale.casher = (await ethers.getSigners())[3]
+    ctxSale.buyer2 = (await ethers.getSigners())[4]
+    ctxSale.StakeToken = ctx.StakeToken
+    ctxSale.PaymentToken = ctx.PaymentToken
+    ctxSale.SaleToken = ctx.SaleToken
+
+    //Free redistribute tokens
+    mineNext()
+    ctxSale.StakeToken.connect(ctxSale.buyer).transfer(
+      ctxSale.buyer2.address,
+      '1000000000000000000000000'
+    )
+    ctxFree.PaymentToken.connect(ctxSale.buyer).transfer(
+      ctxSale.buyer2.address,
+      '1000000000000000000000000'
+    )
+
+    ctxSale.IFAllocationSale = await IFAllocationSaleFactory.deploy(
+      ctxSale.salePrice,
+      ctxSale.seller.address,
+      ctxSale.PaymentToken.address,
+      ctxSale.SaleToken.address,
+      ctx.IFAllocationMaster.address,
+      ctxSale.trackId,
+      ctxSale.snapshotTimestamp,
+      ctxSale.startTime,
+      ctxSale.endTime,
+      ctxSale.maxTotalDeposit
+    )
+    mineNext()
+
+    // set the ctx.casher address
+    await ctxSale.IFAllocationSale.setCasher(ctxSale.casher.address)
+    mineNext()
+
+    // fund sale
+    await ctxSale.SaleToken.connect(ctxSale.seller).approve(
+      ctxSale.IFAllocationSale.address,
+      ctxSale.fundAmount
+    )
+    await ctxSale.IFAllocationSale.connect(ctxSale.seller).fund(ctxSale.fundAmount) // fund
+    mineNext()
   })
 
   it('can purchase, withdraw, and cash', async function () {
@@ -333,6 +414,22 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     await expect(ctx.IFAllocationSale.connect(ctx.seller).emergencyTokenRetrieve(ctx.PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
     await expect(ctx.IFAllocationSale.connect(ctx.buyer).emergencyTokenRetrieve(ctx.PaymentToken.address)).to.be.revertedWith(NOT_OWNER)
     ctx.IFAllocationSale.connect(ctx.owner).emergencyTokenRetrieve(ctx.PaymentToken.address)
+  })
+
+  it('can cash when salePrice is 0', async function () {
+    // fast forward from current time to after end time
+    mineTimeDelta(ctxFree.endTime - (await getBlockTime()))
+
+    // test cash
+    await ctxFree.IFAllocationSale.connect(ctxFree.casher).cash()
+    // access control: only ctx.casher can cash
+    await expect(ctxFree.IFAllocationSale.connect(ctxFree.buyer).cash()).to.be.revertedWith(NOT_CASHER_OR_OWNER)
+    await expect(ctxFree.IFAllocationSale.connect(ctxFree.seller).cash()).to.be.revertedWith(NOT_CASHER_OR_OWNER)
+    await expect(ctxFree.IFAllocationSale.connect(ctxFree.owner).cash()).to.be.revertedWith(ALREADY_CASHED)
+    mineNext()
+
+    // expect balance to increase by cash amount
+    expect(await ctx.SaleToken.balanceOf(ctx.casher.address)).to.equal(ctxFree.fundAmount)
   })
 
   it('can set funder', async function () {
@@ -527,7 +624,75 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
     // test withdrawer counter
     expect(await ctx.IFAllocationSale.withdrawerCount()).to.equal(1)
   })
+  it('can set withdraw delay multiple times', async function () {
+    mineNext()
 
+    // delay of 10 blocks
+    const delay = 10
+
+    // add withdraw delay
+    const withdrawTimeInitial = parseInt(await ctx.IFAllocationSale.withdrawTime())
+    await ctx.IFAllocationSale.setWithdrawDelay(5)
+    expect(await ctx.IFAllocationSale.withdrawTime()).to.equal(withdrawTimeInitial + 5)
+    await ctx.IFAllocationSale.setWithdrawDelay(100)
+    expect(await ctx.IFAllocationSale.withdrawTime()).to.equal(withdrawTimeInitial + 100)
+    await ctx.IFAllocationSale.setWithdrawDelay(delay)
+    expect(await ctx.IFAllocationSale.withdrawTime()).to.equal(withdrawTimeInitial + delay)
+    mineNext()
+
+    // amount to pay
+    const paymentAmount = '333330'
+
+    // fast forward from current time to start time
+    mineTimeDelta(ctx.startTime - (await getBlockTime()))
+
+    // test purchase
+    mineNext()
+    await ctx.PaymentToken.connect(ctx.buyer).approve(
+      ctx.IFAllocationSale.address,
+      paymentAmount
+    )
+    await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
+
+    mineNext()
+
+    // fast forward from current time to after end time
+    mineTimeDelta(ctx.endTime - (await getBlockTime()))
+
+    // test withdraw and cash (should fail because need 1 more block)
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_BEFORE_CLAIM)
+    // access control: Call cash before ctx.endTime + withdrawDelay
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cash())
+
+    mineNext()
+
+    // fails
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('0')
+    // fails
+    expect(await ctx.PaymentToken.balanceOf(ctx.casher.address)).to.equal('0')
+
+    // simulate `delay` time passing
+    mineTimeDelta(delay)
+
+    // test withdraw and cash (should work here after delay passed)
+    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
+    await ctx.IFAllocationSale.connect(ctx.casher).cash()
+    // access control: Call cash after ctx.endTime + withdrawDelay twice
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cash()).to.be.revertedWith(ALREADY_CASHED)
+
+    mineNext()
+
+    // expect balance to increase by fund amount
+    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('33333')
+    // expect balance to increase by cash amount
+    expect(await ctx.PaymentToken.balanceOf(ctx.casher.address)).to.equal(paymentAmount)
+
+    // test purchaser counter
+    expect(await ctx.IFAllocationSale.purchaserCount()).to.equal(1)
+
+    // test withdrawer counter
+    expect(await ctx.IFAllocationSale.withdrawerCount()).to.equal(1)
+  })
   it('does not over cash', async function () {
     mineNext()
 
@@ -740,61 +905,111 @@ export default function (_this: Mocha.Suite, contractName: string, ctx: any, ctx
       }
     }
   })
-  it('can opt in buyback', async function () {
-    const paymentAmount = 333330
+  it("allows authorized users to cash payment tokens multiple times", async function () {
+    // Sending some payment tokens to the IFAllocationSale contract to simulate earnings
+    await ctx.PaymentToken.transfer(ctx.IFAllocationSale.address, ethers.utils.parseEther("100"));
 
-    // 
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()).to.be.revertedWith(BUY_BACK_NOT_ENABLED)
-    
-    // set cliff vesting period
-    const cliffInterval = Math.floor((ctx.linearVestingEndTime - ctx.endTime) / 3)
-    const cliffPeriod = [
-      ctx.endTime + 1,
-      ctx.endTime + cliffInterval * 1,
-      ctx.endTime + cliffInterval * 2,
-      ctx.endTime + cliffInterval * 3
-    ]
-    const cliffPct = [10, 20, 30, 40]
-    await ctx.IFAllocationSale.connect(ctx.owner).setCliffPeriod(cliffPeriod, cliffPct)
+    // Assuming ctx.IFAllocationSale has a function to cash payment tokens and ctx.casher is authorized
+    let initialCasherBalance = await ctx.PaymentToken.balanceOf(ctx.casher.address);
 
-    // set buyback claimable number
-    await ctx.IFAllocationSale.connect(ctx.owner).setBuybackClaimableNumber(2)
+    // Define an excessive cash amount that exceeds the contract's balance
+    const excessiveCashAmount = ethers.utils.parseEther("150");
 
-    // fast forward from current time to start time
-    mineTimeDelta(ctx.startTime - (await getBlockTime()))
-    // purchase
+    // Attempting to cash more than the available balance by an authorized user should revert
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cashPaymentToken(excessiveCashAmount))
+      .to.be.revertedWith(NOT_ENOUGH_PAYMENT_TOKEN_TO_CASH);
+
+    // Authorized casher cashes payment tokens
+    const validCashAmount = ethers.utils.parseEther("50");
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cashPaymentToken(validCashAmount))
+      .to.emit(ctx.IFAllocationSale, "Cash")
+      .withArgs(ctx.casher.address, validCashAmount, 0);
+
+    // Validate casher's new balance
+    let newCasherBalance = await ctx.PaymentToken.balanceOf(ctx.casher.address);
+    // expect(newCasherBalance.sub(initialCasherBalance)).to.equal(validCashAmount);
+
+    // Attempt to cash payment tokens by an unauthorized user (e.g., ctx.buyer) should fail
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).cashPaymentToken(validCashAmount))
+      .to.be.revertedWith(NOT_CASHER_OR_OWNER); // Adjust the error message based on your contract's requirements
+
+    // Second cashing operation
+    initialCasherBalance = newCasherBalance; // Update the initial balance to the new balance for the next comparison
+    await expect(ctx.IFAllocationSale.connect(ctx.casher).cashPaymentToken(validCashAmount))
+      .to.emit(ctx.IFAllocationSale, "Cash")
+      .withArgs(ctx.casher.address, validCashAmount, 0);
+
+    // Check balance after second cashing
+    newCasherBalance = await ctx.PaymentToken.balanceOf(ctx.casher.address);
+    // expect(newCasherBalance.sub(initialCasherBalance)).to.equal(validCashAmount);
+
+    // Attempt to cash payment tokens by an unauthorized user (e.g., ctx.buyer) should still fail
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer).cashPaymentToken(validCashAmount))
+      .to.be.revertedWith(NOT_CASHER_OR_OWNER); // Adjust the error message based on your contract's requirements
+
+    // mineTimeDelta((ctx.endTime + ctx.withdrawDelay) - (await getBlockTime() + 1))
+    mineTimeDelta(ctx.endTime - (await getBlockTime()))
+
+    // check the balance of payment token is 0
+    expect(await ctx.PaymentToken.balanceOf(ctx.IFAllocationSale.address)).to.equal(0)
+
+    expect(await ctx.SaleToken.balanceOf(ctx.casher.address)).to.equal(0)
+    // can call cash()
+    await ctx.IFAllocationSale.connect(ctx.casher).cash() 
+    expect(await ctx.SaleToken.balanceOf(ctx.casher.address)).to.equal(ctx.fundAmount)
+  });
+  it("can pause purchase", async function () {
     mineNext()
+
+    // amount to pay
+    const paymentAmount = '333330'
     await ctx.PaymentToken.connect(ctx.buyer).approve(
       ctx.IFAllocationSale.address,
       paymentAmount
     )
+
+    // fast forward from current time to start time
+    mineTimeDelta(ctx.startTime - (await getBlockTime()))
+
+    // pause purchase
+    await ctx.IFAllocationSale.connect(ctx.owner).setIsPurchaseHalted(true)
+
+    // test purchase (expect to revert)
+    mineNext()
+    await expect(ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount))
+      .to.be.revertedWith(PURCHASE_IS_HALTED)
+
+    // unpause purchase
+    await ctx.IFAllocationSale.connect(ctx.owner).setIsPurchaseHalted(false)
+    mineNext()
     await ctx.IFAllocationSale.connect(ctx.buyer)['purchase(uint256)'](paymentAmount)
-    await ctx.PaymentToken.connect(ctx.buyer2).approve(
-      ctx.IFAllocationSale.address,
-      paymentAmount
+  });
+  it('can set integer purchase', async function () {
+    const integerPaymentAmount = '5920'
+    const nonIntegerPaymentAmount = '333331'
+    await ctxSale.IFAllocationSale.connect(ctxSale.owner).setIsIntegerSale(true)
+    // fast forward from current time to start time
+    mineTimeDelta(ctxSale.startTime - (await getBlockTime()))
+    await ctxSale.PaymentToken.connect(ctxSale.buyer).approve(
+      ctxSale.IFAllocationSale.address,
+      nonIntegerPaymentAmount
     )
-    await ctx.IFAllocationSale.connect(ctx.buyer2)['purchase(uint256)'](paymentAmount)
-    // cliff vesting: User makes a purchase and claim before cliff vesting starts
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(CANNOT_WITHDRAW_BEFORE_CLAIM)
+    await ctxSale.IFAllocationSale.connect(ctxSale.buyer)['purchase(uint256)'](integerPaymentAmount)
+    await expect(ctxSale.IFAllocationSale.connect(ctxSale.buyer)['purchase(uint256)'](nonIntegerPaymentAmount))
+      .to.be.revertedWith(CAN_ONLY_BUY_INTEGER_AMOUNT)
 
-    mineTimeDelta(ctx.endTime - (await getBlockTime()) + 1)
-
+    // fast forward from current time to after end time
+    mineTimeDelta(ctxSale.endTime - (await getBlockTime()))
     // test withdraw
-    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('3333')
+    mineNext()
+    await ctxSale.IFAllocationSale.connect(ctxSale.buyer).withdraw()
+    mineNext()
 
-    // test withdraw after opted in buyback
-    await ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).optInBuyback()).to.be.revertedWith(ALREADY_OPTED_IN)
-    mineTimeDelta(cliffPeriod[2] - (await getBlockTime()))
-    await ctx.IFAllocationSale.connect(ctx.buyer).withdraw()
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer.address)).to.equal('9999')
-    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('19999')
-
-    mineTimeDelta(cliffPeriod[3] - (await getBlockTime()))
-    await expect(ctx.IFAllocationSale.connect(ctx.buyer).withdraw()).to.be.revertedWith(NO_TOKEN_TO_BE_WITHDRAWN)
-    await ctx.IFAllocationSale.connect(ctx.buyer2).withdraw()
-    expect(await ctx.SaleToken.balanceOf(ctx.buyer2.address)).to.equal('33333')
+    const expectedBalance = (parseFloat(integerPaymentAmount) / ctxSale.paymentTokenPerSaleToken).toString()
+    expect(await ctxSale.SaleToken.balanceOf(ctxSale.buyer.address)).to.equal(expectedBalance)
+  })
+  it('cannot renounce ownership', async function () {
+    await expect(ctxSale.IFAllocationSale.connect(ctxSale.owner).renounceOwnership())
+      .to.be.revertedWith('ownership renunciation is disabled')
   })
 }

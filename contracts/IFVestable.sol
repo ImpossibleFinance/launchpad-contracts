@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.9;
 
 import '@openzeppelin/contracts/utils/math/Math.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
@@ -14,21 +14,12 @@ import '@openzeppelin/contracts/access/Ownable.sol';
   @notice Cliff vesting unlocks tokens at a series of specific time. According to cliff period
  */
 abstract contract IFVestable is Ownable {
-    uint64 private constant TEN_YEARS = 315360000;
+    uint64 private constant TEN_YEARS = 315742060;
 
     // --- VESTING
 
     // Allow vesting to be editable after sale
     bool public vestingEditableOverride;
-
-    // whether the user has opted in to buy back
-    // if true, the user cannot claim the token after `buybackClaimableNumber` vesting phase
-    // only applicable to cliff vesting for now
-    mapping(address => bool) public hasOptInBuyback;
-
-    // the number of vesting phase the user can claim the token if they have opted in to buyback
-    // default 0
-    uint256 public buybackClaimableNumber;
 
     // withdraw/cash delay timestamp (inclusive)
     uint256 public withdrawTime;
@@ -63,9 +54,10 @@ abstract contract IFVestable is Ownable {
     // --- CONSTRUCTOR
 
     constructor(
-        // withdrawTime is endTime + withdrawal delay 
         uint256 _withdrawTime
     ) {
+        // withdrawal delay is by default 0
+        // it can be set using setWithdrawDelay
         withdrawTime = _withdrawTime;
     }
 
@@ -77,11 +69,6 @@ abstract contract IFVestable is Ownable {
 
     function setWithdrawTime(uint256 _withdrawTime) internal {
         withdrawTime = _withdrawTime;
-    }
-
-    function setBuybackClaimableNumber(uint256 _buybackClaimableNumber) public onlyOwner {
-        require(_buybackClaimableNumber < cliffPeriod.length, "buyback claimable number cannot exceed number of cliff period");
-        buybackClaimableNumber = _buybackClaimableNumber;
     }
 
     // Function for owner to set a vesting end time
@@ -124,17 +111,6 @@ abstract contract IFVestable is Ownable {
 
     // --- VESTING LOGIC
 
-    // Opt in buyback. If called, the user will not be able to claim their token afer 
-    // Emit an event OptInBuyback(user) if the user has successfully opted in
-    // Only applicable to cliff vesting for now
-    function optInBuyback() public {
-        address user = _msgSender();
-        require(hasOptInBuyback[user] == false, "user has already opted in");
-        require(buybackClaimableNumber != 0, "buyback is not enabled");
-        hasOptInBuyback[user] = true;
-        emit OptInBuyback(user);
-    }
-
     /**
       @notice Get the amount of token unlocked
       @param totalPurchased Total tokens purchased
@@ -149,15 +125,9 @@ abstract contract IFVestable is Ownable {
 
         // cliff vesting
         uint256 cliffPeriodLength = cliffPeriod.length;
-        if (cliffPeriodLength != 0 && (cliffPeriod[cliffPeriodLength - 1].claimTime > block.timestamp || hasOptInBuyback[user] == true)) {
+        if (cliffPeriodLength != 0 && (cliffPeriod[cliffPeriodLength - 1].claimTime > block.timestamp)) {
             uint8 claimablePct;
             for (uint8 i; i < cliffPeriodLength; i++) {
-                // if hasOptInBuyback is true, user's claimable phase will be limited by buyBackClaimableNumber
-                // buyBackClaimableNumber is 0 means buyback is not enabled. Thus, user can claim all of the token
-                // if (hasOptInBuyback[user] == true && buybackClaimableNumber <= i && buybackClaimableNumber != 0) {
-                if (hasOptInBuyback[user] == true && buybackClaimableNumber <= i) {
-                    return totalPurchased * claimablePct / 100;
-                }
                 // if the cliff timestamp has been passed, add the claimable percentage
                 if (cliffPeriod[i].claimTime > block.timestamp) { break; }
                 if (latestClaimTime[user] < cliffPeriod[i].claimTime) {
