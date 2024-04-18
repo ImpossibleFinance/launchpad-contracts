@@ -1,0 +1,21 @@
+/node_modules
+
+#Foundry files
+out
+/lib
+
+#Hardhat files
+cache
+artifacts
+cache-zk
+artifacts-zk
+abi
+*.bin
+
+#Other
+.DS_Store
+.env
+
+.tmp.*
+
+.vscode

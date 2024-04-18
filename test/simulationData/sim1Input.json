@@ -1,0 +1,519 @@
+[
+  {
+    "stakeAmounts": ["1000000000", "1000000000"]
+  },
+  {},
+  {},
+  {},
+  {},
+  {
+    "stakeAmounts": ["50000000000", "50000000000"]
+  },
+  {},
+  { "bumpSaleCounter": true },
+  {},
+  {},
+  {
+    "stakeAmounts": ["-50000000000", "-50000000000"]
+  },
+  {},
+  {},
+  {},
+  {
+    "stakeAmounts": ["2500000000", "2500000000"],
+    "bumpSaleCounter": true
+  },
+  { "bumpSaleCounter": true },
+  { "bumpSaleCounter": true },
+  {},
+  {},
+  {},
+  {},
+  {},
+  { "bumpSaleCounter": true },
+  {},
+  {},
+  {
+    "stakeAmounts": ["500000000000", "500000000000"]
+  },
+  {},
+  {},
+  {},
+  { "bumpSaleCounter": true },
+  {},
+  {},
+  {},
+  { "activeRollOvers": [true, true] },
+  {
+    "stakeAmounts": ["10000000000", "10000000000"]
+  },
+  {},
+  {},
+  {},
+  { "bumpSaleCounter": true },
+  {},
+  {},
+  {},
+  {
+    "stakeAmounts": ["1000000000000000000000"]
+  },
+  {},
+  {
+    "stakeAmounts": ["8999999999486500000000"]
+  },
+  {
+    "label": "1 billion each",
+    "stakeAmounts": [
+      "1000000000000000000000000000",
+      "1000000000000000000000000000"
+    ]
+  },
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1"]
+  },
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["0", "1"]
+  },
+  {
+    "label": "unstake 1 billion from everyone",
+    "stakeAmounts": [
+      "-1000000000000000000000000000",
+      "-1000000000000000000000000000"
+    ]
+  },
+  { "bumpSaleCounter": true },
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
+  {
+    "label": "1 each to bump checkpoints",
+    "stakeAmounts": ["1", "1"]
+  },
+  {}
+]
