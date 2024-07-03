@@ -21,6 +21,7 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
     // Fees for different actions. All fees denoted in basis points
     uint256 public skipDelayFee = 2000; // initialzed at 20%
     uint256 public cancelUnstakeFee = 200; // initialized at 2%
+    uint256 SCALING_FACTOR = 10000;
 
     uint256 public accumulatedFee;
     uint256 public totalStakedAmt;
@@ -173,7 +174,8 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         address sender = _msgSender();
         claimReward(sender);
 
-        uint256 fee = (amount * skipDelayFee) / ONE_HUNDRED;
+        // multiple by SCALING_FACTOR to avoid truncation
+        uint256 fee = (amount * skipDelayFee * SCALING_FACTOR) / (ONE_HUNDRED * SCALING_FACTOR);
         uint256 withdrawAmt = amount - fee;
         uint256 divisor = totalStakedAmt - userInfo[sender].stakedAmt;
 
@@ -207,7 +209,8 @@ contract vIDIA is AccessControlEnumerable, IFTokenStandard {
         );
         claimReward(sender);
 
-        uint256 fee = (amount * skipDelayFee) / ONE_HUNDRED;
+        // multiple by SCALING_FACTOR to avoid truncation
+        uint256 fee = (amount * skipDelayFee * SCALING_FACTOR) / (ONE_HUNDRED * SCALING_FACTOR);
         uint256 withdrawAmt = amount - fee;
         uint256 divisor = totalStakedAmt - userInfo[sender].stakedAmt;
 
