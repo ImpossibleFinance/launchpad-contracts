@@ -5,9 +5,6 @@ pragma solidity 0.8.9;
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
-import 'sgn-v2-contracts/contracts/message/libraries/MessageSenderLib.sol';
-import { MessageBusSender} from 'sgn-v2-contracts/contracts/message/messagebus/MessageBusSender.sol';
-
 import './interfaces/IIFRetrievableStakeWeight.sol';
 import './interfaces/IIFBridgableStakeWeight.sol';
 import './LRON.sol'   ;
@@ -31,15 +28,12 @@ contract IFAllocationMasterLRON is
 
     // STRUCTS
 
-    // Celer Multichain Integration
-    address public immutable messageBus;
-
     // A checkpoint for marking stake info at a given block
     struct UserCheckpoint {
         // timestamp number of checkpoint
         uint80 timestamp;
         // amount staked at checkpoint
-        uint104 staked;
+        uint96 staked;
         // amount of stake weight at checkpoint
         uint192 stakeWeight;
         // number of finished sales at time of checkpoint
@@ -51,7 +45,7 @@ contract IFAllocationMasterLRON is
         // timestamp number of checkpoint
         uint80 timestamp;
         // amount staked at checkpoint
-        uint104 totalStaked;
+        uint96 totalStaked;
         // amount of stake weight at checkpoint
         uint192 totalStakeWeight;
         // number of finished sales at time of checkpoint
@@ -73,7 +67,7 @@ contract IFAllocationMasterLRON is
         // amount rolled over when finished sale counter increases, and user actively elected to roll over
         uint64 activeRolloverRate;
         // maximum total stake for a user in this track
-        uint104 maxTotalStake;
+        uint96 maxTotalStake;
     }
 
     // Info of each user stake weight.
@@ -124,7 +118,7 @@ contract IFAllocationMasterLRON is
         public trackCheckpoints;
 
     // max stakes seen for each track -- (track) => max stake seen on track
-    mapping(uint24 => uint104) public trackMaxStakes;
+    mapping(uint24 => uint96) public trackMaxStakes;
 
     // USER INFO
 
@@ -143,8 +137,8 @@ contract IFAllocationMasterLRON is
     event BumpSaleCounter(uint24 indexed trackId, uint32 newCount);
     event AddUserCheckpoint(uint24 indexed trackId, uint80 timestamp);
     event AddTrackCheckpoint(uint24 indexed trackId, uint80 timestamp);
-    event Stake(uint24 indexed trackId, address indexed user, uint104 amount);
-    event Unstake(uint24 indexed trackId, address indexed user, uint104 amount);
+    event Stake(uint24 indexed trackId, address indexed user, uint96 amount);
+    event Unstake(uint24 indexed trackId, address indexed user, uint96 amount);
     event EmergencyWithdraw(
         uint24 indexed trackId,
         address indexed sender,
@@ -166,9 +160,8 @@ contract IFAllocationMasterLRON is
     );
 
     // CONSTRUCTOR
-    constructor(address _messageBus) {
-        messageBus = _messageBus;
-    }
+    // reserve the param _address for compatibilities with other master contracts
+    constructor(address _address) {}
 
     // FUNCTIONS
 
@@ -184,7 +177,7 @@ contract IFAllocationMasterLRON is
         uint24 _weightAccrualRate,
         uint64 _passiveRolloverRate,
         uint64 _activeRolloverRate,
-        uint104 _maxTotalStake
+        uint96 _maxTotalStake
     ) external onlyOwner {
         require(_weightAccrualRate != 0, 'accrual rate is 0');
 
@@ -562,7 +555,7 @@ contract IFAllocationMasterLRON is
 
     function addUserCheckpoint(
         uint24 trackId,
-        uint104 amount,
+        uint96 amount,
         bool addElseSub
     ) internal {
         // get track info
@@ -656,7 +649,7 @@ contract IFAllocationMasterLRON is
 
     function addTrackCheckpoint(
         uint24 trackId, // track number
-        uint104 amount, // delta on staked amount
+        uint96 amount, // delta on staked amount
         bool addElseSub, // true = adding; false = subtracting
         bool _bumpSaleCounter // whether to increase sale counter by 1
     ) internal {
@@ -777,7 +770,6 @@ contract IFAllocationMasterLRON is
 
     // stake
 function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReentrant {
-        uint104 amount104 = uint104(amount);
         // stake amount must be greater than 0
         require(amount > 0, 'amount is 0');
 
@@ -795,10 +787,10 @@ function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReen
         track.stakeToken.lockFrom({account: _msgSender(), amount: amount, until: lockUntil });
 
         // add user checkpoint
-        addUserCheckpoint(trackId, amount104, true);
+        addUserCheckpoint(trackId, amount, true);
 
         // add track checkpoint
-        addTrackCheckpoint(trackId, amount104, true, false);
+        addTrackCheckpoint(trackId, amount, true, false);
 
         // get latest track cp
         TrackCheckpoint memory trackCp = trackCheckpoints[trackId][
@@ -811,7 +803,7 @@ function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReen
         }
 
         // emit
-        emit Stake(trackId, _msgSender(), amount104);
+        emit Stake(trackId, _msgSender(), amount);
     }
 
     // unstake
@@ -828,7 +820,7 @@ function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReen
         // amount must be greater than 0
         require(unlockableWithinRange > 0, 'amount is 0');
 
-        uint104 amount104 = uint104(unlockableWithinRange);
+        uint96 amount96 = uint96(unlockableWithinRange);
 
 
         // get number of user's checkpoints within this track
@@ -845,17 +837,16 @@ function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReen
         require(unlockableWithinRange <= checkpoint.staked, 'amount > staked');
 
         // add user checkpoint
-        addUserCheckpoint(trackId, amount104, false);
+        addUserCheckpoint(trackId, amount96, false);
 
         // add track checkpoint
-        addTrackCheckpoint(trackId, amount104, false, false);
+        addTrackCheckpoint(trackId, amount96, false, false);
 
         // transfer the specified amount of stake token from this contract to user
-        //@todo integrate with LRON
         track.stakeToken.unlockFromWithinRange(_msgSender(), until, until);
 
         // emit
-        emit Unstake(trackId, _msgSender(), amount104);
+        emit Unstake(trackId, _msgSender(), amount96);
     }
 
     // emergency withdraw
@@ -896,118 +887,5 @@ function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReen
 
         // emit
         emit EmergencyWithdraw(trackId, _msgSender(), checkpoint.staked);
-    }
-
-    // Methods for bridging track weight information
-
-    // Push
-    function syncUserWeight(
-        address receiver,
-        address[] calldata users,
-        uint24 trackId,
-        uint80 timestamp,
-        uint64 dstChainId
-    ) external payable nonReentrant {
-        // should be active track
-        require(!trackDisabled[trackId], 'track !disabled');
-
-        // get user stake weight on this contract
-        uint192[] memory userStakeWeights = new uint192[](users.length);
-
-        for (uint256 i = 0; i < users.length; i++) {
-            userStakeWeights[i] = getUserStakeWeight(
-                trackId,
-                users[i],
-                timestamp
-            );
-        }
-
-        // construct message data to be sent to dest contract
-        bytes memory message = abi.encode(
-            MessageRequest({
-                bridgeType: BridgeType.UserWeight,
-                users: users,
-                timestamp: timestamp,
-                weights: userStakeWeights,
-                trackId: trackId
-            })
-        );
-
-        // calculate messageBus fee
-        MessageBusSender messageBusSender = MessageBusSender(messageBus);
-        uint256 fee = messageBusSender.calcFee(message);
-        require(msg.value >= fee, "Not enough fee");
-
-        // trigger the message bridge
-        MessageSenderLib.sendMessage(
-            receiver,
-            dstChainId,
-            message,
-            messageBus,
-            fee
-        );
-
-        // Refund mesasgeBus fee
-        if ((msg.value - fee) != 0) {
-            payable(_msgSender()).transfer(msg.value - fee);
-        }
-
-
-        emit SyncUserWeight(
-            receiver,
-            trackId,
-            timestamp,
-            dstChainId,
-            trackId
-        );
-    }
-
-    function syncTotalWeight(
-        address receiver,
-        uint24 trackId,
-        uint80 timestamp,
-        uint64 dstChainId
-    ) external payable nonReentrant {
-        // should be active track
-        require(!trackDisabled[trackId], 'track disabled');
-
-        address[] memory users = new address[](1);
-        users[0] = _msgSender();
-
-        // get total stake weight on this contract
-        uint192[] memory weights = new uint192[](1);
-        weights[0] = getTotalStakeWeight(trackId, timestamp);
-
-        // construct message data to be sent to dest contract
-        bytes memory message = abi.encode(
-            MessageRequest({
-                bridgeType: BridgeType.TotalWeight,
-                users: users,
-                timestamp: timestamp,
-                weights: weights,
-                trackId: trackId
-            })
-        );
-
-        // calculate messageBus fee
-        MessageBusSender messageBusSender = MessageBusSender(messageBus);
-        uint256 fee = messageBusSender.calcFee(message);
-        require(msg.value >= fee, "Not enough fee");
-
-        // trigger the message bridge
-        MessageSenderLib.sendMessage(
-            receiver,
-            dstChainId,
-            message,
-            messageBus,
-            fee
-        );
-
-        // Refund mesasgeBus fee
-        if ((msg.value - fee) != 0) {
-            payable(_msgSender()).transfer(msg.value - fee);
-        }
-
-        emit SyncTotalWeight(receiver, trackId, timestamp, dstChainId, trackId);
     }
 }
