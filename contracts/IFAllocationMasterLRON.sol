@@ -26,6 +26,8 @@ contract IFAllocationMasterLRON is
     // number of decimals of rollover factors
     uint64 constant ROLLOVER_FACTOR_DECIMALS = 10**18;
 
+    uint40 public constant MAX_LOCK_DURATION = 365 days;
+
     // STRUCTS
 
     // A checkpoint for marking stake info at a given block
@@ -120,6 +122,8 @@ contract IFAllocationMasterLRON is
     // max stakes seen for each track -- (track) => max stake seen on track
     mapping(uint24 => uint96) public trackMaxStakes;
 
+    mapping(uint24 => uint40) public trackUnlockTime;
+
     // USER INFO
 
     // the number of checkpoints of a user for a track -- (track, user address) => checkpoint count
@@ -200,6 +204,9 @@ contract IFAllocationMasterLRON is
             false, // add or sub does not matter
             false // do not bump finished sale counter
         );
+
+        // set track unlock time
+        trackUnlockTime[uint24(tracks.length - 1)] = uint40(block.timestamp + MAX_LOCK_DURATION);
 
         // emit
         emit AddTrack(name, address(stakeToken));
@@ -769,7 +776,7 @@ contract IFAllocationMasterLRON is
     }
 
     // stake
-function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReentrant {
+function stake(uint24 trackId, uint96 amount) external nonReentrant {
         // stake amount must be greater than 0
         require(amount > 0, 'amount is 0');
 
@@ -782,8 +789,8 @@ function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReen
         // cannot stake into disabled track
         require(!isDisabled, 'track is disabled');
 
+        uint40 lockUntil = trackUnlockTime[trackId] - uint40(block.timestamp);
         // transfer the specified amount of stake token from user to this contract
-        //@todo integrate with LRON
         track.stakeToken.lockFrom({account: _msgSender(), amount: amount, until: lockUntil });
 
         // add user checkpoint
@@ -807,21 +814,9 @@ function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReen
     }
 
     // unstake
-    function unstake(uint24 trackId, uint40 until) external nonReentrant {
+    function unstake(uint24 trackId, uint96 amount) external nonReentrant {
         // get track info
         TrackInfo storage track = tracks[trackId];
-
-        (, uint256 unlockableWithinRange) = track.stakeToken.unlockableAmountWithinRange(
-            _msgSender(),
-            _msgSender(),
-            until,
-            until
-        );
-        // amount must be greater than 0
-        require(unlockableWithinRange > 0, 'amount is 0');
-
-        uint96 amount96 = uint96(unlockableWithinRange);
-
 
         // get number of user's checkpoints within this track
         uint32 userCheckpointCount = userCheckpointCounts[trackId][
@@ -834,19 +829,19 @@ function stake(uint24 trackId, uint96 amount, uint40 lockUntil) external nonReen
         ][userCheckpointCount - 1];
 
         // ensure amount <= user's current stake
-        require(unlockableWithinRange <= checkpoint.staked, 'amount > staked');
+        require(amount <= checkpoint.staked, 'amount > staked');
 
         // add user checkpoint
-        addUserCheckpoint(trackId, amount96, false);
+        addUserCheckpoint(trackId, amount, false);
 
         // add track checkpoint
-        addTrackCheckpoint(trackId, amount96, false, false);
+        addTrackCheckpoint(trackId, amount, false, false);
 
         // transfer the specified amount of stake token from this contract to user
-        track.stakeToken.unlockFromWithinRange(_msgSender(), until, until);
+        track.stakeToken.unlockFrom(_msgSender(), amount);
 
         // emit
-        emit Unstake(trackId, _msgSender(), amount96);
+        emit Unstake(trackId, _msgSender(), amount);
     }
 
     // emergency withdraw
