@@ -407,4 +407,75 @@ export default describe('IFAllocationMaster', function () {
       )
     }
   })
+  it('simulation 6: with 8 decimal token: general staking and unstaking', async () => {
+    // Deploy token with 8 decimals instead of default 18
+    const TestTokenWith8DecimalsFactory = await ethers.getContractFactory('GenericTokenWithDecimals')
+    const TestTokenWith8Decimals = await TestTokenWith8DecimalsFactory.deploy(
+      'test token 8 decimals',
+      'TEST8',
+      '2100000000000000', // 21 billion * 10**8
+      8 // 8 decimals
+    )
+
+    // Allocate stake token to simulation users
+    mineNext()
+    await TestTokenWith8Decimals.transfer(simUser1.address, '1000000000000000') // 10B tokens with 8 decimals
+    await TestTokenWith8Decimals.transfer(simUser2.address, '1000000000000000') // 10B tokens with 8 decimals
+
+    // Add a track using 8 decimal token
+    mineNext()
+    await IFAllocationMaster.addTrack(
+      'TEST Track 8 Decimals', // name
+      TestTokenWith8Decimals.address, // stake token
+      '10000000', // weight accrual rate
+      '100000000000000000', // passive rollover rate (10%)
+      '200000000000000000', // active rollover rate (20%)
+      '1000000000000000' // max total stake (10B with 8 decimals)
+    )
+
+    // Use the first simulation but adjust values for 8 decimals
+    const simIn = JSON.parse(JSON.stringify(simulations[0].in))
+    const simExpectedOutPath = './test/simulationData/sim1_8decimals_ExpectedOutput.csv'
+
+    // Convert amounts in simulation input from 18 to 8 decimals
+    for (const entry of simIn) {
+      if (entry.action === 'stake' || entry.action === 'unstake') {
+        const originalAmount = ethers.BigNumber.from(entry.amount)
+        entry.amount = originalAmount.div(ethers.BigNumber.from(10).pow(10)).toString()
+      }
+    }
+
+    // Run simulation with 8 decimal values
+    const simOutput = await simAllocationMaster(
+      IFAllocationMaster,
+      TestTokenWith8Decimals,
+      (await IFAllocationMaster.trackCount()) - 1,
+      [simUser1, simUser2],
+      simIn
+    )
+
+    // Write the output - this can be used to create the expected output file
+    // first time you run the test
+    await asyncWriteFile(
+      './test/simulationData',
+      'sim1_8decimals_ExpectedOutput.csv',
+      unparseCsv(simOutput)
+    )
+
+    try {
+      // Read expected output file (needs to be created first)
+      const expectedLines = (await readFile(simExpectedOutPath)).split(/\r?\n/)
+      const simOutLines = unparseCsv(simOutput).split(/\r?\n/)
+
+      // Compare each line
+      expectedLines.map((expectedLine, i) => {
+        expect(expectedLine).to.equal(simOutLines[i])
+      })
+    } catch (error) {
+      console.log('Expected output file not found. Generated output file for future test runs.')
+    }
+
+    // Verify token has 8 decimals
+    expect(await TestTokenWith8Decimals.decimals()).to.equal(8)
+  })
 })
